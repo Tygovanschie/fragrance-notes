@@ -6,7 +6,7 @@ Data from Fragrantica. Not affiliated with Fragrantica.
 
 ## Install
 
-- **Chrome Web Store:** search for "Fragrance Notes".
+- **Chrome Web Store:** https://chromewebstore.google.com/detail/fragrance-notes/hhhiolpcmkdkegcmjmpglcnfolohldgc?hl=en-US.
 - **By hand:** open `chrome://extensions`, turn on *Developer mode*, choose *Load unpacked* and select this folder.
 
 Works in Chrome, Edge, Brave, Opera, Vivaldi and Arc (version 102 or newer).
