@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  /* Colours come from the chosen theme (set by popup.js), so the menu matches the panel. */
+  :root { --bg:#fffdfb; --fg:#231a22; --muted:#8a7a85; --label:#8a6b80; --head:#2b1d2e; --headFg:#f6e9f2; --accent:#8a3f6f;
+    --soft:#c58bb0; --chip:#f4e9f0; --card:#faf4f8; --border:#eee3ea; --input:#fff; --inputBorder:#d9c9d4; --onAccent:#fff; }
+  * { box-sizing:border-box; }
+  [hidden] { display:none !important; }
+  body { margin:0; width:300px; font:13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--fg); background:var(--bg); }
+
+  header { display:flex; align-items:center; gap:10px; padding:12px 12px 12px 14px; background:var(--head); color:var(--headFg); }
+  header svg.fl { flex:none; }
+  header .t { flex:1; min-width:0; }
+  header b { font-size:14px; display:block; }
+  header .t span { display:block; font-size:11.5px; opacity:.7; }
+  .iconbtn { background:none; border:0; color:inherit; opacity:.75; cursor:pointer; padding:5px; border-radius:7px; line-height:0; }
+  .iconbtn:hover { opacity:1; background:rgba(127,127,127,.2); }
+
+  main { padding:12px; display:flex; flex-direction:column; gap:10px; }
+
+  /* The perfume on this page. */
+  .now { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--card); }
+  .now .l { flex:1; min-width:0; }
+  .now .l small { display:block; color:var(--muted); font-size:11px; }
+  .now .l b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .btn { border:0; border-radius:8px; padding:7px 12px; font:inherit; font-size:12px; font-weight:600; cursor:pointer;
+    background:var(--accent); color:var(--onAccent); white-space:nowrap; }
+  .btn:hover { filter:brightness(1.08); }
+  .now.empty { color:var(--muted); font-size:12px; }
+
+  /* Look up any perfume. */
+  form { display:flex; gap:6px; }
+  input { flex:1; min-width:0; padding:8px 10px; border:1px solid var(--inputBorder); border-radius:8px; background:var(--input);
+    color:var(--fg); font:inherit; font-size:12.5px; }
+  input:focus { outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent; }
+
+  /* Rows. */
+  .rows { display:flex; flex-direction:column; }
+  .row { display:flex; align-items:center; gap:10px; width:100%; padding:9px 4px; border:0; background:none; border-radius:8px;
+    text-align:start; font:inherit; color:inherit; cursor:pointer; }
+  .row:hover:not([disabled]) { background:var(--card); }
+  .row[disabled] { cursor:default; }
+  .row .l { flex:1; min-width:0; }
+  .row .l b { display:block; font-weight:600; font-size:12.5px; }
+  .row .l span { color:var(--muted); font-size:11.5px; overflow-wrap:anywhere; }
+  .ico { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:var(--chip); color:var(--accent); flex:none; }
+  .sw { position:relative; width:34px; height:20px; flex:none; border-radius:999px; background:var(--inputBorder); transition:.15s; }
+  .sw::before { content:''; position:absolute; width:14px; height:14px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  .on .sw { background:var(--accent); }
+  .on .sw::before { transform:translateX(14px); }
+  .rm { border:0; background:none; color:var(--accent); font:inherit; font-size:11.5px; cursor:pointer; padding:0; }
+  .rm:hover { text-decoration:underline; }
+  .off main > :not(.rows) { opacity:.45; pointer-events:none; }
+</style>
+</head>
+<body>
+<header>
+  <svg class="fl" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><g fill="#f58fb8"><ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(0 12 12)"/><ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(72 12 12)"/><ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(144 12 12)"/><ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(216 12 12)"/><ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(288 12 12)"/></g><circle cx="12" cy="12" r="3" fill="#ffd36e"/></svg>
+  <div class="t"><b>Fragrance Notes</b><span id="state"></span></div>
+  <button class="iconbtn" id="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.77 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+</header>
+<main>
+  <div class="now" id="now" hidden>
+    <div class="l"><small id="nowLabel"></small><b id="nowName"></b></div>
+    <button class="btn" id="openPanel"></button>
+  </div>
+  <div class="now empty" id="nowEmpty" hidden></div>
+
+  <form id="search"><input id="q" autocomplete="off"><button class="btn" id="go"></button></form>
+
+  <div class="rows">
+    <button class="row" id="toggle">
+      <span class="ico"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/></svg></span>
+      <span class="l"><b id="toggleTitle"></b><span id="toggleSub"></span></span>
+      <span class="sw"></span>
+    </button>
+    <button class="row" id="site" hidden>
+      <span class="ico" id="siteIco"></span>
+      <span class="l"><b id="siteTitle"></b><span id="siteSub"></span></span>
+    </button>
+  </div>
+</main>
+<script src="settings.js"></script>
+<script src="i18n-settings.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>

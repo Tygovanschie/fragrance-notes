@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fragrance Notes</title>
+<link rel="icon" href="icons/32.png">
+<style>
+  :root { --bg:#f7f3f6; --card:#fff; --fg:#231a22; --muted:#7d6f79; --line:#ece3ea; --accent:#8a3f6f; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { background:#2b1d2e; color:#f6e9f2; padding:22px 0; }
+  .wrap { max-width:1040px; margin:0 auto; padding:0 24px; }
+  header .wrap { display:flex; align-items:center; gap:14px; }
+  header img { width:40px; height:40px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:2px 0 0; opacity:.75; font-size:13px; }
+
+  .layout { display:grid; grid-template-columns:minmax(0, 1fr) 360px; gap:28px; padding:24px 0 48px; align-items:start; }
+  .preview { position:sticky; top:20px; }
+  .preview h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 10px; }
+  .preview .note { color:var(--muted); font-size:12px; margin:10px 2px 0; }
+
+  section { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:16px; }
+  section > h2, .shead h2 { margin:0 0 4px; font-size:15px; }
+  .hint { margin:0 0 14px; color:var(--muted); font-size:13px; }
+  .row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:10px 0; border-top:1px solid var(--line); }
+  .row.first, .hint + .row { border-top:0; }
+  .row .l { min-width:0; }
+  .row .l b { display:block; font-weight:600; }
+  .row .l span { color:var(--muted); font-size:12.5px; }
+
+  .sw { position:relative; width:40px; height:22px; flex:none; }
+  .sw input { opacity:0; width:0; height:0; }
+  .sw i { position:absolute; inset:0; background:#d9cfd6; border-radius:999px; transition:.15s; cursor:pointer; }
+  .sw i::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  .sw input:checked + i { background:var(--accent); }
+  .sw input:checked + i::before { transform:translateX(18px); }
+  .sw input:focus-visible + i { outline:2px solid var(--accent); outline-offset:2px; }
+
+  .seg { display:inline-flex; background:#f1eaef; border-radius:10px; padding:3px; flex:none; }
+  .seg label { cursor:pointer; }
+  .seg input { display:none; }
+  .seg span { display:block; padding:6px 12px; border-radius:8px; font-size:13px; color:var(--muted); white-space:nowrap; }
+  .seg input:checked + span { background:#fff; color:var(--fg); font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,.08); }
+
+  .corners { position:relative; width:120px; height:76px; border:2px solid #d9cfd6; border-radius:10px; background:#faf6f9; flex:none; }
+  .corners label { position:absolute; cursor:pointer; }
+  .corners input { display:none; }
+  .corners span { display:block; width:16px; height:16px; border-radius:50%; background:#e3d8e0; transition:.12s; }
+  .corners label:hover span { background:#c58bb0; }
+  .corners input:checked + span { background:var(--accent); box-shadow:0 0 0 3px rgba(138,63,111,.18); }
+  .corners .tl { top:6px; left:6px; } .corners .tr { top:6px; right:6px; }
+  .corners .bl { bottom:6px; left:6px; } .corners .br { bottom:6px; right:6px; }
+
+  .tlabel { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:4px 0 8px; }
+  .themes + .tlabel { margin-top:16px; }
+  .themes { display:grid; grid-template-columns:repeat(auto-fill, minmax(104px, 1fr)); gap:10px; }
+  .theme { cursor:pointer; }
+  .theme input { display:none; }
+  .theme .card { border:2px solid var(--line); border-radius:12px; overflow:hidden; transition:.12s; }
+  .theme input:checked + .card { border-color:var(--accent); box-shadow:0 0 0 3px rgba(138,63,111,.15); }
+  .theme .top { height:20px; }
+  .theme .mid { padding:8px; display:flex; gap:4px; flex-wrap:wrap; }
+  .theme .mid i { height:7px; border-radius:4px; }
+  .theme .name { padding:0 8px 8px; font-size:12px; font-weight:600; }
+
+  .shead { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .bulk { display:flex; gap:6px; flex:none; }
+  .groups { display:flex; flex-direction:column; gap:10px; }
+  .group { display:grid; grid-template-columns:30px 1fr; gap:0 12px; border:1px solid var(--line); border-radius:12px; padding:10px 14px; background:#fdfbfc; }
+  .group .num { grid-row:1 / span 2; width:26px; height:26px; border-radius:50%; background:var(--accent); color:#fff;
+    display:grid; place-items:center; font-size:12px; font-weight:700; margin-top:2px; }
+  .group .gh { display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .group h3 { margin:0; font-size:13px; font-weight:700; }
+  .group .where { font-size:12px; color:var(--muted); }
+  .group .items { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:0 20px; }
+  .group .row { padding:8px 0; border-top:0; }
+
+  select, .text { padding:7px 10px; border:1px solid var(--line); border-radius:9px; font:inherit; font-size:13px; background:#fff; color:var(--fg); }
+  select { flex:none; max-width:220px; }
+  .text:focus, select:focus { outline:2px solid rgba(138,63,111,.35); border-color:var(--accent); }
+  .shortcut { display:flex; gap:6px; flex:none; }
+  .shortcut .text { width:150px; text-align:center; font-weight:600; cursor:pointer; caret-color:transparent; }
+  .shortcut .text.rec { border-color:var(--accent); background:#faf4f8; }
+  button.btn { border:1px solid var(--line); background:#fff; color:var(--fg); border-radius:9px; padding:7px 12px; font-size:13px; cursor:pointer; flex:none; }
+  button.btn:hover { border-color:var(--accent); color:var(--accent); }
+  button.btn.sm { padding:5px 10px; font-size:12px; }
+  button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+  button.primary:hover { color:#fff; opacity:.9; }
+
+  .addshop { display:flex; gap:8px; margin:4px 0 12px; }
+  .addshop .text { flex:1; min-width:0; }
+  .shoplist { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 4px; }
+  .shop { display:inline-flex; align-items:center; gap:6px; padding:4px 6px 4px 10px; border-radius:999px; background:#f4e9f0; font-size:12.5px; }
+  .shop button { border:0; background:none; cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:0 4px; }
+  .shop button:hover { color:var(--accent); }
+  .empty { color:var(--muted); font-size:12.5px; }
+  details { margin-top:10px; }
+  details summary { cursor:pointer; color:var(--accent); font-size:13px; font-weight:600; }
+  .builtin { columns:4 150px; font-size:12px; color:var(--muted); margin-top:8px; }
+
+  .saved { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(20px); opacity:0;
+    background:#2b1d2e; color:#fff; padding:8px 14px; border-radius:999px; font-size:13px; transition:.2s; pointer-events:none; z-index:10; }
+  .saved.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  @media (max-width:900px) { .layout { grid-template-columns:1fr; } .preview { position:static; order:-1; } }
+  .btn.danger { color:#b3412e; border-color:#e8c4bc; }
+  .btn.danger:hover { background:#fbeeea; }
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <img src="icons/128.png" alt="">
+  <div><h1>Fragrance Notes</h1><p data-i18n="headSub"></p></div>
+</div></header>
+
+<div class="wrap layout">
+  <main>
+    <section>
+      <h2 data-i18n="general"></h2>
+      <p class="hint" data-i18n="generalHint"></p>
+      <div class="row">
+        <div class="l"><b data-i18n="langT"></b><span data-i18n="langD"></span></div>
+        <select id="lang"></select>
+      </div>
+      <div class="row">
+        <div class="l"><b data-i18n="autoSearchT"></b><span data-i18n="autoSearchD"></span></div>
+        <label class="sw"><input type="checkbox" id="autoSearch"><i></i></label>
+      </div>
+      <div class="row">
+        <div class="l"><b data-i18n="openT"></b><span data-i18n="openD"></span></div>
+        <div class="seg">
+          <label><input type="radio" name="autoOpen" value="false"><span data-i18n="onClick"></span></label>
+          <label><input type="radio" name="autoOpen" value="true"><span data-i18n="auto"></span></label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="l"><b data-i18n="shortcutT"></b><span data-i18n="shortcutD"></span></div>
+        <div class="shortcut"><input class="text" id="shortcut" readonly><button class="btn sm" id="clearShortcut" data-i18n="clear"></button></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-i18n="look"></h2>
+      <p class="hint" data-i18n="lookHint"></p>
+      <div class="row first">
+        <div class="l"><b data-i18n="autoT"></b><span data-i18n="autoD"></span></div>
+        <label class="sw"><input type="checkbox" id="themeAuto"><i></i></label>
+      </div>
+      <div class="tlabel" data-i18n="light"></div>
+      <div class="themes" id="themesLight"></div>
+      <div class="tlabel" data-i18n="dark"></div>
+      <div class="themes" id="themesDark"></div>
+      <div class="row" style="margin-top:12px; border-top:1px solid var(--line)">
+        <div class="l"><b data-i18n="styleT"></b><span data-i18n="styleD"></span></div>
+        <div class="seg">
+          <label><input type="radio" name="style" value="rich"><span data-i18n="rich"></span></label>
+          <label><input type="radio" name="style" value="simple"><span data-i18n="simple"></span></label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="l"><b data-i18n="accStyleT"></b><span data-i18n="accStyleD"></span></div>
+        <div class="seg">
+          <label><input type="radio" name="accStyle" value="bars"><span data-i18n="accBars"></span></label>
+          <label><input type="radio" name="accStyle" value="strip"><span data-i18n="accStrip"></span></label>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2 data-i18n="panelT"></h2>
+      <p class="hint" data-i18n="panelHint"></p>
+      <div class="row first">
+        <div class="l"><b data-i18n="cornerT"></b><span id="cornerName"></span></div>
+        <div class="corners">
+          <label class="tl"><input type="radio" name="position" value="tl"><span></span></label>
+          <label class="tr"><input type="radio" name="position" value="tr"><span></span></label>
+          <label class="bl"><input type="radio" name="position" value="bl"><span></span></label>
+          <label class="br"><input type="radio" name="position" value="br"><span></span></label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="l"><b data-i18n="sizeT"></b><span data-i18n="sizeD"></span></div>
+        <button class="btn" id="resetSize" data-i18n="resetSize"></button>
+      </div>
+    </section>
+
+    <section>
+      <div class="shead">
+        <div><h2 data-i18n="show"></h2><p class="hint" data-i18n="showHint"></p></div>
+        <div class="bulk"><button class="btn sm" id="allOn" data-i18n="showAll"></button><button class="btn sm" id="allOff" data-i18n="hideAll"></button></div>
+      </div>
+      <div class="groups" id="sections"></div>
+    </section>
+
+    <section>
+      <h2 data-i18n="shops"></h2>
+      <p class="hint" id="shopsHint"></p>
+      <div class="row first">
+        <div class="l"><b data-i18n="allSitesT"></b><span data-i18n="allSitesD"></span></div>
+        <label class="sw"><input type="checkbox" id="allSites"><i></i></label>
+      </div>
+      <form class="addshop" id="addShopForm">
+        <input class="text" id="shopInput" data-i18n-ph="addShopPh" autocomplete="off">
+        <button class="btn primary" data-i18n="add"></button>
+      </form>
+      <div class="tlabel" data-i18n="yourShops"></div>
+      <div class="shoplist" id="customShops"></div>
+      <details><summary data-i18n="builtIn"></summary><div class="builtin" id="builtinShops"></div></details>
+    </section>
+
+    <section>
+      <h2 data-i18n="data"></h2>
+      <div class="row first">
+        <div class="l"><b data-i18n="cacheT"></b><span data-i18n="cacheD"></span></div>
+        <button class="btn" id="clearCache" data-i18n="clearCache"></button>
+      </div>
+      <div class="row">
+        <div class="l"><b data-i18n="resetT"></b><span data-i18n="resetD"></span></div>
+        <button class="btn danger" id="resetAll" data-i18n="resetBtn"></button>
+      </div>
+    </section>
+  </main>
+
+  <aside class="preview">
+    <h2 data-i18n="preview"></h2>
+    <div id="previewHost"></div>
+    <p class="note" data-i18n="previewNote"></p>
+  </aside>
+</div>
+<div class="saved" id="saved"></div>
+<script src="settings.js"></script>
+<script src="i18n-panel.js"></script>
+<script src="i18n-settings.js"></script>
+<script src="panel-ui.js"></script>
+<script src="example-data.js"></script>
+<script src="options.js"></script>
+</body>
+</html>
