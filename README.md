@@ -37,7 +37,7 @@ Right-click the icon → *Options*, or use the gear in the panel or menu.
 
 ## Privacy
 
-Everything stays in your browser. The extension reads the perfume name and prices on shop product pages, looks the perfume up on Bing and Fragrantica, and saves results locally for 14 days. Nothing is sent to the developer, and there is no tracking or advertising. See the privacy policy in the store listing.
+Everything stays in your browser. The extension reads the perfume name and prices on shop product pages, looks the perfume up on Bing and Fragrantica, and saves results locally for 14 days. Nothing is sent to the developer, and there is no tracking or advertising. See the [privacy policy](PRIVACY.md).
 
 ## License
 
