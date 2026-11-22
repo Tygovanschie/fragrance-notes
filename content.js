@@ -79,8 +79,8 @@
   function cleanName(name, brand) {
     let n = withoutBrand(trimDescription(name), brand);
     n = FN.stripConc(n)
-      .replace(/\b\d+([.,]\d+)?\s?(ml|oz|g)\b/gi, ' ')
-      .replace(/\b(spray|vapo|vaporisateur|vaporizador|vaporizzatore|zerst[aä]uber|natural spray|navulling|refill|nachf[uü]llung|tester|for (wo)?men|pour (homme|femme)|unisex|limited edition)\b/gi, ' ')
+      .replace(/(?:\b\d+(?:[.,]\d+)?|[.,]\d+)\s?(?:fl\.?\s?)?(ml|oz|g)\b\.?/gi, ' ')
+      .replace(/\b(spray|vapo|vaporisateur|vaporizador|vaporizzatore|zerst[aä]uber|natural spray|navulling|refill|nachf[uü]llung|tester|for (wo)?men|(wo)?men'?s|pour (homme|femme)|unisex|limited edition)\b/gi, ' ')
       .replace(/[|•–—,-]+\s*$/, ' ')
       .replace(/^\s*[|•–—,-]+/, ' ');
     return n.replace(/\s+/g, ' ').trim();
@@ -105,7 +105,7 @@
     let name = '', cleaned = '';
     for (const c of candidates) {
       const cl = cleanName(c, brand);
-      if (/[\p{L}]{3,}/u.test(cl)) { name = c; cleaned = cl; break; }
+      if (/\p{L}{2,}|[\p{L}\p{N}]{3,}/u.test(cl)) { name = c; cleaned = cl; break; }
     }
     // Concentration: from the chosen name first, then the other sources (and the product's offers).
     const concSources = [name, ...candidates, ...((p?.offers && [].concat(p.offers).map(o => o?.name)) || [])];
@@ -114,9 +114,12 @@
 
     // Also look at the size options and breadcrumbs ("Parfum › Herrendüfte") for the word "perfume".
     const offerNames = (p?.offers && [].concat(p.offers).map(o => o?.name || '').join(' ')) || '';
-    const crumbs = [...document.querySelectorAll('nav[aria-label*="breadcrumb" i], [class*="breadcrumb" i], [itemtype$="BreadcrumbList"]')]
+    // Only the outermost breadcrumb elements: on some shops the first match is a single "Home" item.
+    const crumbEls = [...document.querySelectorAll('nav[aria-label*="breadcrumb" i], [class*="breadcrumb" i], [itemtype$="BreadcrumbList"]')];
+    const crumbs = crumbEls.filter(e => !crumbEls.some(o => o !== e && o.contains(e)))
       .slice(0, 2).map(e => e.textContent).join(' ').slice(0, 400);
-    const blob = `${brand} ${candidates.join(' ')} ${p?.category || ''} ${offerNames} ${crumbs} ${document.title}`;
+    const path = decodeURIComponent(location.pathname).replace(/[-_/.]+/g, ' ');   // e.g. "/en/fruity-perfumes/…"
+    const blob = `${brand} ${candidates.join(' ')} ${p?.category || ''} ${offerNames} ${crumbs} ${path} ${document.title}`;
     // Only real product pages count (not the homepage or category pages).
     const isProduct = !!p || !!document.querySelector('meta[property="og:type"][content*="product" i]');
     const isFragrance = !!name && FRAG_RE.test(blob);
@@ -133,12 +136,29 @@
   // Sizes and prices: first from the shop's product data (offers per size), otherwise from the
   // page text, where each size option usually sits in its own element with its price.
   const SIZE_RE = /(\d+(?:[.,]\d+)?)\s?(?:ml|mL|ML)\b/;
+  // US shops give sizes in fluid ounces ("1.7 oz", "3.4 fl. oz."). Those are turned into ml first and
+  // rounded to the usual bottle size (1.7 oz = 50.3 ml → 50 ml, 3.4 oz → 100 ml, 1 oz → 30 ml).
+  const OZ_RE = /(\d+(?:[.,]\d+)?|[.,]\d+)\s?(?:fl\.?\s?)?oz\.?(?![a-z])/gi;
+  // US labels state a bottle's ounces rounded down or about exact (50 ml = 1.69 oz, sold as "1.6 oz" or "1.7 oz";
+  // 175 ml as "5.8 oz"), so a common bottle size wins when its exact ounces are 0.05 below to 0.15 above the label;
+  // otherwise the nearest other real size within 6%, or else just rounded.
+  const COMMON_BOTTLES = [5, 10, 15, 20, 30, 50, 75, 90, 100, 125, 150, 175, 200];
+  const OTHER_BOTTLES = [7.5, 8, 25, 35, 40, 45, 60, 65, 70, 80, 110, 120, 180, 250];
+  const ozToMl = oz => {
+    const ml = oz * 29.5735;
+    const near = list => list.reduce((a, b) => (Math.abs(b - ml) < Math.abs(a - ml) ? b : a));
+    const c = COMMON_BOTTLES.find(b => { const d = b / 29.5735 - oz; return d >= -0.05 && d <= 0.15; });
+    if (c) return c;
+    const o = near(OTHER_BOTTLES);
+    return Math.abs(o - ml) / o <= 0.06 ? o : Math.round(ml);
+  };
+  const withMl = t => String(t || '').replace(OZ_RE, (m, n) => `${ozToMl(parseFloat(n.replace(',', '.')))} ml`);
   const CUR = '€|£|\\$|EUR|USD|GBP|CHF|zł|PLN|kr|SEK|DKK|NOK|Kč|CZK|lei|RON|Ft|HUF|₺|TRY|₽|RUB|₴|UAH|AUD|CAD|JPY|¥|₩';
   const NUM = `\\d{1,3}(?:[ .,'\\u00a0]\\d{3})*(?:[.,]\\d{1,2})?|\\d+(?:[.,]\\d{1,2})?`;
   const PRICE_RE = new RegExp(`(?:(${CUR})\\s?(${NUM}))|(?:(${NUM})\\s?(${CUR}))`, 'g');
   // Unit prices such as "100 ml / € 51,41", "€ 149,98 / 100 ml" or "2.545,00 € / 1L" — removed before reading sizes.
   const PER = `(?:\\/|per|pro|je|par|za|за|le|la)`;
-  const UNIT = `(?:1|10|100)\\s?ml|1\\s?(?:l|L|ltr|liter|litre|litro)\\b|(?:l|L|liter|litre|litro)\\b`;
+  const UNIT = `(?:1\\s?)?(?:fl\\.?\\s?)?oz\\.?|(?:1|10|100)\\s?ml|1\\s?(?:l|L|ltr|liter|litre|litro)\\b|(?:l|L|liter|litre|litro)\\b`;
   const UNIT_PRICE_RE = new RegExp(
     `(?:(?:${CUR})\\s?(?:${NUM})|(?:${NUM})\\s?(?:${CUR}))\\s?${PER}\\s?(?:${UNIT})` +   // price / unit
     `|(?:${UNIT})\\s?(?:${PER}|=|:)\\s?(?:(?:${CUR})\\s?(?:${NUM})|(?:${NUM})\\s?(?:${CUR}))`, 'gi'); // unit / price
@@ -156,7 +176,7 @@
   function readPrices() {
     const map = new Map();
     const add = (m, ml, price, currency) => {
-      if (!(ml > 0 && ml <= 1000 && price > 0)) return;
+      if (!(ml >= 3 && ml <= 1000 && price > 0)) return;   // under 3 ml are samples, not bottles
       const prev = m.get(ml);
       if (!prev || price < prev.price) m.set(ml, { ml, price, currency: currency || 'EUR' });
     };
@@ -166,27 +186,31 @@
     try {
       const p = readProduct();
       const offers = [];
-      const pushOffers = (o, fallbackName) => [].concat(o || []).forEach(x => x && offers.push({ ...x, _name: x.name || fallbackName }));
+      // The size can be in the offer's own size field, its name, or its SKU ("P-12885-EDT-100ml").
+      const pushOffers = (o, fallbackName) => [].concat(o || []).forEach(x => x && offers.push({
+        ...x, _size: [x.size, x.itemOffered?.size, x.name, x.sku, x.mpn].filter(v => typeof v === 'string').join(' | '), _name: fallbackName }));
       if (p) {
         pushOffers(p.offers, `${p.size || ''} ${p.name || ''}`);
         [].concat(p.hasVariant || []).forEach(v => pushOffers(v.offers, `${v.size || ''} ${v.name || ''}`));
       }
       for (const o of offers) {
-        const size = String(o._name || '').match(SIZE_RE);
+        const size = withMl(o._size).match(SIZE_RE) || withMl(o._name).match(SIZE_RE);
         const price = parseFloat(o.price ?? o.lowPrice);
         if (size) add(structured, toNum(size[1]), price, o.priceCurrency);
       }
     } catch {}
     if (structured.size >= 2) return [...structured.values()].sort((a, b) => a.ml - b.ml).slice(0, 8);
 
+    // "151 , 99" (cents in a separate element) → "151,99"
+    const INSTALMENTS_RE = new RegExp(`\\b\\d{1,2}\\s?[x×]\\s?(?:(?:${CUR})\\s?(?:${NUM})|(?:${NUM})\\s?(?:${CUR}))|\\b\\d{1,2}\\s+(?:interest[- ]free\\s+)?(?:payments?|installments?|instalments?|termijnen|raten|paiements|mensualit[ée]s)\\s+(?:of|van|von|de|à)\\s+\\S+`, 'gi');
+    const textOf = e => (e.innerText || e.textContent || '').replace(/\s+/g, ' ').replace(INSTALMENTS_RE, ' ').replace(/(\d)\s?([.,])\s?(\d{2})(?!\d)/g, '$1$2$3').replace(UNIT_PRICE_RE, ' ').replace(OZ_RE, (m, n) => `${ozToMl(parseFloat(n.replace(',', '.')))} ml`);
+    const OTHER_PRODUCTS = '[class*="related" i],[class*="recommend" i],[class*="productline" i],[class*="carousel" i],[class*="slider" i],[class*="upsell" i],[class*="cross-sell" i],[class*="crosssell" i],[class*="alternative" i],[class*="similar" i],[class*="product-tile" i],[class*="producttile" i],[class*="recently" i],[class*="also-bought" i],[class*="alsobought" i],[class*="gift" i],[class*="productcard" i],[class*="product-card" i],header,footer,nav,aside';
+
     // 2) Page text.
     try {
-      // "151 , 99" (cents in a separate element) → "151,99"
-      const textOf = e => (e.innerText || e.textContent || '').replace(/\s+/g, ' ').replace(/(\d)\s?([.,])\s?(\d{2})(?!\d)/g, '$1$2$3').replace(UNIT_PRICE_RE, ' ');
       // Some shops (e.g. Deloox) show prices without a currency sign: "onze prijs: 151,99".
       // Those only count outside product cards for other products (related items, carousels).
       const pageCur = [...structured.values()][0]?.currency || document.querySelector('[itemprop="priceCurrency"]')?.getAttribute('content') || 'EUR';
-      const OTHER_PRODUCTS = '[class*="related" i],[class*="recommend" i],[class*="productline" i],[class*="carousel" i],[class*="slider" i],[class*="upsell" i],[class*="cross-sell" i],[class*="crosssell" i],header,footer,nav,aside';
       const here = location.pathname;
       const linksElsewhere = e => [e.closest('a[href]'), ...e.querySelectorAll('a[href]')].some(a => {
         try { return a && new URL(a.href, location.href).pathname !== here; } catch { return false; }
@@ -195,7 +219,11 @@
         const out = [...t.matchAll(BARE_PRICE_RE)].map(m => toNum(m[1]));
         return out.length ? out : [...t.matchAll(DECIMAL_RE)].map(m => toNum(m[1]));
       };
+      // Cards for other perfumes (alternatives, "also bought", carousels) never count, with or without a
+      // currency sign: an element inside such a block, or one that links to another page and has a picture.
+      const otherProduct = e => !!e.closest(OTHER_PRODUCTS) || (linksElsewhere(e) && !!e.querySelector('img'));
       const pricesIn = (e, t) => {
+        if (otherProduct(e)) return [];
         const withCur = [...t.matchAll(PRICE_RE)].map(m => ({ v: toNum(m[2] || m[3]), c: CUR_CODE[m[1] || m[4]] || (m[1] || m[4]) })).filter(x => x.v > 0);
         if (withCur.length) return withCur;
         if (e.closest(OTHER_PRODUCTS) || linksElsewhere(e)) return [];
@@ -219,7 +247,62 @@
         add(map, sizes[0], best.v, best.c);
       }
     } catch {}
-    for (const v of structured.values()) add(map, v.ml, v.price, v.currency);
+    // 3) Shops that show one price for the size you picked ("Size: 50 mL", a highlighted size button):
+    //    pair the picked size with the price shown next to it.
+    if (!map.size) {
+      try {
+        const LABEL_RE = /^(size|maat|inhoud|gr[öo](ss|ß)e|taille|formaat|contenance|volume|tama[ñn]o|taglia|formato|pojemno[śs][ćc])\s*:/i;
+        const pickedClass = e => [...e.classList].some(c => /^(is-?)?(selected|active|checked|current)$|[-_](selected|active|checked|current)$/i.test(c));
+        const picked = e => e.matches('[aria-checked="true"],[aria-selected="true"],[aria-pressed="true"],[aria-current="true"]') || pickedClass(e)
+          || !!e.querySelector('input:checked') || (e.tagName === 'LABEL' && !!e.htmlFor && !!document.getElementById(e.htmlFor)?.checked);
+        const short = e => withMl((e.innerText || e.textContent || '').replace(/\s+/g, ' ').trim());
+        const sizeEl = [...document.querySelectorAll('button,label,li,a,span,div,option')].find(e => {
+          if (e.closest('[data-fn-host]') || e.closest(OTHER_PRODUCTS)) return false;
+          const t = short(e);
+          if (t.length > 40 || [...t.matchAll(new RegExp(SIZE_RE.source, 'g'))].length !== 1) return false;
+          if (e.tagName === 'OPTION') return e.selected && e.parentElement?.offsetParent !== null;
+          return e.offsetParent !== null && (picked(e) || LABEL_RE.test(t));
+        });
+        if (sizeEl) {
+          const ml = toNum(short(sizeEl).match(SIZE_RE)[1]);
+          for (let up = sizeEl.parentElement, i = 0; up && i < 6 && !map.size; up = up.parentElement, i++) {
+            const priceEls = [...up.querySelectorAll('[class*="price" i]')].filter(e => e.offsetParent !== null && !e.closest(OTHER_PRODUCTS)
+              && !/old|was|strike|before|regular|rrp|original/i.test(e.className) && getComputedStyle(e).textDecorationLine !== 'line-through');
+            for (const e of priceEls) {
+              const found = [...textOf(e).matchAll(PRICE_RE)].map(m => ({ v: toNum(m[2] || m[3]), c: CUR_CODE[m[1] || m[4]] || (m[1] || m[4]) })).filter(x => x.v > 0);
+              if (found.length === 1) { add(map, ml, found[0].v, found[0].c); break; }
+            }
+          }
+        }
+      } catch {}
+    }
+    // 4) One price in the product data but no size in it (Mecca after picking a size): use the size in the
+    //    page title, heading or address, if there is exactly one.
+    if (!map.size) {
+      try {
+        const p = readProduct();
+        const offers = [].concat(p?.offers || []).filter(o => o && /^\s*\d+(?:[.,]\d+)?\s*$/.test(String(o.price ?? '')));
+        if (offers.length === 1) {
+          for (const src of [document.title, document.querySelector('h1')?.innerText, decodeURIComponent(location.pathname).replace(/[-_/]+/g, ' ')]) {
+            const sizes = [...new Set([...withMl(src).matchAll(new RegExp(SIZE_RE.source, 'g'))].map(m => toNum(m[1])))];
+            if (sizes.length === 1) { add(map, sizes[0], parseFloat(offers[0].price), offers[0].priceCurrency); break; }
+          }
+        }
+      } catch {}
+    }
+    // The shop's own product data wins over page text for the same size. Page-text prices for other sizes
+    // must look like the same product, compared per ml with the nearest size from the product data:
+    // a smaller bottle costs about the same or more per ml (0.85x-6x), a bigger one less (0.4x-1.3x).
+    if (structured.size) {
+      const refs = [...structured.values()];
+      for (const [ml, v] of map) {
+        if (structured.has(ml)) { map.delete(ml); continue; }
+        const ref = refs.reduce((a, b) => (Math.abs(b.ml - ml) < Math.abs(a.ml - ml) ? b : a));
+        const r = (v.price / v.ml) / (ref.price / ref.ml);
+        if (ml < ref.ml ? r < 0.85 || r > 6 : r < 0.4 || r > 1.3) map.delete(ml);
+      }
+      for (const v of structured.values()) map.set(v.ml, v);
+    }
     return [...map.values()].sort((a, b) => a.ml - b.ml).slice(0, 8);
   }
 
@@ -229,6 +312,20 @@
   const host = document.createElement('div');
   host.setAttribute('data-fn-host', '');
   host.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:2147483647;display:flex;flex-direction:column;align-items:flex-end;gap:8px;';
+  // The website's fonts for the panel. FontFace objects only download once text in the panel uses them,
+  // through a per-session address (use_dynamic_url in the manifest). Own family names, so they can't clash
+  // with the shop's fonts; if they can't load, the panel falls back to the system font.
+  (() => {
+    const LATIN = 'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+    const LATIN_EXT = 'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF';
+    const families = [['FN Bricolage', 'bricolage-grotesque', [700, 800]], ['FN Figtree', 'figtree', [400, 600, 700]]];
+    try {
+      for (const [family, file, weights] of families) for (const w of weights) for (const [sub, range] of [['latin', LATIN], ['latin-ext', LATIN_EXT]]) {
+        const url = chrome.runtime.getURL(`fonts/${file}-${sub}-${w}-normal.woff2`);
+        document.fonts.add(new FontFace(family, `url("${url}") format("woff2")`, { weight: String(w), unicodeRange: range, display: 'swap' }));
+      }
+    } catch {}
+  })();
   const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `
     <style>${CSS}</style>
@@ -531,11 +628,17 @@
     const prices = current.isProduct ? readPrices() : [];
     const elsewhere = S.sections.elsewhere ? await seenPrices(d, prices) : [];
     if (lastRender?.data !== d) return;    // a newer render started meanwhile
-    const opts = { cached, query, prices: S.sections.perMl ? prices : [], elsewhere, othersAll: false, host: location.hostname, pricesOpen };
+    const opts = { cached, query, prices: S.sections.perMl ? prices : [], elsewhere, othersAll: false, host: location.hostname, pricesOpen, community: null,
+      askShare: !S.sharePrices && !S.shareAsked && !!FN.builtInShop(location.hostname) };
     const paint = () => {
       body.innerHTML = renderBody(d, S, opts);
       body.querySelector('.refresh')?.addEventListener('click', () => lookup(query, true));
       body.querySelector('.more')?.addEventListener('click', () => { opts.othersAll = true; paint(); });
+      // The one-time "compare prices?" card. Saving the settings redraws the panel (see applySettings),
+      // which then fetches and shares prices when sharing was turned on.
+      const answer = on => { S.sharePrices = on || S.sharePrices; S.shareAsked = true; chrome.storage.sync.set({ settings: S }).catch(() => {}); };
+      body.querySelector('.ask-on')?.addEventListener('click', () => answer(true));
+      body.querySelector('.ask-no')?.addEventListener('click', () => answer(false));
       body.querySelector('details.others')?.addEventListener('toggle', e => {
         if (e.target.open === pricesOpen) return;
         pricesOpen = opts.pricesOpen = e.target.open;
@@ -561,7 +664,38 @@
     else { const prev = pendingWork; pendingWork = () => { prev?.(); askOpinions(); }; }
     pricesOpen = opts.pricesOpen = false;   // the other-shops list always starts closed
     paint();
+    priceWatch = { d, opts, paint, pid: perfumeId(d.url) };
+
+    // "Share prices anonymously" (off by default): first get other users' prices for this perfume,
+    // then share the ones on this page, so your own report doesn't count in the label you see.
+    const pid = perfumeId(d.url);
+    if (!S.sharePrices || !pid) return;
+    const currency = prices.find(p => p.currency)?.currency;
+    const community = await chrome.runtime.sendMessage({ type: 'community', perfumeId: pid, currency }).catch(() => null);
+    if (prices.length && current.isProduct) chrome.runtime.sendMessage({ type: 'share', perfumeId: pid, prices }).catch(() => {});
+    if (community?.count && lastRender?.data === d) { opts.community = community; paint(); }
   }
+
+  // Some shops only show every size after a click ("show all 5 sizes", a size dropdown). After a click on
+  // the page, read the prices again and add sizes or prices that weren't there yet.
+  let priceWatch = null, priceTimer = 0;
+  const recheckPrices = e => {
+    if (!priceWatch || e.target?.closest?.('[data-fn-host]')) return;
+    clearTimeout(priceTimer);
+    priceTimer = setTimeout(() => {
+      const w = priceWatch;
+      if (!w || lastRender?.data !== w.d || !current.isProduct || !S.sections.perMl) return;
+      const byMl = new Map(w.opts.prices.map(p => [p.ml, p]));
+      const added = readPrices().filter(p => byMl.get(p.ml)?.price !== p.price);
+      if (!added.length) return;
+      added.forEach(p => byMl.set(p.ml, p));
+      w.opts.prices = [...byMl.values()].sort((a, b) => a.ml - b.ml).slice(0, 8);
+      w.paint();
+      if (S.sharePrices && w.pid) chrome.runtime.sendMessage({ type: 'share', perfumeId: w.pid, prices: added }).catch(() => {});
+    }, 900);
+  };
+  document.addEventListener('click', recheckPrices, true);
+  document.addEventListener('change', recheckPrices, true);
 
   // ---------- keyboard shortcut (set in Settings; empty = off) ----------
   const comboOf = e => {

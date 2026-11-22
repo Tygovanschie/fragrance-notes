@@ -33,6 +33,8 @@ globalThis.FN_EXAMPLE_PRICES = [{ ml: 50, price: 235, currency: 'EUR' }, { ml: 1
 
 // Sample "other shops" prices for the settings preview.
 globalThis.FN_EXAMPLE_ELSEWHERE = [{ host: 'douglas.nl', url: '#', per: 3.15, currency: 'EUR', ml: 100, t: Date.now() - 3 * 864e5 }, { host: 'notino.nl', url: '#', per: 3.89, currency: 'EUR', ml: 50, t: Date.now() - 12 * 864e5 }];
+// Sample shared prices (shown in the preview when "Share prices anonymously" is on).
+globalThis.FN_EXAMPLE_COMMUNITY = { currency: 'EUR', count: 14, sizes: [{ ml: 50, median: 4.6, count: 5, shops: { 'douglas.nl': 4.9, 'notino.nl': 4.5 }, lows: { 'douglas.nl': 239, 'notino.nl': 219 } }, { ml: 100, median: 3.9, count: 9, shops: { 'douglas.nl': 4.1, 'notino.nl': 3.9, 'flaconi.nl': 3.6 }, lows: { 'douglas.nl': 399, 'notino.nl': 379, 'flaconi.nl': 349 } }], cheapest: [{ shop: 'parfumdreams.de', perMl: 2.95, ml: 100, price: 295, t: Date.now() - 2 * 864e5 }, { shop: 'flaconi.nl', perMl: 3.4, ml: 100, price: 340, t: Date.now() - 6 * 864e5 }] };
 // Pros & cons for the preview (Aventus, from Fragrantica).
 FN_EXAMPLE.prosCons = {
   pros: [

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy policy – Fragrance Notes</title>
+  <meta name="description" content="A free browser extension that shows a perfume's notes, accords, longevity and similar scents from Fragrantica on the product page of more than 300 perfume shops.">
+  <link rel="icon" href="img/icon.png">
+  <meta property="og:title" content="Fragrance Notes">
+  <meta property="og:description" content="Know what a perfume smells like before you buy it.">
+  <meta property="og:image" content="https://fragrancenotes.app/img/og.png">
+  <link rel="preconnect" href="https://fonts.bunny.net">
+  <link rel="stylesheet" href="https://fonts.bunny.net/css?family=bricolage-grotesque:600,700,750,800|figtree:400,500,600&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="/"><img src="img/icon.png" alt="">Fragrance Notes</a>
+      <a class="btn small" href="https://chromewebstore.google.com/detail/fragrance-notes/hhhiolpcmkdkegcmjmpglcnfolohldgc">Add to Chrome</a>
+    </div>
+  </header>
+
+  <main class="doc">
+    <div class="wrap">
+      <article>
+        <h1>Privacy policy</h1>
+        <p class="updated">Last updated: 22 November 2026 (version 1.1)</p>
+        <p>Fragrance Notes is a browser extension that shows information from Fragrantica about the perfume you are looking at in a web shop. This policy explains what the extension reads, where it sends it and what it stores.</p>
+<h2>What the extension reads</h2>
+<p>On perfume product pages of supported shops (and shops you add yourself), the extension reads the product name, brand, and the sizes and prices shown on the page. It does not read other pages, forms, passwords or payment details.</p>
+<h2>Where information is sent</h2>
+<ul>
+<li><strong>Bing</strong> (bing.com): the perfume name is searched to find the matching Fragrantica page.</li>
+<li><strong>Fragrantica</strong> (fragrantica.com and its language sites, and fimgs.net for pictures): the perfume's page, note pages and search are opened to read the perfume's details.</li>
+</ul>
+<p>These requests go directly from your browser to those websites, just as when you visit them yourself, and are covered by their own privacy policies.</p>
+<p>Unless you turn on <strong>Share prices anonymously</strong>, nothing is sent to the developer of Fragrance Notes.</p>
+<h2>Share prices anonymously (optional, off by default)</h2>
+<p>You can turn this on under Settings → Data. While it is on:</p>
+<ul>
+<li><strong>What is sent</strong> to the Fragrance Notes price server, for each size on a product page of a <em>built-in</em> shop:
+  the Fragrantica perfume number (for example 9828), the size in ml, the price, the currency and the shop's domain (for example douglas.nl).
+  With it goes a random install ID that the extension creates when you turn sharing on.</li>
+<li><strong>What is not sent:</strong> page addresses, your search terms, your name, e-mail, account or any other personal details. Prices from shops you added yourself are never shared.</li>
+<li><strong>What you get back:</strong> for the perfume you are looking at, the extension asks the server for the prices other users shared in the last 30 days (median, lowest and highest price per ml, and the cheapest shops). This request contains only the perfume number and currency.</li>
+<li><strong>On the server:</strong> the install ID is only stored as a salted hash, used to limit how often one install can send prices and to keep one price per install, perfume, shop and size. IP addresses are not stored or logged by the server. Shared prices are deleted after 90 days.</li>
+<li><strong>Connection:</strong> the server runs on the developer's own machine and is reached over HTTPS at api.fragrancenotes.app through Cloudflare. Like for any website that uses Cloudflare, Cloudflare handles the connection on its way to the server: it can see your IP address and the request itself (the perfume number, sizes, prices, shop and install ID described above), and processes this under its own privacy policy (cloudflare.com/privacypolicy). The server itself does not store or log IP addresses.</li>
+<li><strong>Turning it off</strong> stops all sending and deletes the install ID from your browser. If you turn it on again, you get a new install ID that cannot be linked to the old one. Prices shared earlier stay on the server, without anything that identifies you, until they expire after 90 days.</li>
+</ul>
+<p>Shared prices are only used to show price information to users of Fragrance Notes. They are not sold and not shared with anyone else.</p>
+<h2>What is stored</h2>
+<p>In your own browser:</p>
+<ul>
+<li>your settings and the shops you added (synced by your browser if you use browser sync);</li>
+<li>looked-up perfume results, kept for 14 days;</li>
+<li>prices you saw on shop pages, kept for 90 days, to show prices at other shops;</li>
+<li>if sharing is on: the random install ID, and for one day a list of the prices already sent, so they are not sent twice.</li>
+</ul>
+<p>You can delete saved results at any time under Settings → Data, or by removing the extension.</p>
+<p>On the Fragrance Notes price server (only if you turned sharing on): the shared prices described above, for 90 days.</p>
+<h2>What the extension does not do</h2>
+<p>No account, no analytics, no tracking, no advertising. Your data is not sold, shared or used for any other purpose.</p>
+<h2>Changes</h2>
+<p>If this policy changes, the new version will be posted here with a new date. Earlier versions stay visible in the <a href="https://github.com/Tygovanschie/fragrance-notes/commits/main/PRIVACY.md">project's history on GitHub</a>.</p>
+<h2>Contact</h2>
+<p>Questions? Open an issue at <a href="https://github.com/Tygovanschie/fragrance-notes/issues">GitHub</a></p>
+<p>Fragrance Notes is an independent project and is not affiliated with or endorsed by Fragrantica.</p>
+      </article>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <span>Made by Tygo van Schie. Not affiliated with Fragrantica.</span>
+      <nav aria-label="Footer">
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/Tygovanschie/fragrance-notes">Source code</a>
+        <a href="https://github.com/Tygovanschie/fragrance-notes/issues">Contact</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

@@ -504,10 +504,74 @@ async function inlineImages(data) {
   return data;
 }
 
+// ---------- shared prices (opt-in) ----------
+// Only while "Share prices anonymously" is on. What is sent: the Fragrantica perfume number, size,
+// price, currency and the shop's domain (built-in shops only), plus a random install id that is
+// deleted when sharing is turned off. No page URLs, no account, nothing else.
+const PID_RE = /^[1-9]\d{0,8}$/;
+const sharing = async () => !!(await chrome.storage.sync.get('settings')).settings?.sharePrices;
+async function installId() {
+  let { 'fn:installId': id } = await chrome.storage.local.get('fn:installId');
+  if (!id) { id = crypto.randomUUID(); await chrome.storage.local.set({ 'fn:installId': id }); }
+  return id;
+}
+const communityCache = new Map();   // "perfumeId|currency" → { t, data }
+async function communityPrices(perfumeId, currency) {
+  if (!PID_RE.test(perfumeId || '') || !await sharing()) return null;
+  const key = perfumeId + '|' + (currency || '');
+  const c = communityCache.get(key);
+  if (c && Date.now() - c.t < 10 * 60e3) return c.data;
+  try {
+    const q = /^[A-Z]{3}$/.test(currency || '') ? '?currency=' + currency : '';
+    const r = await fetch(`${FN.API_BASE}/prices/${perfumeId}${q}`, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return null;
+    const data = await r.json();
+    communityCache.set(key, { t: Date.now(), data });
+    if (communityCache.size > 200) communityCache.delete(communityCache.keys().next().value);
+    return data;
+  } catch { return null; }
+}
+async function sharePrices(perfumeId, prices, pageUrl) {
+  if (!PID_RE.test(perfumeId || '') || !Array.isArray(prices) || !await sharing()) return;
+  let host;
+  try { host = new URL(pageUrl).hostname; } catch { return; }
+  const shop = FN.builtInShop(host);
+  if (!shop) return;   // shops the user added themselves are never shared
+  const id = await installId();
+  const { 'fn:shared': sent = {} } = await chrome.storage.session.get('fn:shared').catch(() => ({}));
+  const day = Date.now() - 864e5;
+  for (const k of Object.keys(sent)) if (sent[k] < day) delete sent[k];
+  for (const p of prices.slice(0, 8)) {
+    if (!p.currency || !(p.ml > 0) || !(p.price > 0)) continue;   // without a currency sign we can't be sure
+    const body = { perfumeId, ml: p.ml, price: p.price, currency: p.currency, shop };
+    const k = Object.values(body).join('|');
+    if (sent[k]) continue;   // already sent in the last day
+    try {
+      const r = await fetch(`${FN.API_BASE}/prices`, {
+        method: 'POST', credentials: 'omit', signal: AbortSignal.timeout(8000),
+        headers: { 'Content-Type': 'application/json', 'X-Install-Id': id }, body: JSON.stringify(body)
+      });
+      if (r.status === 429 || r.status >= 500) break;
+      sent[k] = Date.now();   // rejected prices (422) aren't retried either
+    } catch { break; }
+  }
+  await chrome.storage.session.set({ 'fn:shared': sent }).catch(() => {});
+}
+// Turning sharing off forgets the install id, so turning it on again starts as a new, unlinked install.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes.settings?.oldValue?.sharePrices && !changes.settings.newValue?.sharePrices) {
+    chrome.storage.local.remove('fn:installId').catch(() => {});
+    chrome.storage.session.remove('fn:shared').catch(() => {});
+    communityCache.clear();
+  }
+});
+
 // ---------- messaging ----------
-chrome.runtime.onMessage.addListener((msg, _sender, send) => {
+chrome.runtime.onMessage.addListener((msg, sender, send) => {
   (async () => {
     if (msg.type === 'open-options') { chrome.runtime.openOptionsPage(); return send({ ok: true }); }
+    if (msg.type === 'community') return send(await communityPrices(msg.perfumeId, msg.currency));
+    if (msg.type === 'share') { sharePrices(msg.perfumeId, msg.prices, sender.url); return send({ ok: true }); }
     if (msg.type === 'note') return send(await noteInfo(msg.url));
     if (msg.type === 'opinions') return send(await englishOpinions(msg.url));
     if (msg.type !== 'lookup') return;
@@ -598,6 +662,11 @@ chrome.permissions.onAdded.addListener(async () => {
 chrome.permissions.onRemoved.addListener(syncCustomShops);
 chrome.runtime.onStartup.addListener(syncCustomShops);
 chrome.runtime.onInstalled.addListener(syncCustomShops);
+
+// Show the welcome page once, on a fresh install (not on updates or browser updates).
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') chrome.tabs.create({ url: chrome.runtime.getURL('welcome.html') }).catch(() => {});
+});
 
 // Show "OFF" on the toolbar icon while the extension is disabled.
 async function updateBadge() {

@@ -2,57 +2,69 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<link rel="stylesheet" href="fonts.css">
 <style>
-  /* Colours come from the chosen theme (set by popup.js), so the menu matches the panel. */
-  :root { --bg:#fffdfb; --fg:#231a22; --muted:#8a7a85; --label:#8a6b80; --head:#2b1d2e; --headFg:#f6e9f2; --accent:#8a3f6f;
-    --soft:#c58bb0; --chip:#f4e9f0; --card:#faf4f8; --border:#eee3ea; --input:#fff; --inputBorder:#d9c9d4; --onAccent:#fff; }
+  /* Same look as the website and settings page (Bricolage Grotesque + Figtree, pills, rounded cards),
+     in the colours of the chosen panel theme (set by popup.js), so a dark theme gives a dark menu. */
+
+  :root { --bg:#fffdfb; --fg:#2b1426; --muted:#6b5766; --label:#8a6b80; --head:#2b1d2e; --headFg:#f6e9f2; --accent:#7e2f63;
+    --soft:#c58bb0; --chip:#f4eef3; --card:#f8f1f6; --border:#e3d6e0; --input:#fff; --inputBorder:#dccdd8; --onAccent:#fff;
+    --display:'Bricolage Grotesque', system-ui, sans-serif; --text:'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif; }
   * { box-sizing:border-box; }
   [hidden] { display:none !important; }
-  body { margin:0; width:300px; font:13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color:var(--fg); background:var(--bg); }
+  body { margin:0; width:320px; font:14px/1.45 var(--text); color:var(--fg); background:var(--bg); }
+  :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 
-  header { display:flex; align-items:center; gap:10px; padding:12px 12px 12px 14px; background:var(--head); color:var(--headFg); }
+  header { display:flex; align-items:center; gap:10px; padding:14px 12px 12px 16px; }
   header svg.fl { flex:none; }
   header .t { flex:1; min-width:0; }
-  header b { font-size:14px; display:block; }
-  header .t span { display:block; font-size:11.5px; opacity:.7; }
-  .iconbtn { background:none; border:0; color:inherit; opacity:.75; cursor:pointer; padding:5px; border-radius:7px; line-height:0; }
-  .iconbtn:hover { opacity:1; background:rgba(127,127,127,.2); }
+  header b { font:700 16px/1.15 var(--display); letter-spacing:-0.01em; display:block; }
+  header .t span { display:block; font-size:12.5px; color:var(--muted); }
+  .iconbtn { background:none; border:0; color:var(--muted); cursor:pointer; padding:7px; border-radius:999px; line-height:0; }
+  .iconbtn:hover { color:var(--accent); background:var(--chip); }
+  /* The accord colour strip, as on the website. */
+  .strip { display:flex; height:5px; }
+  .strip i { flex:var(--w) 1 0; background:var(--c); }
 
-  main { padding:12px; display:flex; flex-direction:column; gap:10px; }
+  main { padding:14px; display:flex; flex-direction:column; gap:12px; }
 
   /* The perfume on this page. */
-  .now { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; background:var(--card); }
+  .now { display:flex; align-items:center; gap:10px; padding:12px 12px 12px 14px; border-radius:16px; background:var(--card); }
   .now .l { flex:1; min-width:0; }
-  .now .l small { display:block; color:var(--muted); font-size:11px; }
-  .now .l b { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .btn { border:0; border-radius:8px; padding:7px 12px; font:inherit; font-size:12px; font-weight:600; cursor:pointer;
+  .now .l small { display:block; color:var(--muted); font-size:12px; }
+  .now .l b { display:block; font:700 15px/1.25 var(--display); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .btn { border:0; border-radius:999px; padding:8px 15px; font:600 13px/1 var(--text); cursor:pointer;
     background:var(--accent); color:var(--onAccent); white-space:nowrap; }
-  .btn:hover { filter:brightness(1.08); }
-  .now.empty { color:var(--muted); font-size:12px; }
+  .btn:hover { filter:brightness(1.1); }
+  .now.empty { color:var(--muted); font-size:13px; }
 
   /* Look up any perfume. */
-  form { display:flex; gap:6px; }
-  input { flex:1; min-width:0; padding:8px 10px; border:1px solid var(--inputBorder); border-radius:8px; background:var(--input);
-    color:var(--fg); font:inherit; font-size:12.5px; }
-  input:focus { outline:2px solid var(--accent); outline-offset:-1px; border-color:transparent; }
+  form { display:flex; gap:8px; }
+  input { flex:1; min-width:0; padding:9px 14px; border:1.5px solid var(--inputBorder); border-radius:999px; background:var(--input);
+    color:var(--fg); font:inherit; font-size:13.5px; }
+  input::placeholder { color:var(--muted); }
+  input:focus { outline:none; border-color:var(--accent); }
 
   /* Rows. */
-  .rows { display:flex; flex-direction:column; }
-  .row { display:flex; align-items:center; gap:10px; width:100%; padding:9px 4px; border:0; background:none; border-radius:8px;
+  .rows { display:flex; flex-direction:column; border-top:1px solid var(--border); padding-top:6px; }
+  .row { display:flex; align-items:center; gap:12px; width:100%; padding:9px 6px; border:0; background:none; border-radius:12px;
     text-align:start; font:inherit; color:inherit; cursor:pointer; }
   .row:hover:not([disabled]) { background:var(--card); }
   .row[disabled] { cursor:default; }
   .row .l { flex:1; min-width:0; }
-  .row .l b { display:block; font-weight:600; font-size:12.5px; }
-  .row .l span { color:var(--muted); font-size:11.5px; overflow-wrap:anywhere; }
-  .ico { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:var(--chip); color:var(--accent); flex:none; }
-  .sw { position:relative; width:34px; height:20px; flex:none; border-radius:999px; background:var(--inputBorder); transition:.15s; }
-  .sw::before { content:''; position:absolute; width:14px; height:14px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+  .row .l b { display:block; font-weight:600; font-size:13.5px; }
+  .row .l span { color:var(--muted); font-size:12.5px; overflow-wrap:anywhere; }
+  .ico { width:32px; height:32px; border-radius:50%; display:grid; place-items:center; background:var(--chip); color:var(--accent); flex:none; }
+  .sw { position:relative; width:40px; height:22px; flex:none; border-radius:999px; background:var(--inputBorder); transition:background .15s; }
+  .sw::before { content:''; position:absolute; width:16px; height:16px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s; box-shadow:0 1px 2px rgba(43,20,38,.25); }
   .on .sw { background:var(--accent); }
-  .on .sw::before { transform:translateX(14px); }
-  .rm { border:0; background:none; color:var(--accent); font:inherit; font-size:11.5px; cursor:pointer; padding:0; }
+  .on .sw::before { transform:translateX(18px); }
+  [dir=rtl] .on .sw::before { transform:translateX(-18px); }
+  [dir=rtl] .sw::before { left:auto; right:3px; }
+  .rm { border:0; background:none; color:var(--accent); font:inherit; font-size:12.5px; cursor:pointer; padding:0; }
   .rm:hover { text-decoration:underline; }
   .off main > :not(.rows) { opacity:.45; pointer-events:none; }
+  @media (prefers-reduced-motion: reduce) { .sw, .sw::before { transition:none; } }
 </style>
 </head>
 <body>
@@ -61,6 +73,7 @@
   <div class="t"><b>Fragrance Notes</b><span id="state"></span></div>
   <button class="iconbtn" id="settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.77 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
 </header>
+<div class="strip" aria-hidden="true"><i style="--w:100;--c:#fb4b2b"></i><i style="--w:69;--c:#ee3a3d"></i><i style="--w:68;--c:#7a4513"></i><i style="--w:64;--c:#7b4a3c"></i><i style="--w:60;--c:#f6f04e"></i><i style="--w:57;--c:#847586"></i><i style="--w:56;--c:#e5d9ea"></i><i style="--w:52;--c:#9ee6ee"></i></div>
 <main>
   <div class="now" id="now" hidden>
     <div class="l"><small id="nowLabel"></small><b id="nowName"></b></div>

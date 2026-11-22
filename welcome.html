@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fragrance Notes</title>
+<link rel="icon" href="icons/32.png">
+<link rel="stylesheet" href="fonts.css">
+<style>
+  /* Opens once after installing. Same look as the settings page and fragrancenotes.app. */
+  :root { --bg:#f4eef3; --card:#fff; --fg:#2b1426; --muted:#6b5766; --line:#e3d6e0; --accent:#7e2f63; --accent-deep:#4a1a3b; --soft:#c58bb0; --chip:#f4eef3;
+    --display:'Bricolage Grotesque', system-ui, sans-serif; --text:'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 var(--text); }
+  a { color:var(--accent); }
+  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+  .wrap { max-width:1120px; margin:0 auto; padding:0 28px; }
+
+  /* Header: the same as the settings page. */
+  header { padding:22px 0 0; }
+  header .bar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .brand { display:flex; align-items:center; gap:10px; font:700 17px/1 var(--display); color:var(--fg); text-decoration:none; }
+  .brand img { width:30px; height:30px; }
+  .site { font-size:14px; font-weight:600; text-decoration:none; padding:8px 16px; border-radius:999px; box-shadow:inset 0 0 0 1.5px var(--soft); }
+  .site:hover { background:#fff; color:var(--accent-deep); }
+  h1 { margin:34px 0 8px; font:800 clamp(34px, 4.6vw, 52px)/1 var(--display); letter-spacing:-0.035em; }
+  .sub { margin:0 0 28px; color:var(--muted); font-size:16px; max-width:40em; }
+  .strip { display:flex; height:8px; }
+  .strip i { flex:var(--w) 1 0; background:var(--c); }
+
+  main.wrap { padding:32px 0 64px; }   /* exactly like the settings page's content area */
+  .steps { list-style:none; margin:0 0 18px; padding:0; display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; }
+  .steps li { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:24px 28px; }
+  .steps .n { display:grid; place-items:center; width:32px; height:32px; border-radius:50%; background:var(--accent); color:#fff; font:700 15px/1 var(--display); margin-bottom:14px; }
+  .steps h2 { margin:0 0 4px; font:750 24px/1.15 var(--display); letter-spacing:-0.02em; }
+  .steps p { margin:0; color:var(--muted); font-size:14px; }
+
+  .share { background:var(--card); border:1px solid var(--line); border-radius:22px; padding:24px 28px; display:flex; gap:24px; align-items:center; }
+  .share .l { flex:1; min-width:0; }
+  .share h2 { margin:0 0 4px; font:750 24px/1.15 var(--display); letter-spacing:-0.02em; }
+  .share b { display:block; font-weight:600; margin-top:8px; }
+  .share p { margin:2px 0 0; color:var(--muted); font-size:13.5px; }
+  .sw { position:relative; width:48px; height:26px; flex:none; }
+  .sw input { opacity:0; width:0; height:0; }
+  .sw i { position:absolute; inset:0; background:#dccdd8; border-radius:999px; transition:background .15s; cursor:pointer; }
+  .sw i::before { content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s; box-shadow:0 1px 2px rgba(43,20,38,.25); }
+  .sw input:checked + i { background:var(--accent); }
+  .sw input:checked + i::before { transform:translateX(22px); }
+  .sw input:focus-visible + i { outline:3px solid var(--accent); outline-offset:2px; }
+
+  .end { display:flex; gap:12px; flex-wrap:wrap; margin-top:18px; }
+  .btn { display:inline-flex; align-items:center; border:0; border-radius:999px; padding:10px 20px; font:600 14px/1 var(--text); cursor:pointer; text-decoration:none; }
+  .btn.primary { background:var(--accent); color:#fff; }
+  .btn.primary:hover { background:var(--accent-deep); }
+  .btn.quiet { background:transparent; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft); }
+  .btn.quiet:hover { background:#fff; color:var(--accent-deep); }
+
+  @media (max-width:760px) { .steps { grid-template-columns:1fr; } .share { flex-direction:column; align-items:flex-start; } }
+  @media (prefers-reduced-motion: reduce) { .sw i, .sw i::before { transition:none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="bar">
+      <span class="brand"><img src="icons/128.png" alt="">Fragrance Notes</span>
+      <a class="site" href="https://fragrancenotes.app" target="_blank" rel="noopener">fragrancenotes.app</a>
+    </div>
+    <h1 data-i18n="wel_title"></h1>
+    <p class="sub" data-i18n="wel_sub"></p>
+  </div>
+  <div class="strip" aria-hidden="true">
+    <i style="--w:100;--c:#fb4b2b"></i><i style="--w:69;--c:#ee3a3d"></i><i style="--w:68;--c:#7a4513"></i><i style="--w:64;--c:#7b4a3c"></i>
+    <i style="--w:60;--c:#f6f04e"></i><i style="--w:57;--c:#847586"></i><i style="--w:56;--c:#e5d9ea"></i><i style="--w:52;--c:#9ee6ee"></i>
+  </div>
+</header>
+
+<main class="wrap">
+  <ol class="steps">
+    <li><span class="n">1</span><h2 data-i18n="wel_s1_t"></h2><p data-i18n="wel_s1_d"></p></li>
+    <li><span class="n">2</span><h2 data-i18n="wel_s2_t"></h2><p data-i18n="wel_s2_d"></p></li>
+    <li><span class="n">3</span><h2 data-i18n="wel_s3_t"></h2><p data-i18n="wel_s3_d"></p></li>
+  </ol>
+
+  <section class="share">
+    <div class="l">
+      <h2 data-i18n="wel_shareH"></h2>
+      <b data-i18n="shareT"></b>
+      <p data-i18n="shareD"></p>
+    </div>
+    <label class="sw"><input type="checkbox" id="sharePrices"><i></i></label>
+  </section>
+
+  <div class="end">
+    <button class="btn primary" id="openSettings" data-i18n="p_settings"></button>
+    <a class="btn quiet" href="https://fragrancenotes.app/privacy.html" target="_blank" rel="noopener" id="privacy">Privacy</a>
+  </div>
+</main>
+<script src="settings.js"></script>
+<script src="i18n-panel.js"></script>
+<script src="i18n-settings.js"></script>
+<script src="welcome.js"></script>
+</body>
+</html>

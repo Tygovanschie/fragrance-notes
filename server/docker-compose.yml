@@ -1,0 +1,57 @@
+services:
+  api:
+    build: .
+    image: fragrance-api:local
+    container_name: fragrance-api
+    restart: unless-stopped
+    # Only reachable from this machine. Public traffic: Cloudflare Tunnel (service below) reaches it as
+    # http://fragrance-api:8787 on the compose network; Tailscale Funnel (until v1.1 is out) via this port.
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - ./data:/data
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+    environment:
+      ALLOWED_ORIGINS: "chrome-extension://hhhiolpcmkdkegcmjmpglcnfolohldgc"
+      # Per size, shops below LOW x or above HIGH x the median of all shops are left out (3+ shops only).
+      OUTLIER_LOW: "0.4"
+      OUTLIER_HIGH: "2.5"
+      # Distinct installs needed before a size's shops (the deal label) are returned. Raise to 3 later.
+      LABEL_MIN_INSTALLS: "1"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 128m
+    pids_limit: 64
+    labels:
+      # Locally built image: Watchtower must leave it alone.
+      com.centurylinklabs.watchtower.enable: "false"
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }
+
+  cloudflared:
+    # Cloudflare Tunnel for https://api.fragrancenotes.app -> http://fragrance-api:8787
+    # (public hostname set in the Cloudflare dashboard). Outbound only: no ports are opened.
+    image: cloudflare/cloudflared:latest
+    container_name: fragrance-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      # The real token lives only in ~/fragrance-api/.env on the server (see .env.example), never here.
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env}
+    depends_on: [api]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    labels:
+      # Like the API: Watchtower leaves it alone (update by hand: docker compose pull cloudflared).
+      com.centurylinklabs.watchtower.enable: "false"
+    logging:
+      driver: json-file
+      options: { max-size: "5m", max-file: "2" }

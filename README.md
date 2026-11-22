@@ -2,6 +2,8 @@
 
 A browser extension that shows what a perfume smells like while you shop. On a perfume product page it adds a small 🌸 button; click it for the perfume's notes, accords, longevity, sillage, when to wear it, pros & cons and similar perfumes — all from [Fragrantica](https://www.fragrantica.com).
 
+Website: https://fragrancenotes.app
+
 Data from Fragrantica. Not affiliated with Fragrantica.
 
 ## Install
@@ -19,7 +21,7 @@ Works in Chrome, Edge, Brave, Opera, Vivaldi and Arc (version 102 or newer).
    - **Summary:** rating, longevity, sillage and the best seasons.
    - **Main accords** and the **notes pyramid** (click a note for its scent description).
    - **When to wear**, **pros & cons** and the **votes** (click a line for all votes).
-   - **Price per ml** for the sizes on this shop, and a fold-out with prices you saw at other shops.
+   - **Prices** for each size on this shop. With price sharing on: how each size compares with other shops in your country, and the lowest price in the last 30 days.
    - **Reminds people of** and **cheaper alternatives (dupes)**.
 
 The toolbar menu (click the extension icon) shows the perfume on the current page, lets you look up any perfume, turns the extension on or off, and adds the current site if it isn't supported yet.
@@ -33,11 +35,24 @@ Right-click the icon → *Options*, or use the gear in the panel or menu.
 - **Panel:** corner and size.
 - **What to show:** turn each part of the panel on or off.
 - **Shops:** add a missing shop, or let the extension work on every website.
-- **Data:** clear saved results, or reset all settings.
+- **Data:** turn anonymous price sharing on or off, clear saved results, or reset all settings.
 
 ## Privacy
 
-Everything stays in your browser. The extension reads the perfume name and prices on shop product pages, looks the perfume up on Bing and Fragrantica, and saves results locally for 14 days. Nothing is sent to the developer, and there is no tracking or advertising. See the [privacy policy](PRIVACY.md).
+The extension reads the perfume name and prices on shop product pages, looks the perfume up on Bing and Fragrantica, and saves results locally for 14 days. There is no account, tracking or advertising.
+
+Price sharing is off until you turn it on. Then only the perfume, size, price and shop are sent to the Fragrance Notes price server, with a random install ID and nothing about you. See the [privacy policy](PRIVACY.md).
+
+## What's new in 1.1
+
+- **Compare prices (optional):** with anonymous price sharing on, each size shows how its price compares with other shops in your country (Great deal, Fair price or Overpriced), where it's cheapest, and the lowest price in the last 30 days.
+- **More shops and countries:** niche perfume shops such as Jovoy, Nose, Santa Maria Novella and 24S, and US shops with sizes in fl oz.
+- **Better price reading:** every size, also ones behind "show all sizes" or a size menu; no more prices from recommended products, instalment plans or samples.
+- **New look:** the fonts and style of [fragrancenotes.app](https://fragrancenotes.app) in the panel, menu and settings, and a welcome page after installing.
+
+## Making the store zip
+
+Run `make-zip.ps1` in PowerShell. It builds `fragrance-notes-<version>.zip` next to this folder from an explicit list of files, so notes, the website (`site/`) and the server (`server/`) never end up in it.
 
 ## License
 

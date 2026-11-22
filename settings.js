@@ -8,10 +8,12 @@
     position: 'br',        // corner: 'br' | 'bl' | 'tr' | 'tl'
     theme: 'plum',
     style: 'rich',         // 'rich' (photos + accord colours) | 'simple'
-    accStyle: 'bars',      // accords as 'bars' or one colour 'strip'
+    accStyle: 'strip',     // accords as one colour 'strip' or 'bars'
     themeAuto: false,      // follow the system's light/dark mode (uses the light or dark version of the chosen colour)
     lang: 'en',            // Fragrantica language site to read from
     shortcut: '',          // keyboard shortcut to show/hide the panel, e.g. "Alt+F" (empty = none)
+    sharePrices: false,    // opt-in: share prices seen on built-in shops anonymously, and show other users' prices
+    shareAsked: false,     // the one-time card in the panel asking to turn sharing on was answered
     sections: {
       summary: true, photo: true, meta: true, perMl: true, elsewhere: true, accords: true, notes: true, wear: true, prosCons: true,
       longevity: true, sillage: true, priceValue: true, gender: true, dupes: true, similar: true
@@ -106,7 +108,7 @@
 
   // Panel text the extension adds itself lives in i18n-panel.js (all 23 languages).
   // Section titles and vote labels normally come from Fragrantica; these are fallbacks.
-  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'best', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'agree', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated'];
+  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort'];
   const EN_FALLBACK = { accords: 'Main accords', wear: 'When to wear', longevity: 'Longevity', sillage: 'Sillage', gender: 'Gender', similar: 'Reminds people of' };
   const t = (lang, key) => {
     const table = globalThis.FN_PANEL_I18N || {};
@@ -186,5 +188,32 @@
     const key = dark ? base + 'Dark' : base;
     return THEMES[key] ? key : S.theme;
   };
-  globalThis.FN = { resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
+  // Shared prices ("Share prices anonymously"). Only used when the user turns that setting on.
+  const API_BASE = 'https://api.fragrancenotes.app';
+  // The built-in shop a host belongs to ("nl.zalando.nl" → "zalando.nl"), or '' for shops the user added.
+  let builtIn = null;
+  const builtInShop = host => {
+    builtIn ||= new Set(chrome.runtime.getManifest().content_scripts[0].matches
+      .map(m => m.replace(/^https?:\/\/\*\./, '').replace(/\/\*$/, '')));
+    const parts = String(host || '').toLowerCase().replace(/^www\./, '').split('.');
+    for (let i = 0; i < parts.length - 1; i++) if (builtIn.has(parts.slice(i).join('.'))) return parts.slice(i).join('.');
+    return '';
+  };
+
+  // The country a shop sells to, from its domain ("douglas.de" → "DE"). Used to compare prices only with
+  // shops in the same country. '' when unknown (international .com shops not in the list below).
+  const TLD_COUNTRY = { nl:'NL', be:'BE', de:'DE', at:'AT', ch:'CH', fr:'FR', it:'IT', es:'ES', pt:'PT', pl:'PL', cz:'CZ', sk:'SK',
+    ro:'RO', hu:'HU', hr:'HR', si:'SI', bg:'BG', lt:'LT', lv:'LV', ee:'EE', gr:'GR', se:'SE', dk:'DK', no:'NO', fi:'FI', ie:'IE',
+    lu:'LU', uk:'GB', 'co.uk':'GB', au:'AU', 'com.au':'AU', nz:'NZ', 'co.nz':'NZ', ca:'CA', ae:'AE', sa:'SA', sg:'SG', my:'MY',
+    jp:'JP', kr:'KR', 'co.kr':'KR', 'com.br':'BR', br:'BR', tr:'TR', 'com.tr':'TR', mx:'MX', 'com.mx':'MX', ua:'UA', rs:'RS', il:'IL', 'co.il':'IL' };
+  const COM_COUNTRY = { 'sephora.com':'US', 'ulta.com':'US', 'saks.com':'US', 'saksfifthavenue.com':'US', 'bloomingdales.com':'US',
+    'luckyscent.com':'US', 'aedes.com':'US', 'harrods.com':'GB', 'theperfumeshop.com':'GB', 'mecca.com':'AU',
+    'galerieslafayette.com':'FR', 'lebonmarche.com':'FR', 'jovoyparis.com':'FR', 'noseparis.com':'FR' };
+  const shopCountry = host => {
+    const h = String(host || '').toLowerCase().replace(/^www\./, '');
+    for (const [d, c] of Object.entries(COM_COUNTRY)) if (h === d || h.endsWith('.' + d)) return c;
+    const p = h.split('.');
+    return TLD_COUNTRY[p.slice(-2).join('.')] || TLD_COUNTRY[p[p.length - 1]] || '';
+  };
+  globalThis.FN = { API_BASE, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
 })();

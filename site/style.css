@@ -1,0 +1,140 @@
+/* Fragrance Notes website. Plum palette from the extension's default theme. */
+:root {
+  --ink: #2b1426;
+  --ink-soft: #5e4a59;
+  --plum: #7e2f63;
+  --plum-deep: #4a1a3b;
+  --mauve: #c58bb0;
+  --paper: #f4eef3;
+  --white: #ffffff;
+  --line: #e3d6e0;
+  --display: "Bricolage Grotesque", system-ui, sans-serif;
+  --text: "Figtree", system-ui, sans-serif;
+  --wrap: 1120px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 1.0625rem/1.6 var(--text);
+}
+img { max-width: 100%; display: block; }
+a { color: var(--plum); text-underline-offset: 3px; }
+a:hover { color: var(--plum-deep); }
+:focus-visible { outline: 3px solid var(--plum); outline-offset: 3px; border-radius: 4px; }
+
+.wrap { width: min(var(--wrap), 100% - 48px); margin-inline: auto; }
+
+/* ---------- top bar ---------- */
+.top { padding: 22px 0; }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; font: 700 1.125rem/1 var(--display); }
+.brand img { width: 30px; height: 30px; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 22px; border-radius: 999px;
+  background: var(--plum); color: var(--white);
+  font: 600 1rem/1 var(--text); text-decoration: none;
+  transition: background .15s;
+}
+.btn:hover { background: var(--plum-deep); color: var(--white); }
+.btn.small { padding: 10px 18px; font-size: .9375rem; }
+.btn.quiet { background: transparent; color: var(--plum); box-shadow: inset 0 0 0 1.5px var(--mauve); }
+.btn.quiet:hover { background: var(--white); color: var(--plum-deep); }
+
+/* ---------- hero ---------- */
+.hero { padding: 40px 0 72px; }
+.hero .wrap { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; }
+.hero h1 {
+  margin: 0 0 22px;
+  font: 800 clamp(2.6rem, 5.4vw, 4.4rem)/0.98 var(--display);
+  letter-spacing: -0.035em;
+  font-variation-settings: "opsz" 96;
+  max-width: 13ch;
+}
+.hero p.lead { margin: 0 0 30px; font-size: 1.1875rem; color: var(--ink-soft); max-width: 34em; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.fineprint { margin: 18px 0 0; font-size: .9375rem; color: var(--ink-soft); }
+.shot {
+  justify-self: center;
+  width: min(100%, 420px);
+  border-radius: 22px;
+  box-shadow: 0 30px 60px -22px rgba(74, 26, 59, .45), 0 0 0 1px rgba(74, 26, 59, .08);
+}
+
+/* ---------- accord strip: the extension's own way of showing a scent ---------- */
+.strip { background: var(--white); padding: 44px 0 40px; border-block: 1px solid var(--line); }
+.bands { display: flex; height: 132px; border-radius: 16px; overflow: hidden; }
+.bands span { flex: var(--w) 1 0; background: var(--c); }
+.labels { display: flex; margin-top: 12px; }
+.labels span { flex: var(--w) 1 0; min-width: 0; padding-right: 6px; font: 600 .9375rem/1.2 var(--text); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.labels small { display: block; font-weight: 400; color: var(--ink-soft); font-size: .8125rem; }
+.strip figcaption { margin-top: 22px; color: var(--ink-soft); font-size: .9375rem; max-width: 60ch; }
+@media (prefers-reduced-motion: no-preference) {
+  .bands span { animation: grow .9s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i) * 70ms + 150ms); transform-origin: left; }
+  @keyframes grow { from { transform: scaleX(0); } }
+}
+
+/* ---------- sections ---------- */
+section.part { padding: 88px 0; }
+h2 {
+  margin: 0 0 18px;
+  font: 750 clamp(1.9rem, 3.4vw, 2.6rem)/1.05 var(--display);
+  letter-spacing: -0.025em;
+}
+.part p.intro { margin: 0 0 36px; color: var(--ink-soft); max-width: 36em; }
+
+.inside .wrap { display: grid; grid-template-columns: 420px 1fr; gap: 72px; align-items: start; }
+.inside .shot { position: sticky; top: 32px; }
+.features { margin: 0; display: grid; gap: 0; }
+.features div { padding: 20px 0; border-top: 1px solid var(--line); }
+.features div:last-child { border-bottom: 1px solid var(--line); }
+.features dt { font: 700 1.1875rem/1.3 var(--display); letter-spacing: -0.01em; }
+.features dd { margin: 6px 0 0; color: var(--ink-soft); max-width: 38em; }
+.features .opt { font: 500 .8125rem/1 var(--text); color: var(--plum); background: var(--paper); border: 1px solid var(--line); border-radius: 999px; padding: 4px 9px; margin-left: 8px; vertical-align: 3px; }
+
+.yours { background: var(--ink); color: #f6ecf2; }
+.yours .wrap { display: grid; grid-template-columns: 1fr 420px; gap: 72px; align-items: center; }
+.yours p.intro { color: #cdb9c7; }
+.yours .shot { box-shadow: 0 30px 70px -20px rgba(0, 0, 0, .7); }
+.langs { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; }
+.langs li { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, .08); font-size: .9375rem; }
+
+.shops p.list { font: 600 clamp(1.25rem, 2.2vw, 1.6rem)/1.45 var(--display); letter-spacing: -0.01em; max-width: 40ch; margin: 0 0 22px; }
+.shops p.list span { color: var(--ink-soft); font-weight: 500; }
+
+.privacy { background: var(--plum); color: var(--white); border-radius: 28px; padding: 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
+.privacy h2 { color: var(--white); margin: 0; }
+.privacy p { margin: 0 0 16px; color: #f3dcea; }
+.privacy a { color: var(--white); }
+
+/* ---------- footer ---------- */
+footer { padding: 48px 0 56px; color: var(--ink-soft); font-size: .9375rem; }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; }
+footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
+
+/* ---------- privacy policy page ---------- */
+.doc { padding: 24px 0 80px; }
+.doc article { max-width: 68ch; }
+.doc h1 { font: 800 clamp(2.2rem, 4.5vw, 3.2rem)/1.02 var(--display); letter-spacing: -0.03em; margin: 12px 0 10px; }
+.doc .updated { color: var(--ink-soft); margin: 0 0 36px; }
+.doc h2 { font-size: 1.5rem; margin: 40px 0 10px; }
+.doc ul { padding-left: 1.2em; }
+.doc li { margin: 6px 0; }
+
+/* ---------- small screens ---------- */
+@media (max-width: 900px) {
+  .hero .wrap, .inside .wrap, .yours .wrap, .privacy { grid-template-columns: 1fr; gap: 40px; }
+  .inside .shot { position: static; }
+  .yours .shot { order: -1; }
+  .privacy { padding: 36px 28px; }
+  section.part { padding: 64px 0; }
+  .bands { height: 88px; }
+  .labels span:nth-child(n+5) { display: none; }
+  .bands span:nth-child(n+5) { display: none; }
+}

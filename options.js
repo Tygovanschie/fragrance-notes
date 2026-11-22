@@ -45,7 +45,7 @@
     pr('.theme').textContent = FN_UI.themeCss(FN.resolveTheme(S));
     pr('.panel').classList.toggle('simple', S.style === 'simple');
     pr('.stage').className = 'stage ' + (S.position[1] === 'l' ? 'l' : 'r');
-    pr('.body').innerHTML = FN_UI.renderBody(FN_exampleFor(S.lang), S, { allowRemote: true, noRefresh: true, prices: FN_EXAMPLE_PRICES, elsewhere: FN_EXAMPLE_ELSEWHERE, pricesOpen: false });
+    pr('.body').innerHTML = FN_UI.renderBody(FN_exampleFor(S.lang), S, { allowRemote: true, noRefresh: true, prices: FN_EXAMPLE_PRICES, elsewhere: FN_EXAMPLE_ELSEWHERE, community: S.sharePrices ? FN_EXAMPLE_COMMUNITY : null, pricesOpen: false });
     FN_UI.localizeChrome(previewRoot, S.lang);
     $('cornerName').textContent = st(S.position);
   }
@@ -109,7 +109,7 @@
   document.querySelector(`input[name=autoOpen][value="${S.autoOpen}"]`).checked = true;
   document.querySelector(`input[name=position][value="${S.position}"]`).checked = true;
   document.querySelector(`input[name=style][value="${S.style}"]`).checked = true;
-  document.querySelector(`input[name=accStyle][value="${S.accStyle || 'bars'}"]`).checked = true;
+  document.querySelector(`input[name=accStyle][value="${S.accStyle || 'strip'}"]`).checked = true;
   (document.querySelector(`input[name=theme][value="${S.theme}"]`) || document.querySelector('input[name=theme]')).checked = true;
 
   $('autoSearch').addEventListener('change', e => { S.autoSearch = e.target.checked; save(); });
@@ -129,6 +129,8 @@
   document.querySelectorAll('input[name=style]').forEach(r => r.addEventListener('change', e => { S.style = e.target.value; save(); }));
   document.querySelectorAll('input[name=accStyle]').forEach(r => r.addEventListener('change', e => { S.accStyle = e.target.value; save(); }));
   document.querySelectorAll('input[name=theme]').forEach(r => r.addEventListener('change', e => { S.theme = e.target.value; save(); }));
+  $('sharePrices').checked = !!S.sharePrices;
+  $('sharePrices').addEventListener('change', e => { S.sharePrices = e.target.checked; save(); });
   $('themeAuto').checked = !!S.themeAuto;
   $('themeAuto').addEventListener('change', e => { S.themeAuto = e.target.checked; save(); });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => save());
@@ -207,7 +209,7 @@
 
   // Keep in sync if settings change elsewhere (e.g. the toolbar menu).
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.settings) FN.loadSettings().then(s => { const langChanged = s.lang !== S.lang; S = s; if (langChanged) translatePage(); updatePreview(); });
+    if (area === 'sync' && changes.settings) FN.loadSettings().then(s => { const langChanged = s.lang !== S.lang; S = s; $('sharePrices').checked = !!S.sharePrices; if (langChanged) translatePage(); updatePreview(); });
     if (area === 'sync' && changes.customShops) { customShops = changes.customShops.newValue || []; renderCustomShops(); }
   });
 

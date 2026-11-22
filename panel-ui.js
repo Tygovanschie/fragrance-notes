@@ -3,7 +3,10 @@
   const CSS = `
     :host { all: initial; }
     [hidden] { display:none !important; }
-    * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    /* Same fonts as the website and settings: Figtree for text, Bricolage Grotesque for headings (shipped with the
+       extension and loaded by content.js under their own names; the settings page provides the plain names). */
+    :host, .panel, .pill { --display: 'FN Bricolage', 'Bricolage Grotesque', system-ui, sans-serif; }
+    * { box-sizing: border-box; font-family: 'FN Figtree', 'Figtree', system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 
     .pill { width:44px; height:44px; display:grid; place-items:center; padding:0;
       border-radius:50%; border:0; background:var(--head); line-height:0; cursor:pointer;
@@ -16,7 +19,7 @@
 
     .panel { position:relative; width:360px; height:auto; max-height:min(820px, calc(100vh - 90px));
       min-width:280px; min-height:220px; display:flex; flex-direction:column; animation:drop .18s ease-out;
-      background:var(--bg); color:var(--fg); border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,.28);
+      background:var(--bg); color:var(--fg); border-radius:18px; box-shadow:0 12px 40px rgba(0,0,0,.28);
       overflow:hidden; font-size:13px; line-height:1.4; }
     .panel.sized { max-height:calc(100vh - 100px); }
     @keyframes drop { from { opacity:0; transform:translateY(8px); } }
@@ -30,17 +33,19 @@
 
     .head { display:flex; align-items:center; gap:8px; padding:9px 10px 9px 14px;
       background:var(--head); color:var(--headFg); font-size:13px; font-weight:600; flex:none; }
-    .head .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .head .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:var(--display); font-weight:700; font-size:14px; }
     .gear { background:none; border:0; color:inherit; opacity:.7; cursor:pointer; padding:3px; border-radius:6px; line-height:0; }
     .gear:hover { opacity:1; background:rgba(127,127,127,.18); }
 
     form { display:flex; gap:6px; padding:10px 16px; flex:none; background:var(--card); }
-    input { flex:1; min-width:0; padding:7px 9px; border:1px solid var(--inputBorder); border-radius:8px; font-size:12px; color:var(--fg); background:var(--input); }
-    form button { padding:7px 10px; border:0; border-radius:8px; background:var(--accent); color:var(--onAccent); font-size:12px; font-weight:600; cursor:pointer; }
+    input { flex:1; min-width:0; padding:7px 12px; border:1.5px solid var(--inputBorder); border-radius:999px; font-size:12.5px; color:var(--fg); background:var(--input); }
+    input:focus { outline:none; border-color:var(--accent); }
+    form button { padding:7px 14px; border:0; border-radius:999px; background:var(--accent); color:var(--onAccent); font-size:12.5px; font-weight:600; cursor:pointer; }
     .body { flex:1; overflow:auto; padding:12px 16px 16px; }
 
-    h2 { font-size:15px; margin:0 0 2px; }
-    h3 { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--label); margin:14px 0 6px; overflow-wrap:break-word; }
+    h2 { font-family:var(--display); font-size:17px; font-weight:700; letter-spacing:-0.01em; line-height:1.2; margin:0 0 2px; }
+    h3 { font-family:var(--display); font-size:14.5px; font-weight:700; letter-spacing:-0.01em; color:var(--fg); margin:16px 0 7px; overflow-wrap:break-word; }
+    h3::first-letter { text-transform:uppercase; }   /* Fragrantica writes some headings in lower case ("main accords") */
     a { color:var(--accent); text-decoration:none; }
     a:hover { text-decoration:underline; }
     .muted { color:var(--muted); font-size:12px; }
@@ -96,7 +101,7 @@
     .notepop .nn { font-weight:700; font-size:13px; display:flex; justify-content:space-between; gap:8px; }
     .notepop .nn a { font-weight:400; font-size:11px; color:var(--muted); text-decoration:none; }
     .notepop .nn a:hover { color:var(--accent); }
-    .notepop .nl { color:var(--label); font-size:10px; text-transform:uppercase; letter-spacing:.05em; font-weight:700; margin-top:5px; }
+    .notepop .nl { color:var(--label); font-size:11px; font-weight:700; margin-top:5px; }
     .notepop .lat { font-weight:400; color:var(--muted); font-size:11.5px; }
     .notepop .nl + div { margin-bottom:2px; }
     .wc { text-align:center; font-size:10px; line-height:1.2; color:var(--muted); min-width:0; overflow-wrap:anywhere; hyphens:auto; }
@@ -127,7 +132,7 @@
     .top-info .ti { min-width:0; flex:1; }
 
     .sims { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; }
-    .simc { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:10px; background:var(--card); color:var(--fg); min-width:0; }
+    .simc { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:12px; background:var(--card); color:var(--fg); min-width:0; }
     .simc:hover { background:var(--chip); text-decoration:none; }
     .simc img { width:30px; height:30px; object-fit:contain; flex:none; border-radius:4px; background:#fff; }
     .simc .t { min-width:0; display:flex; flex-direction:column; }
@@ -136,19 +141,46 @@
     .simc .bn { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .simc .b .badge { flex:none; margin:0; }
 
-    .badge { display:inline-block; margin-inline-start:4px; padding:0 5px; border-radius:4px; background:var(--accent); color:var(--onAccent);
-      font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; vertical-align:1px; }
+    .badge { display:inline-block; margin-inline-start:4px; padding:0 7px; border-radius:999px; background:var(--accent); color:var(--onAccent);
+      font-size:10.5px; font-weight:700; vertical-align:1px; }
     .dupes .simc { background:var(--chip); }
 
     .perml { display:grid; grid-template-columns:auto auto 1fr; min-width:0; gap:3px 12px; font-size:12px; align-items:baseline; }
     .perml .ml { font-weight:600; }
     .perml .pp { color:var(--muted); text-align:end; font-variant-numeric:tabular-nums; }
-    .perml .best { color:var(--accent); font-weight:700; }
-    .perml .best .badge { vertical-align:0; margin-inline:0 6px; }
     .perml.others { grid-template-columns:minmax(0,1fr) auto auto auto; }
     .perml.others a.ml { color:var(--fg); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
     .perml.others a.ml:hover { color:var(--accent); text-decoration:underline; }
+    .perml.others a.ml.cm::after { content:' •'; color:var(--soft); }
+    .cmnote { margin-top:6px; font-size:11px; color:var(--muted); }
+    .deal { display:inline-block; padding:0 7px; border:1px solid currentColor; border-radius:999px; font-size:10.5px; font-weight:600; vertical-align:1px; cursor:help; }
+    .deal.great { color:var(--good); } .deal.fair { color:var(--muted); } .deal.over { color:var(--bad); }
     .perml .sz, .perml .pr { white-space:nowrap; color:var(--muted); }
+    .sizes { display:flex; flex-direction:column; gap:6px; }
+    .low { margin-top:6px; font-size:11px; color:var(--muted); }
+    .low a { color:inherit; text-decoration:underline; text-decoration-color:var(--border); }
+    .low a:hover { color:var(--accent); }
+    .ask { margin:0 0 8px; padding:10px 12px; border-radius:12px; background:var(--card); border:1px solid var(--border); font-size:12px; }
+    .ask b { display:block; font-family:var(--display); font-size:13.5px; font-weight:700; }
+    .ask p { margin:4px 0 8px; color:var(--muted); line-height:1.45; }
+    .ask p a { color:var(--accent); }
+    .ask-btns { display:flex; gap:6px; flex-wrap:wrap; }
+    .ask-btns button { border:0; border-radius:999px; padding:6px 13px; font-size:12px; font-weight:600; cursor:pointer; }
+    .ask-on { background:var(--accent); color:var(--onAccent); }
+    .ask-no { background:none; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft); }
+    .sz-card { background:var(--card); border-radius:12px; padding:8px 10px; font-size:12px; }
+    .sz-top { display:grid; grid-template-columns:auto auto 1fr; gap:12px; align-items:baseline; }
+    .sz-top .pr { color:var(--muted); white-space:nowrap; }
+    .sz-top .pp { text-align:end; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .rng { display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; margin-top:7px; font-size:10.5px; color:var(--muted); font-variant-numeric:tabular-nums; }
+    .rng .bar { position:relative; height:4px; border-radius:2px; background:var(--chip); margin-inline:5px; }
+    .rng .tk, .rng .me { position:absolute; top:50%; translate:-50% -50%; border-radius:50%; }
+    .rng .tk { width:6px; height:6px; background:var(--muted); opacity:.55; }
+    .rng .me { width:11px; height:11px; background:var(--accent); box-shadow:0 0 0 2px var(--card); }
+    .rng .me.great { background:var(--good); } .rng .me.over { background:var(--bad); }
+    .why { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; margin-top:6px; font-size:11px; color:var(--muted); }
+    .why a { color:inherit; text-decoration:underline; text-decoration-color:var(--border); }
+    .why a:hover { color:var(--accent); }
     .spin.sm { width:11px; height:11px; border-width:2px; margin:0; }
     .more { margin-top:4px; border:0; background:none; color:var(--accent); cursor:pointer; font:inherit; font-size:12px; padding:0; }
     .cands { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
@@ -207,7 +239,7 @@
     details.vline > summary::-webkit-details-marker { display:none; }
     details.vline > summary::after { content:'▾'; color:var(--muted); font-size:10px; transition:transform .15s; }
     details.vline[open] > summary::after { transform:rotate(180deg); }
-    .vline .vt { color:var(--label); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; overflow-wrap:break-word; hyphens:auto; line-height:1.25; }
+    .vline .vt { color:var(--label); font-size:12px; font-weight:600; overflow-wrap:break-word; hyphens:auto; line-height:1.25; }
     .vline summary b { font-size:12.5px; overflow-wrap:break-word; hyphens:auto; line-height:1.25; text-align:end; }
     .vline summary b::first-letter { text-transform:uppercase; }
     .dots { display:inline-flex; gap:3px; width:68px; }
@@ -260,7 +292,7 @@
     .votes { border-top:0; margin-top:18px; gap:2px; }
     details.vline { border-bottom:0; border-radius:8px; padding:0 8px; margin:0 -8px; }
     details.vline:hover, details.vline[open] { background:var(--card); }
-    details.others { margin-top:10px; border-radius:10px; background:var(--card); }
+    details.others { margin-top:10px; border-radius:12px; background:var(--card); }
     details.others > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:8px; padding:8px 10px; font-size:12px; }
     details.others > summary::-webkit-details-marker { display:none; }
     details.others > summary::after { content:'▾'; color:var(--muted); font-size:10px; transition:transform .15s; }
@@ -291,7 +323,9 @@
 
   // CSS variables for a theme.
   function themeCss(themeKey) {
-    const t = { onAccent: '#ffffff', ...(FN.THEMES[themeKey] || FN.THEMES.plum) };
+    const base = FN.THEMES[themeKey] || FN.THEMES.plum;
+    // --good / --bad: the "Great deal" and "Overpriced" labels, readable on light and dark backgrounds.
+    const t = { onAccent: '#ffffff', good: base.dark ? '#7fd6a3' : '#2b7a4b', bad: base.dark ? '#f2998f' : '#b3402f', ...base };
     return `:host { ${Object.entries(t).filter(([k]) => k !== 'name' && k !== 'dark').map(([k, v]) => `--${k}:${v};`).join(' ')} }`;
   }
 
@@ -392,11 +426,7 @@
     const prices = opts.prices || [];
     const bestPer = prices.length ? Math.min(...prices.map(x => x.price / x.ml)) : 0;
     const money = (n, cur) => { try { return new Intl.NumberFormat(S.lang, { style: 'currency', currency: cur || 'EUR' }).format(n); } catch { return (cur || '') + ' ' + n.toFixed(2); } };
-    const perMl = on.perMl && prices.length ? `<div class="perml">${prices.map(x => {
-      const per = x.price / x.ml, best = prices.length > 1 && Math.abs(per - bestPer) < 1e-9;
-      return `<span class="ml">${esc(String(x.ml))} ml</span><span>${esc(money(x.price, x.currency))}</span><span class="pp ${best ? 'best' : ''}">${best ? `<span class="badge">${esc(FN.t(S.lang, 'best'))}</span>` : ''}${esc(money(per, x.currency))}/ml</span>`;
-    }).join('')}</div>` : '';
-
+    const C = opts.community;   // shared prices (opt-in), see the deal label further down
     // Price per ml at other shops the user looked at this perfume (saved locally while browsing).
     // Other shops: prices you saw yourself on other shops (opts.elsewhere),
     // merged into one list — one line per shop (its cheapest per ml), cheapest first.
@@ -407,8 +437,9 @@
       const rtf = new Intl.RelativeTimeFormat(S.lang, { numeric: 'auto' });
       ago = t => { const d = Math.round((t - Date.now()) / 864e5); return Math.abs(d) < 30 ? rtf.format(d, 'day') : rtf.format(Math.round(d / 30), 'month'); };
     } catch {}
-    const shopKey = s => String(s || '').toLowerCase().replace(/^www\./, '').replace(/\.(co\.uk|com\.au|[a-z]{2,3})$/, '')
-      .replace(/\s(nl|be|de|fr|uk|es|it|com)$/, '').replace(/^(de|the|la|le)\s+/, '').replace(/[^a-z0-9]/g, '');
+    // One key per shop domain: "www.douglas.nl" and "douglas.nl" match, douglas.nl and douglas.de don't
+    // (different countries, different prices).
+    const shopKey = s => { const h = String(s || '').toLowerCase().replace(/^www\./, ''); return (FN.builtInShop && FN.builtInShop(h)) || h; };
     // One line per shop (its cheapest per ml), cheapest first; the shop you're on is left out.
     const best = new Map();
     for (const o of opts.elsewhere || []) {
@@ -417,19 +448,102 @@
       if (!(r.per > 0) || k === shopKey(opts.host)) continue;
       if (!best.has(k) || r.per < best.get(k).per) best.set(k, r);
     }
+    // Other users' cheapest shops (built-in shops only). A shop you visited yourself keeps its product link.
+    for (const c of C?.cheapest || []) {
+      const shop = FN.builtInShop ? FN.builtInShop(c.shop) : c.shop;
+      const k = shopKey(shop);
+      if (!shop || !(c.perMl > 0) || k === shopKey(opts.host) || (best.has(k) && best.get(k).per <= c.perMl)) continue;
+      best.set(k, { shop, ml: c.ml, price: c.price, per: c.perMl, currency: C.currency, community: true,
+        url: best.get(k)?.url || `https://${shop}/`, note: FN.t(S.lang, 'community') + (c.t ? ' · ' + ago(c.t) : '') });
+    }
     const list = [...best.values()].sort((x, y) => x.per - y.per);
     const shown = opts.othersAll ? list : list.slice(0, 5);
     const elsewhere = list.length ? `<div class="perml others">${shown.map(r => {
       const cheaper = r.currency === hereCur && r.per < herePer - 1e-9;
-      return `<a class="ml" href="${esc(r.url)}" target="_blank" title="${esc(r.shop + (r.note ? ' · ' + r.note : ''))}">${esc(r.shop)}</a><span class="sz">${r.ml ? esc(String(r.ml)) + ' ml' : ''}</span><span class="pr">${r.ml ? esc(money(r.price, r.currency)) : ''}</span><span class="pp ${cheaper ? 'best' : ''}">${esc(money(r.per, r.currency))}/ml</span>`;
-    }).join('')}</div>${list.length > shown.length ? `<button class="more" type="button">+${list.length - shown.length}</button>` : ''}` : '';
+      return `<a class="ml${r.community ? ' cm' : ''}" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" title="${esc(r.shop + (r.note ? ' · ' + r.note : ''))}">${esc(r.shop)}</a><span class="sz">${r.ml ? esc(String(r.ml)) + ' ml' : ''}</span><span class="pr">${r.ml ? esc(money(r.price, r.currency)) : ''}</span><span class="pp ${cheaper ? 'best' : ''}">${esc(money(r.per, r.currency))}/ml</span>`;
+    }).join('')}</div>${list.length > shown.length ? `<button class="more" type="button">+${list.length - shown.length}</button>` : ''}${
+      shown.some(r => r.community) ? `<div class="cmnote">• ${esc(FN.t(S.lang, 'community'))}</div>` : ''}` : '';
 
     // Prices: this shop's sizes are shown; other shops sit in a fold-out underneath.
     const cheapest = list[0];
     const cheaperElsewhere = cheapest && (!prices.length || (cheapest.currency === hereCur && cheapest.per < herePer - 1e-9));
     const othersFold = on.elsewhere && list.length ? `<details class="others"${opts.pricesOpen ? ' open' : ''}><summary><span class="ot">${esc(FN.t(S.lang, 'elsewhere'))}</span>${
       cheaperElsewhere ? `<span class="down">${prices.length ? '↓ ' : ''}${esc(money(cheapest.per, cheapest.currency))}/ml</span>` : ''}</summary>${elsewhere}</details>` : '';
-    const pricesBlock = perMl || othersFold ? `<h3>${esc(FN.t(S.lang, 'perMl'))}</h3>${perMl}${othersFold}` : '';
+
+    // ---- Price comparison per size (shared prices, opt-in) ----
+    // The server sends, per size, one typical price per shop (that shop's median, outliers already left out).
+    // Each size on this page is compared with the OTHER shops selling that size in the same currency:
+    //   Great deal: the cheapest known price or within 5% of it, and not above the others' median.
+    //   Overpriced: 10% or more above the others' median.   Fair price: anything in between.
+    // A verdict needs DEAL_MIN_SHOPS other shops; with fewer, the row still shows where the price sits.
+    const DEAL_MIN_SHOPS = 2;
+    const median = a => (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2);
+    const shopUrl = shop => (opts.elsewhere || []).find(o => shopKey(o.host) === shopKey(shop))?.url || `https://${shop}/`;
+    const country = shop => (FN.shopCountry ? FN.shopCountry(shop) : '');
+    const hereCountry = country(opts.host);
+    // "douglas.de (DE)": the country code is only added for shops in another country than this one.
+    const shopLabel = o => o.shop + (hereCountry && o.country && o.country !== hereCountry ? ` (${o.country})` : '');
+    const judge = x => {
+      if (!C || !x.currency || C.currency !== x.currency) return null;
+      const size = (C.sizes || []).find(s => Math.abs(s.ml - x.ml) < 0.01);
+      const all = Object.entries(size?.shops || {})
+        .filter(([s, v]) => v > 0 && shopKey(s) !== shopKey(opts.host))
+        .map(([shop, per]) => ({ shop, per, country: country(shop) })).sort((a, b) => a.per - b.per);
+      // Only shops in the same country as this one count (prices, VAT and delivery differ per country).
+      // Without enough of those, show the other countries' prices too, with a country code but no verdict.
+      const same = hereCountry ? all.filter(o => o.country === hereCountry) : all;
+      const local = same.length >= DEAL_MIN_SHOPS;
+      const others = local || !all.length ? same : all;
+      if (!others.length) return null;
+      const per = x.price / x.ml, mid = median(others.map(o => o.per)), r = per / mid, min = others[0];
+      const k = !local ? '' : per <= min.per * 1.05 && per <= mid ? 'great' : r >= 1.1 ? 'over' : 'fair';
+      return { x, per, mid, min, others, n: others.length, r, k };
+    };
+    const judged = on.perMl ? prices.map(x => ({ x, j: judge(x) })) : [];
+    const verdict = judged.map(v => v.j).filter(j => j?.k).sort((a, b) => a.r - b.r)[0];
+
+    // Header: one calm label, the best-judged size.
+    const dealLabel = verdict ? `<span class="deal ${verdict.k}" title="${esc(FN.t(S.lang, 'dealTip')
+      .replace('{ml}', verdict.x.ml).replace('{here}', money(verdict.x.price, verdict.x.currency)).replace('{n}', verdict.n)
+      .replace('{p}', money(verdict.mid * verdict.x.ml, verdict.x.currency)).replace('{min}', money(verdict.min.per * verdict.x.ml, verdict.x.currency)))}">${
+      esc(FN.t(S.lang, verdict.k))}${prices.length > 1 ? ` · ${esc(String(verdict.x.ml))} ml` : ''}</span>` : '';
+
+    // This shop's sizes: one card per size, with where its price sits among the other shops.
+    const sizeCard = ({ x, j }) => {
+      const per = x.price / x.ml;
+      let cmp = '';
+      if (j) {
+        const all = [per, ...j.others.map(o => o.per)], lo = Math.min(...all), hi = Math.max(...all);
+        const pos = v => hi > lo ? ((v - lo) / (hi - lo) * 100).toFixed(1) : '50';
+        const full = v => money(v * x.ml, x.currency);   // compare as the full price for this size
+        const ticks = j.others.map(o => `<i class="tk" style="inset-inline-start:${pos(o.per)}%" title="${esc(shopLabel(o) + ' · ' + full(o.per))}"></i>`).join('');
+        const lowest = per <= j.min.per + 1e-9;
+        cmp = `<div class="rng"><span class="lo">${esc(full(lo))}</span><span class="bar">${ticks}<i class="me ${j.k}" style="inset-inline-start:${pos(per)}%"></i></span><span class="hi">${esc(full(hi))}</span></div>
+          <div class="why">${j.k ? `<span class="deal ${j.k}">${esc(FN.t(S.lang, j.k))}</span>` : ''}<span${
+            j.n > 1 ? ` title="${esc(FN.t(S.lang, 'typicalAt').replace('{p}', full(j.mid)).replace('{n}', j.n))}"` : ''}>${lowest
+            ? esc(FN.t(S.lang, 'lowestKnown'))
+            : esc(FN.t(S.lang, 'cheapestShort')).replace('{shop}', `<a href="${esc(shopUrl(j.min.shop))}" target="_blank" rel="noopener noreferrer">${esc(shopLabel(j.min))}</a>`).replace('{min}', esc(full(j.min.per)))}${
+            j.n > 1 ? ' · ' + esc(FN.t(S.lang, 'typicalShort').replace('{p}', full(j.mid))) : ''}</span></div>`;
+      }
+      // Lowest actual price for this size in the last 30 days, in this shop's country (this shop included),
+      // to spot "discounts" that aren't. Only when the server sends per-shop lows for this size.
+      let low = '';
+      if (C && C.currency === x.currency) {
+        const size = (C.sizes || []).find(s => Math.abs(s.ml - x.ml) < 0.01);
+        const lows = Object.entries(size?.lows || {}).filter(([, v]) => v > 0).map(([shop, price]) => ({ shop, price, country: country(shop) }));
+        const near = hereCountry && lows.some(o => o.country === hereCountry) ? lows.filter(o => o.country === hereCountry) : lows;
+        const best = near.sort((a, b) => a.price - b.price)[0];
+        const cheapestNow = Math.min(x.price, j ? j.min.per * x.ml : Infinity);
+        if (best && best.price < cheapestNow - 0.005) low = `<div class="low">${esc(FN.t(S.lang, 'lowest30')).replace('{p}', esc(money(best.price, x.currency)))
+          .replace('{shop}', `<a href="${esc(shopUrl(best.shop))}" target="_blank" rel="noopener noreferrer">${esc(shopLabel(best))}</a>`)}</div>`;
+      }
+      return `<div class="sz-card"><div class="sz-top"><b>${esc(String(x.ml))} ml</b><span class="pr">${esc(money(x.price, x.currency))}</span><span class="pp">${esc(money(per, x.currency))}/ml</span></div>${cmp}${low}</div>`;
+    };
+    const perMl = judged.length ? `<div class="sizes">${judged.map(sizeCard).join('')}</div>` : '';
+    const ask = opts.askShare && on.perMl && prices.length ? `<div class="ask"><b>${esc(FN.t(S.lang, 'shareAsk'))}</b>
+      <p>${esc(FN.t(S.lang, 'shareAskD'))} <a href="https://fragrancenotes.app/privacy.html" target="_blank" rel="noopener">${esc(FN.t(S.lang, 'privacy'))}</a></p>
+      <div class="ask-btns"><button type="button" class="ask-on">${esc(FN.t(S.lang, 'shareOn'))}</button><button type="button" class="ask-no">${esc(FN.t(S.lang, 'shareNo'))}</button></div></div>` : '';
+    const pricesBlock = perMl || othersFold ? `<h3>${esc(FN.t(S.lang, 'perMl'))}</h3>${ask}${perMl}${othersFold}` : '';
 
     // 4. Header tinted with the perfume's top accord colours.
     const tint = (c, a) => {
@@ -461,7 +575,7 @@
     ].filter(Boolean).join('') : '';
 
     // 3. Accords: bars (default) or one colour strip with labelled chips underneath.
-    const accHtml = !(on.accords && d.accords?.length) ? '' : S.accStyle === 'strip'
+    const accHtml = !(on.accords && d.accords?.length) ? '' : S.accStyle !== 'bars'
       ? `<h3>${esc(T('accords'))}</h3><div class="astrip">${d.accords.map(a =>
           `<i title="${esc(a.name)} · ${Math.round(a.width)}%" style="flex-grow:${Math.max(4, a.width)};background:${accBg(a.bg)}"></i>`).join('')}</div>
         <div class="achips">${d.accords.map(a => `<span class="achip"><i style="background:${accBg(a.bg)}"></i>${esc(a.name)}</span>`).join('')}</div>`
@@ -481,11 +595,11 @@
           ${photo}
           <div class="ti">
             <h2><a href="${esc(d.url)}" target="_blank">${esc(d.title || opts.query || '')}</a></h2>
-            ${on.meta ? `<div class="meta">${[
-              d.year && esc(d.year),
-              d.audience && esc(d.audience),
-              !summary && d.rating && `★ ${esc(d.rating)} (${fmt(+d.ratingCount || 0)})`
-            ].filter(Boolean).join('<span>·</span>')}</div>` : ''}
+            ${on.meta || dealLabel ? `<div class="meta">${[
+              on.meta && d.year && esc(d.year),
+              on.meta && d.audience && esc(d.audience),
+              on.meta && !summary && d.rating && `★ ${esc(d.rating)} (${fmt(+d.ratingCount || 0)})`
+            ].filter(Boolean).join('<span>·</span>')}${dealLabel}</div>` : ''}
           </div>
         </div>
         ${summary ? `<div class="tiles">${summary}</div>` : ''}

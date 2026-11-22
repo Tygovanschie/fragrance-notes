@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Fragrance Notes",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "homepage_url": "https://fragrancenotes.app",
   "description": "See a perfume's notes, accords, longevity and similar scents from Fragrantica while you shop. Not affiliated with Fragrantica.",
   "permissions": [
     "storage",
@@ -55,6 +56,9 @@
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
+  "web_accessible_resources": [
+    { "resources": ["fonts/*.woff2"], "matches": ["<all_urls>"], "use_dynamic_url": true }
+  ],
   "content_scripts": [
     {
       "matches": [
@@ -209,6 +213,15 @@
         "https://*.jomashop.com/*",
         "https://*.maxaroma.com/*",
         "https://*.luckyscent.com/*",
+        "https://*.meccabeauty.co.nz/*",
+        "https://*.lebonmarche.com/*",
+        "https://*.24s.com/*",
+        "https://*.saks.com/*",
+        "https://*.mistore.jp/*",
+        "https://*.jovoyparis.com/*",
+        "https://*.noseparis.com/*",
+        "https://*.smnovella.com/*",
+        "https://*.spitzenhaus.com/*",
         "https://*.twistedlily.com/*",
         "https://*.aedes.com/*",
         "https://*.thebay.com/*",
