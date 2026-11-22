@@ -1,0 +1,7 @@
+# Same line endings for everyone (LF), whichever editor or tool writes the file.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.webp binary
+*.woff2 binary
+*.zip binary
