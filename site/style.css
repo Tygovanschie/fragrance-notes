@@ -21,7 +21,7 @@ body {
   color: var(--ink);
   font: 400 1.0625rem/1.6 var(--text);
 }
-img { max-width: 100%; display: block; }
+img { max-width: 100%; height: auto; display: block; }   /* keep the picture's own proportions */
 a { color: var(--plum); text-underline-offset: 3px; }
 a:hover { color: var(--plum-deep); }
 :focus-visible { outline: 3px solid var(--plum); outline-offset: 3px; border-radius: 4px; }
