@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Fragrance Notes",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "homepage_url": "https://fragrancenotes.app",
   "description": "See a perfume's notes, accords, longevity and similar scents from Fragrantica while you shop. Not affiliated with Fragrantica.",
   "permissions": [
@@ -38,7 +38,8 @@
     "https://fimgs.net/*"
   ],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["settings.js", "background.js"]
   },
   "action": {
     "default_title": "Fragrance Notes",
@@ -411,5 +412,13 @@
     "https://*/*",
     "http://*/*"
   ],
-  "minimum_chrome_version": "102"
+  "minimum_chrome_version": "121",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "fragrance-notes@fragrancenotes.app",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": { "required": ["websiteContent"] }
+    },
+    "gecko_android": { "strict_min_version": "142.0" }
+  }
 }

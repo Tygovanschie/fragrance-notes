@@ -34,8 +34,8 @@
     .head { display:flex; align-items:center; gap:8px; padding:9px 10px 9px 14px;
       background:var(--head); color:var(--headFg); font-size:13px; font-weight:600; flex:none; }
     .head .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:var(--display); font-weight:700; font-size:14px; }
-    .gear { background:none; border:0; color:inherit; opacity:.7; cursor:pointer; padding:3px; border-radius:6px; line-height:0; }
-    .gear:hover { opacity:1; background:rgba(127,127,127,.18); }
+    .gear, .x { background:none; border:0; color:inherit; opacity:.7; cursor:pointer; padding:3px; border-radius:6px; line-height:0; }
+    .gear:hover, .x:hover { opacity:1; background:rgba(127,127,127,.18); }
 
     form { display:flex; gap:6px; padding:10px 16px; flex:none; background:var(--card); }
     input { flex:1; min-width:0; padding:7px 12px; border:1.5px solid var(--inputBorder); border-radius:999px; font-size:12.5px; color:var(--fg); background:var(--input); }
@@ -59,7 +59,6 @@
     [dir=rtl] .accbar { border-radius:6px 0 0 6px; }
     .simple .accbar { background:var(--chip) !important; color:var(--fg) !important; border-left:3px solid var(--accent); font-weight:500; }
     /* Simple style: same layout, quieter. */
-    .simple .wb { background:var(--chip); color:var(--fg); }
     .simple .wc .fill, .simple .wc.hi .fill { background:var(--soft); }
     .simple .wc.hi .fill { background:var(--accent); opacity:.75; }
     .simple .pcol .pi { background:var(--chip) !important; color:var(--muted); }
@@ -77,10 +76,6 @@
 
     .wear { display:grid; grid-template-columns:repeat(4, 1fr) 6px repeat(2, 1fr); gap:6px; align-items:end; }
     .wsep { align-self:stretch; width:1px; background:var(--border); margin:0 auto; }
-    .wbest { display:flex; flex-wrap:wrap; gap:6px; margin:-2px 0 8px; }
-    .wb { background:var(--accent); color:var(--onAccent, #fff); border-radius:999px; padding:2px 10px; font-size:12px; font-weight:600; }
-    .wb span { display:inline-block; }
-    .wb span::first-letter { text-transform:uppercase; }
     .wc .wp { display:block; font-size:10px; font-variant-numeric:tabular-nums; margin-bottom:2px; }
     .wc .wi { display:block; font-size:14px; line-height:1; margin:2px 0 1px; }
     .wc .wl { display:block; }
@@ -130,6 +125,7 @@
     .top-info { display:flex; gap:12px; align-items:flex-start; }
     .top-info .photo { width:58px; height:72px; flex:none; border-radius:8px; background:#fff; object-fit:contain; padding:3px; border:1px solid var(--border); }
     .top-info .ti { min-width:0; flex:1; }
+    .top-info h2 { overflow-wrap:anywhere; text-wrap:balance; }
 
     .sims { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; }
     .simc { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:12px; background:var(--card); color:var(--fg); min-width:0; }
@@ -201,8 +197,8 @@
     .hero .photo { box-shadow:0 2px 8px rgba(0,0,0,.08); }
 
     /* 1. Summary tiles. */
-    .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr)); gap:6px; margin-top:10px; }
-    .tile { min-width:0; padding:6px 9px; border-radius:10px; background:color-mix(in srgb, var(--bg) 78%, transparent);
+    .tiles { display:grid; grid-template-columns:repeat(auto-fit, minmax(128px, 1fr)); gap:8px; margin-top:12px; }
+    .tile { min-width:0; padding:8px 11px; border-radius:10px; background:color-mix(in srgb, var(--bg) 78%, transparent);
       display:flex; flex-direction:column; gap:1px; backdrop-filter:blur(4px); }
     .tile b { font-size:12.5px; line-height:1.25; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
     .tile b::first-letter { text-transform:uppercase; }
@@ -216,7 +212,7 @@
     .astrip i { display:block; min-width:6px; }
     .achips { display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:7px; }
     .achip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; }
-    .achip i { width:9px; height:9px; border-radius:50%; flex:none; }
+    .achip i { width:9px; height:9px; border-radius:50%; flex:none; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--fg) 16%, transparent); }
 
     /* 5. Notes pyramid. */
     .pyr { display:flex; flex-direction:column; gap:10px; }
@@ -317,6 +313,7 @@
   `;
 
   const flower = size => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><g fill="#f58fb8">${[0, 72, 144, 216, 288].map(r => `<ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(${r} 12 12)"/>`).join('')}</g><circle cx="12" cy="12" r="3" fill="#ffd36e"/></svg>`;
+  const closeIcon = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
   const gearIcon = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.77 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 
   const searchIcon = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>`;
@@ -371,22 +368,19 @@
       ).join('')}</div></details>`;
     };
     // When to wear: seasons and day/night as two groups. Each bar shows its share of that group's votes;
-    // the favourites are highlighted and named in a headline with icons, so the answer is clear at a glance.
+    // the favourites are highlighted, so the answer is clear at a glance.
     const WEAR_ICONS = simple ? ['', '', '', '', '', ''] : ['❄️', '🌸', '☀️', '🍂', '🌞', '🌙'];
     const wearBlock = w => {
       if (!w || !w.some(x => x.n)) return '';
       const groups = [w.slice(0, 4).map((x, i) => ({ ...x, icon: WEAR_ICONS[i] })), w.slice(4, 6).map((x, i) => ({ ...x, icon: WEAR_ICONS[4 + i] }))];
-      const best = [];
       const cols = groups.map(g => {
         const sum = g.reduce((a, x) => a + x.n, 0) || 1, max = Math.max(...g.map(x => x.n), 1);
-        g.filter(x => x.n >= max * 0.85).forEach(x => best.push(x));
         return g.map(x => {
           const share = Math.round(x.n / sum * 100), top = x.n >= max * 0.85;
           return `<div class="wc ${top ? 'hi' : ''}" title="${esc(x.label)}: ${x.n.toLocaleString()} votes (${share}%)"><span class="wp">${share}%</span><div class="track"><div class="fill" style="height:${Math.max(6, Math.round(x.n / max * 100))}%"></div></div>${x.icon ? `<span class="wi">${x.icon}</span>` : ''}<span class="wl">${esc(x.label)}</span></div>`;
         }).join('');
       });
-      const head = best.map(x => `<span class="wb">${x.icon ? x.icon + ' ' : ''}<span>${esc(x.label)}</span></span>`).join('');
-      return `<h3>${esc(T('wear'))}</h3><div class="wbest">${head}</div><div class="wear">${cols[0]}<span class="wsep"></span>${cols[1]}</div>`;
+      return `<h3>${esc(T('wear'))}</h3><div class="wear">${cols[0]}<span class="wsep"></span>${cols[1]}</div>`;
     };
 
     // Pros & cons summarised by Fragrantica from reviews; the agree % is from votes on each point.
@@ -629,7 +623,7 @@
   // Panel markup (header, search form, body). Used in-page and in the preview.
   const panelHtml = `
     <div class="rz"></div>
-    <div class="head">${flower(16)}<span class="t">Fragrance notes</span><button class="srch" type="button" title="Search">${searchIcon}</button><button class="gear" title="Settings">${gearIcon}</button></div>
+    <div class="head">${flower(16)}<span class="t">Fragrance notes</span><button class="srch" type="button" title="Search">${searchIcon}</button><button class="gear" title="Settings">${gearIcon}</button><button class="x" type="button" title="Close" aria-label="Close">${closeIcon}</button></div>
     <form><input name="q" placeholder="Brand + perfume, or a Fragrantica URL"><button>Search</button></form>
     <div class="body"></div>`;
 
@@ -641,6 +635,7 @@
     set('form input', el => { el.placeholder = FN.t(lang, 'placeholder'); });
     set('form button', el => { el.textContent = FN.t(lang, 'search'); });
     set('.srch', el => { el.title = FN.t(lang, 'search'); });
+    set('.x', el => { el.title = FN.t(lang, 'close'); el.setAttribute('aria-label', el.title); });
   }
 
   globalThis.FN_UI = { localizeChrome, CSS, flower, gearIcon, themeCss, renderBody, panelHtml, esc };

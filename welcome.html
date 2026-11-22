@@ -56,6 +56,10 @@
 
   @media (max-width:760px) { .steps { grid-template-columns:1fr; } .share { flex-direction:column; align-items:flex-start; } }
   @media (prefers-reduced-motion: reduce) { .sw i, .sw i::before { transition:none; } }
+  [hidden] { display:none !important; }
+  .perm { margin-bottom:24px; }
+  .perm .btn { flex:none; }
+  .perm.ok h2 { display:none; }
 </style>
 </head>
 <body>
@@ -75,6 +79,14 @@
 </header>
 
 <main class="wrap">
+  <section class="share perm" id="perm" hidden>
+    <div class="l">
+      <h2 data-i18n="wel_permH"></h2>
+      <p data-i18n="wel_permD"></p>
+    </div>
+    <button class="btn primary" id="permGo" data-i18n="wel_permGo"></button>
+  </section>
+
   <ol class="steps">
     <li><span class="n">1</span><h2 data-i18n="wel_s1_t"></h2><p data-i18n="wel_s1_d"></p></li>
     <li><span class="n">2</span><h2 data-i18n="wel_s2_t"></h2><p data-i18n="wel_s2_d"></p></li>

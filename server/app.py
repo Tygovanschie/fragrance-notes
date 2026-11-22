@@ -1,6 +1,6 @@
 """Fragrance Notes price API: anonymous, crowd-sourced perfume prices.
 
-Python standard library only. Runs behind Tailscale Funnel, which does TLS.
+Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenotes.app), which does TLS.
 
   POST /prices              {perfumeId, ml, price, currency, shop}   header X-Install-Id: <uuid4>
   GET  /prices/{perfumeId}  ?currency=EUR (optional; defaults to the most-reported one)
@@ -29,6 +29,13 @@ PORT = int(os.environ.get("PORT", "8787"))
 # Browsers only: CORS is not a security boundary, curl can post anyway (rate limits handle that).
 ALLOWED_ORIGINS = {o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS", "chrome-extension://hhhiolpcmkdkegcmjmpglcnfolohldgc").split(",") if o.strip()}
+# Firefox gives every install its own random moz-extension:// UUID, so those can't be listed one by one.
+MOZ_ORIGIN_RE = re.compile(r"moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+def origin_ok(origin):
+    return origin in ALLOWED_ORIGINS or bool(origin and MOZ_ORIGIN_RE.fullmatch(origin))
+
 
 WINDOW_DAYS = 30          # stats cover the last 30 days
 RETENTION_DAYS = 90       # rows older than this are deleted
@@ -341,7 +348,7 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         if self.command == "GET":
             self.send_header("Access-Control-Allow-Origin", "*")
-        elif origin in ALLOWED_ORIGINS:
+        elif origin_ok(origin):
             self.send_header("Access-Control-Allow-Origin", origin)
             self.send_header("Vary", "Origin")
 
@@ -390,7 +397,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(413 if length > MAX_BODY else 400, {"error": "body must be 1-1024 bytes"})
         if urlsplit(self.path).path != "/prices":
             return self.reply(404, {"error": "not found"})
-        if self.headers.get("Origin") and self.headers.get("Origin") not in ALLOWED_ORIGINS:
+        if self.headers.get("Origin") and not origin_ok(self.headers.get("Origin")):
             return self.reply(403, {"error": "origin not allowed"})
         install = (self.headers.get("X-Install-Id") or "").lower()
         if not UUID_RE.match(install):

@@ -37,6 +37,7 @@ Shared prices are only used to show price information to users of Fragrance Note
 In your own browser:
 
 - your settings and the shops you added (synced by your browser if you use browser sync);
+- a count of how many perfumes you have looked up, used only to ask once for a store review;
 - looked-up perfume results, kept for 14 days;
 - prices you saw on shop pages, kept for 90 days, to show prices at other shops;
 - if sharing is on: the random install ID, and for one day a list of the prices already sent, so they are not sent twice.

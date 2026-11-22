@@ -397,6 +397,8 @@
     chrome.runtime.sendMessage({ type: 'open-options' }).catch(() => {});
   });
 
+  $('.x').addEventListener('click', e => { e.stopPropagation(); close(); });
+
   // ---------- resizing (drag the inner corner) ----------
   function setSize(w, h) {
     const maxW = window.innerWidth - 32, maxH = window.innerHeight - 100;
@@ -599,6 +601,14 @@
   });
 
   let pendingWork = null;
+  // Perfumes the user actually looked at (panel open with a result), once per perfume per page. Only a number,
+  // kept in this browser: the toolbar menu asks for a store review once it reaches 10.
+  const counted = new Set();
+  const countLookup = d => {
+    if (!d?.url || counted.has(d.url)) return;
+    counted.add(d.url);
+    chrome.storage.local.get('fn:lookups').then(o => chrome.storage.local.set({ 'fn:lookups': (o['fn:lookups'] || 0) + 1 })).catch(() => {});
+  };
   let pricesOpen = false;
   const perfumeId = url => (String(url || '').match(/-(\d+)\.html/) || [])[1];
   async function seenPrices(d, prices) {
@@ -660,8 +670,8 @@
         }
       }).catch(() => {});
     };
-    if (!panel.hidden) askOpinions();
-    else { const prev = pendingWork; pendingWork = () => { prev?.(); askOpinions(); }; }
+    if (!panel.hidden) { askOpinions(); countLookup(d); }
+    else { const prev = pendingWork; pendingWork = () => { prev?.(); askOpinions(); countLookup(d); }; }
     pricesOpen = opts.pricesOpen = false;   // the other-shops list always starts closed
     paint();
     priceWatch = { d, opts, paint, pid: perfumeId(d.url) };
@@ -704,6 +714,14 @@
     return [e.ctrlKey && 'Ctrl', e.altKey && 'Alt', e.shiftKey && 'Shift', e.metaKey && 'Meta', e.code?.startsWith('Key') ? e.code.slice(3) : e.code?.startsWith('Digit') ? e.code.slice(5) : k]
       .filter(Boolean).join('+');
   };
+  // Esc closes the open panel (unless someone is typing in a field on the page itself).
+  window.addEventListener('keydown', e => {
+    if (e.key !== 'Escape' || panel.hidden) return;
+    const inPanel = e.composedPath().includes(host);
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName) || e.target?.isContentEditable;
+    if (typing && !inPanel) return;
+    close();
+  }, true);
   window.addEventListener('keydown', e => {
     if (!S.enabled || !S.shortcut) return;
     if (comboOf(e) !== S.shortcut) return;

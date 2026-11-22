@@ -43,6 +43,13 @@ The extension reads the perfume name and prices on shop product pages, looks the
 
 Price sharing is off until you turn it on. Then only the perfume, size, price and shop are sent to the Fragrance Notes price server, with a random install ID and nothing about you. See the [privacy policy](PRIVACY.md).
 
+## What's new in 1.2
+
+- Works in Firefox and Edge as well as Chrome.
+- A close button (×) in the panel header, and Esc closes the panel.
+- Cleaner When to wear section and more room in the summary tiles.
+- A one-time request for a store review in the toolbar menu, after you've looked up 10 perfumes. It's only a count kept in your browser.
+
 ## What's new in 1.1
 
 - **Compare prices (optional):** with anonymous price sharing on, each size shows how its price compares with other shops in your country (Great deal, Fair price or Overpriced), where it's cheapest, and the lowest price in the last 30 days.
@@ -57,3 +64,15 @@ Run `make-zip.ps1` in PowerShell. It builds `fragrance-notes-<version>.zip` next
 ## License
 
 [MIT](LICENSE) © 2026 Tygo van Schie. Perfume data belongs to Fragrantica and is not covered by this license.
+
+## Firefox and Edge (1.2)
+
+One folder works in Chrome, Edge and Firefox. The manifest lists the background script twice:
+`service_worker` for Chrome and Edge, `scripts` for Firefox (each browser ignores the other one), and
+`browser_specific_settings.gecko` holds the Firefox add-on ID and its data-collection declaration.
+
+- Test in Firefox: open `about:debugging#/runtime/this-firefox` → *Load Temporary Add-on…* → pick `manifest.json`.
+- Check before uploading to Firefox: `npx addons-linter fragrance-notes-<version>.zip` (expect 0 errors;
+  the service_worker and innerHTML warnings are fine).
+- The same zip from `make-zip.ps1` goes to the Chrome Web Store, Edge Add-ons and addons.mozilla.org.
+- After the Edge listing is approved: add its ID to REVIEW_URL in settings.js and to the server's ALLOWED_ORIGINS.

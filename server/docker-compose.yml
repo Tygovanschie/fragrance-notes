@@ -5,7 +5,7 @@ services:
     container_name: fragrance-api
     restart: unless-stopped
     # Only reachable from this machine. Public traffic: Cloudflare Tunnel (service below) reaches it as
-    # http://fragrance-api:8787 on the compose network; Tailscale Funnel (until v1.1 is out) via this port.
+    # http://fragrance-api:8787 on the compose network. This port is only for checks from this machine (curl).
     ports:
       - "127.0.0.1:8787:8787"
     volumes:

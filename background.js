@@ -1,4 +1,6 @@
-importScripts('settings.js');
+// Chrome/Edge run this as a service worker (loads settings.js here); Firefox runs it as an event page
+// with settings.js listed before it in the manifest.
+if (typeof importScripts === 'function') importScripts('settings.js');
 
 // Service worker: finds the Fragrantica page for a perfume, loads it in a background
 // tab, reads the data Fragrantica's own page script decodes, then closes the tab.
@@ -114,7 +116,9 @@ async function openHidden(url) {
       try { return await chrome.tabs.create({ windowId: id, url, active: false }); } catch {}   // window may have just closed
     }
   }
-  const made = chrome.windows.create({ url, state: 'minimized', focused: false, type: 'normal' }).catch(() => null);
+  // Firefox doesn't accept focused:false; a minimized window doesn't take focus there anyway.
+  const opts = FN.IS_FIREFOX ? { url, state: 'minimized', type: 'normal' } : { url, state: 'minimized', focused: false, type: 'normal' };
+  const made = chrome.windows.create(opts).catch(() => null);
   hiddenWin = made.then(w => w?.id || null);
   const w = await made;
   if (w?.tabs?.[0]) {

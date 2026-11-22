@@ -62,6 +62,13 @@
   [dir=rtl] .on .sw::before { transform:translateX(-18px); }
   [dir=rtl] .sw::before { left:auto; right:3px; }
   .rm { border:0; background:none; color:var(--accent); font:inherit; font-size:12.5px; cursor:pointer; padding:0; }
+
+  /* Asked once, after 10 perfumes looked up. */
+  .review { position:relative; padding:12px 14px 14px; border-radius:16px; background:var(--card); }
+  .review p { margin:0 26px 10px 0; font-size:13px; line-height:1.45; }
+  .review .btn { display:inline-block; text-decoration:none; }
+  .review .x { position:absolute; top:6px; inset-inline-end:6px; border:0; background:none; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 7px; border-radius:999px; }
+  .review .x:hover { color:var(--accent); background:var(--chip); }
   .rm:hover { text-decoration:underline; }
   .off main > :not(.rows) { opacity:.45; pointer-events:none; }
   @media (prefers-reduced-motion: reduce) { .sw, .sw::before { transition:none; } }
@@ -93,6 +100,12 @@
       <span class="ico" id="siteIco"></span>
       <span class="l"><b id="siteTitle"></b><span id="siteSub"></span></span>
     </button>
+  </div>
+
+  <div class="review" id="review" hidden>
+    <p id="revText"></p>
+    <a class="btn" id="revGo" href="https://chromewebstore.google.com/detail/fragrance-notes/hhhiolpcmkdkegcmjmpglcnfolohldgc/reviews" target="_blank" rel="noopener"></a>
+    <button class="x" id="revClose">×</button>
   </div>
 </main>
 <script src="settings.js"></script>

@@ -401,3 +401,27 @@ Object.entries({
     wel_s3_t: 'Przypnij do paska narzędzi', wel_s3_d: 'Kliknij ikonę puzzla obok paska adresu i przypnij Fragrance Notes, aby stamtąd wyszukać dowolny perfum.',
     wel_shareH: 'Porównuj ceny (opcjonalnie)' }
 }).forEach(([lang, add]) => Object.assign(FN_SETTINGS_I18N[lang], add));
+
+// Added in 1.1.1: the review request in the toolbar menu (after 10 perfumes looked up).
+Object.entries({
+  en: { p_revT: 'Enjoying Fragrance Notes? A review in the Chrome Web Store helps a lot.', p_revGo: 'Write a review', p_revClose: 'Close' },
+  nl: { p_revT: 'Blij met Fragrance Notes? Een review in de Chrome Web Store helpt enorm.', p_revGo: 'Review schrijven', p_revClose: 'Sluiten' },
+  de: { p_revT: 'Gefällt dir Fragrance Notes? Eine Bewertung im Chrome Web Store hilft sehr.', p_revGo: 'Bewerten', p_revClose: 'Schließen' },
+  fr: { p_revT: 'Vous aimez Fragrance Notes ? Un avis sur le Chrome Web Store aide beaucoup.', p_revGo: 'Laisser un avis', p_revClose: 'Fermer' },
+  es: { p_revT: '¿Te gusta Fragrance Notes? Una reseña en la Chrome Web Store ayuda mucho.', p_revGo: 'Escribir una reseña', p_revClose: 'Cerrar' },
+  it: { p_revT: 'Ti piace Fragrance Notes? Una recensione sul Chrome Web Store aiuta molto.', p_revGo: 'Scrivi una recensione', p_revClose: 'Chiudi' },
+  pt: { p_revT: 'Gostando do Fragrance Notes? Uma avaliação na Chrome Web Store ajuda muito.', p_revGo: 'Escrever avaliação', p_revClose: 'Fechar' },
+  pl: { p_revT: 'Podoba ci się Fragrance Notes? Opinia w Chrome Web Store bardzo pomaga.', p_revGo: 'Napisz opinię', p_revClose: 'Zamknij' }
+}).forEach(([lang, add]) => Object.assign(FN_SETTINGS_I18N[lang], add));
+
+// Added in 1.2: shown on the welcome page when the browser hasn't granted the shop sites (Firefox lets people turn this off).
+Object.entries({
+  en: { wel_permOk: "Done. Fragrance Notes can now open on shop sites.", wel_permH: "Allow access to shop sites", wel_permD: "Your browser hasn’t given Fragrance Notes access to the shop sites yet, so the 🌸 can’t appear there. Click Allow and accept the browser’s question.", wel_permGo: "Allow" },
+  nl: { wel_permOk: "Gelukt. Fragrance Notes kan nu op winkelsites openen.", wel_permH: "Toegang tot winkelsites geven", wel_permD: "Je browser heeft Fragrance Notes nog geen toegang tot de winkelsites gegeven, dus de 🌸 kan daar niet verschijnen. Klik op Toestaan en accepteer de vraag van je browser.", wel_permGo: "Toestaan" },
+  de: { wel_permOk: "Erledigt. Fragrance Notes kann jetzt auf Shop-Seiten öffnen.", wel_permH: "Zugriff auf Shop-Seiten erlauben", wel_permD: "Dein Browser hat Fragrance Notes noch keinen Zugriff auf die Shop-Seiten gegeben, daher kann die 🌸 dort nicht erscheinen. Klicke auf Erlauben und bestätige die Frage des Browsers.", wel_permGo: "Erlauben" },
+  fr: { wel_permOk: "C’est fait. Fragrance Notes peut maintenant s’ouvrir sur les sites des boutiques.", wel_permH: "Autoriser l’accès aux boutiques", wel_permD: "Votre navigateur n’a pas encore donné à Fragrance Notes l’accès aux sites des boutiques, la 🌸 ne peut donc pas y apparaître. Cliquez sur Autoriser et acceptez la demande du navigateur.", wel_permGo: "Autoriser" },
+  es: { wel_permOk: "Listo. Fragrance Notes ya puede abrirse en las webs de las tiendas.", wel_permH: "Permitir acceso a las tiendas", wel_permD: "Tu navegador aún no ha dado a Fragrance Notes acceso a las webs de las tiendas, así que la 🌸 no puede aparecer allí. Haz clic en Permitir y acepta la pregunta del navegador.", wel_permGo: "Permitir" },
+  it: { wel_permOk: "Fatto. Ora Fragrance Notes può aprirsi sui siti dei negozi.", wel_permH: "Consenti l’accesso ai negozi", wel_permD: "Il browser non ha ancora dato a Fragrance Notes l’accesso ai siti dei negozi, quindi il 🌸 non può comparire lì. Clicca su Consenti e accetta la richiesta del browser.", wel_permGo: "Consenti" },
+  pt: { wel_permOk: "Pronto. O Fragrance Notes já pode abrir nos sites das lojas.", wel_permH: "Permitir acesso às lojas", wel_permD: "O navegador ainda não deu ao Fragrance Notes acesso aos sites das lojas, por isso a 🌸 não pode aparecer lá. Clique em Permitir e aceite a pergunta do navegador.", wel_permGo: "Permitir" },
+  pl: { wel_permOk: "Gotowe. Fragrance Notes może teraz działać na stronach sklepów.", wel_permH: "Zezwól na dostęp do sklepów", wel_permD: "Przeglądarka nie dała jeszcze Fragrance Notes dostępu do stron sklepów, więc 🌸 nie może się tam pojawić. Kliknij Zezwól i zaakceptuj pytanie przeglądarki.", wel_permGo: "Zezwól" },
+}).forEach(([lang, add]) => Object.assign(FN_SETTINGS_I18N[lang], add));

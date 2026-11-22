@@ -108,7 +108,16 @@
 
   // Panel text the extension adds itself lives in i18n-panel.js (all 23 languages).
   // Section titles and vote labels normally come from Fragrantica; these are fallbacks.
-  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort'];
+  // Which browser and store this copy came from. The review link points to the store it was installed
+  // from; null (no review request) for an unknown ID, such as an unpacked copy.
+  const IS_FIREFOX = typeof chrome !== 'undefined' && !!chrome.runtime?.getURL && chrome.runtime.getURL('').startsWith('moz-extension:');
+  const REVIEW_URL = ({
+    hhhiolpcmkdkegcmjmpglcnfolohldgc: 'https://chromewebstore.google.com/detail/fragrance-notes/hhhiolpcmkdkegcmjmpglcnfolohldgc/reviews',
+    'fragrance-notes@fragrancenotes.app': 'https://addons.mozilla.org/firefox/addon/fragrance-notes/reviews/',
+    // Edge Add-ons: add the ID and link here once the listing is live.
+  })[typeof chrome !== 'undefined' && chrome.runtime?.id] || null;
+
+  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close'];
   const EN_FALLBACK = { accords: 'Main accords', wear: 'When to wear', longevity: 'Longevity', sillage: 'Sillage', gender: 'Gender', similar: 'Reminds people of' };
   const t = (lang, key) => {
     const table = globalThis.FN_PANEL_I18N || {};
@@ -215,5 +224,5 @@
     const p = h.split('.');
     return TLD_COUNTRY[p.slice(-2).join('.')] || TLD_COUNTRY[p[p.length - 1]] || '';
   };
-  globalThis.FN = { API_BASE, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
+  globalThis.FN = { API_BASE, IS_FIREFOX, REVIEW_URL, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
 })();

@@ -33,6 +33,20 @@
     await chrome.storage.sync.set({ settings: S });
   });
 
+  // ---------- review request ----------
+  // Once, after 10 perfumes looked up (counted in content.js). Clicking either button hides it for good.
+  chrome.storage.local.get(['fn:lookups', 'fn:reviewAsked']).then(({ 'fn:lookups': n = 0, 'fn:reviewAsked': asked = false }) => {
+    if (n < 10 || asked || !FN.REVIEW_URL) return;
+    $('revGo').href = FN.REVIEW_URL;
+    const done = () => chrome.storage.local.set({ 'fn:reviewAsked': true });
+    $('revText').textContent = st('p_revT');
+    $('revGo').textContent = st('p_revGo');
+    $('revClose').title = $('revClose').ariaLabel = st('p_revClose');
+    $('revGo').addEventListener('click', () => { done(); setTimeout(() => window.close(), 50); });
+    $('revClose').addEventListener('click', () => { done(); $('review').hidden = true; });
+    $('review').hidden = false;
+  }).catch(() => {});
+
   // ---------- the page ----------
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const ask = msg => chrome.tabs.sendMessage(tab.id, msg).catch(() => null);

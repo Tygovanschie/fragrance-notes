@@ -217,6 +217,20 @@ class ApiTest(unittest.TestCase):
         code, _, h = report(headers={"Origin": ORIGIN})
         self.assertEqual((code, h["Access-Control-Allow-Origin"]), (201, ORIGIN))
 
+    def test_firefox_origins(self):
+        moz = f"moz-extension://{uuid.uuid4()}"
+        code, _, h = report(headers={"Origin": moz})
+        self.assertEqual((code, h["Access-Control-Allow-Origin"]), (201, moz))
+        code, _, h = call("OPTIONS", "/prices", headers={"Origin": moz, "Access-Control-Request-Method": "POST"})
+        self.assertEqual((code, h["Access-Control-Allow-Origin"]), (204, moz))
+        bad = ["moz-extension://evil", moz.upper().replace("MOZ-EXTENSION", "moz-extension"), moz + "/",
+               moz.replace("moz-extension", "https"), "chrome-extension://" + "a" * 32]
+        for origin in bad:
+            code, _, h = report(headers={"Origin": origin})
+            self.assertEqual((code, h.get("Access-Control-Allow-Origin")), (403, None), origin)
+            code, _, h = call("OPTIONS", "/prices", headers={"Origin": origin})
+            self.assertEqual((code, h.get("Access-Control-Allow-Origin")), (204, None), origin)
+
     def size(self, ml=100.0, pid=9828):
         return next(s for s in call("GET", f"/prices/{pid}")[1]["sizes"] if s["ml"] == ml)
 
