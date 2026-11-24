@@ -43,6 +43,12 @@ The extension reads the perfume name and prices on shop product pages, looks the
 
 Price sharing is off until you turn it on. Then only the perfume, size, price and shop are sent to the Fragrance Notes price server, with a random install ID and nothing about you. See the [privacy policy](PRIVACY.md).
 
+## What's new in 1.3
+
+- Help build the open perfume database (Settings → Data, off by default): on built-in shops, the facts the shop shows about a perfume (name, brand, concentration, sizes, barcode, notes it lists) are sent without personal details, to become an open perfume database (ODbL).
+- Favourites: save a perfume with the ♥ next to its name in the panel; the ♥ in the panel header opens them (also in the toolbar menu). Compare two or three side by side: lowest price seen, accords as bars, notes with pictures (click one for its description) and the notes they share, longevity, sillage and value as scores with the difference, and when to wear. Add or remove perfumes right in the comparison. Favourites sync between computers through your browser account.
+- Better matching: the words that tell versions apart ("Absolutely", "Intense", "Pour Homme") count much more, a perfume from another house (clones like Armaf for Creed) is ruled out, shop extras like "Refill" or "Coffret" no longer get in the way, and "N°5" matches "No 5".
+
 ## What's new in 1.2
 
 - Works in Firefox and Edge as well as Chrome.

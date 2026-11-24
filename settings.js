@@ -13,6 +13,7 @@
     lang: 'en',            // Fragrantica language site to read from
     shortcut: '',          // keyboard shortcut to show/hide the panel, e.g. "Alt+F" (empty = none)
     sharePrices: false,    // opt-in: share prices seen on built-in shops anonymously, and show other users' prices
+    shareFacts: false,     // opt-in: send the facts a built-in shop shows about a perfume to the open perfume database
     shareAsked: false,     // the one-time card in the panel asking to turn sharing on was answered
     sections: {
       summary: true, photo: true, meta: true, perMl: true, elsewhere: true, accords: true, notes: true, wear: true, prosCons: true,
@@ -117,7 +118,7 @@
     // Edge Add-ons: add the ID and link here once the listing is live.
   })[typeof chrome !== 'undefined' && chrome.runtime?.id] || null;
 
-  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close'];
+  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close', 'fav', 'faved', 'favs'];
   const EN_FALLBACK = { accords: 'Main accords', wear: 'When to wear', longevity: 'Longevity', sillage: 'Sillage', gender: 'Gender', similar: 'Reminds people of' };
   const t = (lang, key) => {
     const table = globalThis.FN_PANEL_I18N || {};
@@ -224,5 +225,30 @@
     const p = h.split('.');
     return TLD_COUNTRY[p.slice(-2).join('.')] || TLD_COUNTRY[p[p.length - 1]] || '';
   };
-  globalThis.FN = { API_BASE, IS_FIREFOX, REVIEW_URL, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
+  // Favourites: one small entry per perfume in chrome.storage.sync ("fav:<Fragrantica id>"), so they follow
+  // the user to other computers signed in to the same browser account. The perfume details themselves are
+  // looked up again when needed (and come from the 14-day cache when recent).
+  const FAV_MAX = 400;   // storage.sync allows 512 items in total
+  const favs = {
+    async all() {
+      try {
+        const o = await chrome.storage.sync.get(null);
+        return Object.keys(o).filter(k => k.startsWith('fav:')).map(k => o[k]).filter(f => f && f.url).sort((a, b) => b.t - a.t);
+      } catch { return []; }
+    },
+    async has(id) {
+      if (!id) return false;
+      try { return !!(await chrome.storage.sync.get('fav:' + id))['fav:' + id]; } catch { return false; }
+    },
+    async add(d) {
+      const id = (String(d?.url || '').match(/-(\d+)\.html/) || [])[1];
+      if (!id) return false;
+      if ((await favs.all()).length >= FAV_MAX) return false;
+      const entry = { id, url: d.url, name: String(d.title || '').slice(0, 120), img: `https://fimgs.net/mdimg/perfume-thumbs/375x500.${id}.jpg`, t: Date.now() };
+      try { await chrome.storage.sync.set({ ['fav:' + id]: entry }); return true; } catch { return false; }
+    },
+    async remove(id) { try { await chrome.storage.sync.remove('fav:' + id); } catch {} }
+  };
+
+  globalThis.FN = { API_BASE, IS_FIREFOX, REVIEW_URL, favs, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
 })();

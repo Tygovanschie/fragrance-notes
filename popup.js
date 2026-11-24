@@ -17,6 +17,11 @@
   $('settings').title = st('p_settings');
   $('settings').addEventListener('click', () => { chrome.runtime.openOptionsPage(); window.close(); });
 
+  // ---------- favourites ----------
+  $('favsTitle').textContent = st('p_favs');
+  FN.favs.all().then(list => { $('favsSub').textContent = list.length ? st('p_favsN', { n: list.length }) : st('p_favsNone'); });
+  $('favs').addEventListener('click', () => { chrome.tabs.create({ url: chrome.runtime.getURL('favourites.html') }); window.close(); });
+
   // ---------- on / off ----------
   const btn = $('toggle');
   const paint = () => {

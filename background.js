@@ -6,7 +6,7 @@ if (typeof importScripts === 'function') importScripts('settings.js');
 // tab, reads the data Fragrantica's own page script decodes, then closes the tab.
 
 const TTL = 14 * 24 * 60 * 60 * 1000; // cache results for 14 days
-const keyFor = (q, lang) => `c11:${lang}:` + q.trim().toLowerCase(); // bump prefix to invalidate old cache
+const keyFor = (q, lang) => `c12:${lang}:` + q.trim().toLowerCase(); // bump prefix to invalidate old cache
 
 // ---------- search (Bing) ----------
 function decodeBing(u) {
@@ -41,28 +41,59 @@ function fragranticaUrls(html) {
   return [...new Set(urls.map(u => u.replace(/^http:/, 'https:').split('#')[0]).filter(u => PERFUME_URL.test(u)))];
 }
 
-const tokens = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  .split(/[^a-z0-9]+/).filter(t => t.length > 1 || /\d/.test(t));
+// Words of a name, compared without accents and case. "N°5" / "Nº 5" / "No. 5" all become "no 5".
+// Single letters count too (YSL "Y", "L'Homme"), so they must match like any other word.
+const tokens = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+  .replace(/\bn\s*[°º]\s*|\bno\.\s*(?=\d)/g, 'no ')
+  .split(/[^a-z0-9]+/).filter(Boolean);
 
-// Score a Fragrantica URL against the query. Words of the name count; extra words in the
-// candidate's name (flankers like "Intense", "Elixir") cost a little; and the concentration
-// (Parfum / Eau de Parfum / Extrait / Eau de Toilette) must match, because many perfumes come
-// in several versions with the same name.
-function score(url, query) {
+// Gender words. They tell versions apart ("Gucci Guilty Pour Homme" vs the women's "Gucci Guilty"), but
+// many names don't carry one, so they're scored separately instead of as name words.
+const MALE = /\b(pour homme|for men|for him|homme|uomo|hombre|herren|men|man)\b/;
+const FEMALE = /\b(pour femme|for women|for her|femme|donna|mujer|damen|women|woman)\b/;
+const genderOf = s => { const t = ' ' + s.toLowerCase().replace(/-/g, ' ') + ' '; return FEMALE.test(t) ? 'f' : MALE.test(t) ? 'm' : ''; };
+const GENDER_WORDS = new Set(['pour', 'for', 'homme', 'femme', 'him', 'her', 'men', 'man', 'women', 'woman', 'uomo', 'donna', 'hombre', 'mujer', 'herren', 'damen']);
+
+// Score a Fragrantica URL against the query.
+// - Every word of the query's name should be in the candidate. A missing word costs a lot: it's usually
+//   what tells a flanker apart ("Stronger With You Absolutely" is not "Stronger With You Parfum").
+// - Extra words in the candidate's name (flankers like "Intense", "Elixir") cost a little.
+// - Concentration (Parfum / Eau de Parfum / Extrait / Eau de Toilette): a match helps, a different one
+//   costs. A candidate without one in its name is neutral (Fragrantica often leaves it out).
+// - Gender: the opposite gender costs a lot, the same one helps a little.
+// vocab (optional): every word of every candidate found. A query word that no candidate has at all is
+// probably shop noise ("Refill", "Coffret", a slogan) and is then ignored instead of costing points.
+function score(url, query, vocab = null) {
   const [, designer, name] = url.match(PERFUME_URL);
-  const nameText = name.replace(/-/g, ' ');
+  const nameText = decodeURIComponent(name).replace(/-/g, ' ');
   const qConc = FN.detectConc(query);
   const cConc = FN.detectConc(nameText);
-  const q = new Set(tokens(FN.stripConc(query)));
-  const nameT = tokens(FN.stripConc(nameText));
-  const all = new Set([...tokens(designer.replace(/-/g, ' ')), ...nameT]);
-  let hits = 0;
-  q.forEach(t => { if (all.has(t)) hits++; });
-  const extra = nameT.filter(t => !q.has(t)).length;
-  let s = hits / Math.max(q.size, 1) - extra * 0.15;
-  if (cConc && qConc) s += cConc === qConc ? 0.3 : -0.4;     // right / wrong version
+  const qGender = genderOf(query), cGender = genderOf(nameText);
+  const words = s => tokens(FN.stripConc(s)).filter(t => !GENDER_WORDS.has(t));
+  const designerT = new Set(tokens(decodeURIComponent(designer).replace(/-/g, ' ')));
+  const nameT = words(nameText);
+  const nameSet = new Set(nameT);
+  let q = new Set(words(query));
+  if (vocab) {
+    const known = [...q].filter(t => vocab.has(t));
+    if (known.length) q = new Set(known);
+  }
+  let hits = 0, missing = 0;
+  q.forEach(t => {
+    if (nameSet.has(t) || designerT.has(t)) hits++;
+    else missing++;
+  });
+  const extra = nameT.filter(t => !q.has(t) && !designerT.has(t)).length;
+  // A different house is almost always a clone or a "smells like" (Armaf for Creed): when the query names
+  // the brand, the candidate's house must share a word with it.
+  const brandHit = [...designerT].some(t => q.has(t));
+  let s = hits / Math.max(q.size, 1) - missing * 0.3 - extra * 0.15;
+  if (qConc && cConc) s += cConc === qConc ? 0.2 : -0.4;     // right / wrong version
   else if (cConc && !qConc) s -= 0.2;                        // query has no version: prefer the plain one
   else if (!cConc && (!qConc || qConc === 'edt')) s += 0.1;  // the plain name is usually the EDT/original
+  if (qGender && cGender) s += cGender === qGender ? 0.15 : -0.6;
+  else if (!qGender && cGender) s -= 0.05;
+  if (!brandHit) s -= 0.35;
   return s;
 }
 
@@ -169,7 +200,12 @@ async function fragranticaSearch(query) {
 }
 
 async function findUrl(query) {
-  const best = urls => urls.map(u => ({ u, s: score(u, query) })).sort((a, b) => b.s - a.s)[0];
+  // While searching, judge strictly (a missing word means: search more). For the final pick, ignore words
+  // that none of the found perfumes have (see score).
+  const best = (urls, lenient = false) => {
+    const vocab = lenient ? new Set(urls.flatMap(u => { const m = u.match(PERFUME_URL); return tokens(decodeURIComponent(m[1] + ' ' + m[2]).replace(/-/g, ' ')); })) : null;
+    return urls.map(u => ({ u, s: score(u, query, vocab) })).sort((a, b) => b.s - a.s)[0];
+  };
   let found = await bing('site:fragrantica.com/perfume ' + query);
   let top = best(found);
   // Search again if the match is weak, or if we're after a specific version (Parfum, Extrait…)
@@ -186,6 +222,7 @@ async function findUrl(query) {
     found = [...new Set([...found, ...await fragranticaSearch(FN.stripConc(query) || query)])];
     top = best(found);
   }
+  top = best(found, true);
   if (top && top.s > 0.3) return { url: top.u };
   // Nothing good enough: hand back the closest perfumes so the user can pick one.
   const seen = new Set();
@@ -561,9 +598,49 @@ async function sharePrices(perfumeId, prices, pageUrl) {
   }
   await chrome.storage.session.set({ 'fn:shared': sent }).catch(() => {});
 }
+// "Help build the open perfume database" (off by default): facts a built-in shop shows about a perfume
+// (name, brand, concentration, sizes, barcode, the notes and family it lists). Nothing about the user;
+// the random install id only lets the server limit how much one install sends.
+const strList = (a, max, len) => (Array.isArray(a) ? a : []).map(x => String(x).trim().slice(0, len)).filter(Boolean).slice(0, max);
+async function shareFacts(perfumeId, f, pageUrl) {
+  if (!f || typeof f !== 'object' || !(await chrome.storage.sync.get('settings')).settings?.shareFacts) return;
+  let host;
+  try { host = new URL(pageUrl).hostname; } catch { return; }
+  const shop = FN.builtInShop(host);
+  if (!shop) return;   // shops the user added themselves are never shared
+  const body = {
+    shop,
+    perfumeId: PID_RE.test(perfumeId || '') ? perfumeId : null,
+    brand: String(f.brand || '').slice(0, 80),
+    name: String(f.name || '').slice(0, 120),
+    conc: ['extrait', 'parfum', 'edp', 'edt', 'edc'].includes(f.conc) ? f.conc : null,
+    gender: ['m', 'f', 'u'].includes(f.gender) ? f.gender : null,
+    sizes: (Array.isArray(f.sizes) ? f.sizes : []).map(Number).filter(x => x > 0 && x <= 1000).slice(0, 8),
+    gtins: strList(f.gtins, 8, 14).filter(g => /^\d{8,14}$/.test(g)),
+    notes: { top: strList(f.notes?.top, 15, 40), heart: strList(f.notes?.heart, 15, 40), base: strList(f.notes?.base, 15, 40) },
+    families: strList(f.families, 6, 40),
+    lang: /^[a-z]{2}(-[a-z]{2})?$/.test(f.lang || '') ? f.lang : null
+  };
+  if (!body.name || !body.brand) return;
+  // Once per perfume page and shop a day.
+  const k = shop + '|' + body.brand + '|' + body.name + '|' + body.conc;
+  const { 'fn:factsSent': sent = {} } = await chrome.storage.session.get('fn:factsSent').catch(() => ({}));
+  for (const x of Object.keys(sent)) if (sent[x] < Date.now() - 864e5) delete sent[x];
+  if (sent[k]) return;
+  try {
+    const r = await fetch(`${FN.API_BASE}/facts`, {
+      method: 'POST', credentials: 'omit', signal: AbortSignal.timeout(8000),
+      headers: { 'Content-Type': 'application/json', 'X-Install-Id': await installId() }, body: JSON.stringify(body)
+    });
+    if (r.status < 500 && r.status !== 429) sent[k] = Date.now();
+  } catch {}
+  await chrome.storage.session.set({ 'fn:factsSent': sent }).catch(() => {});
+}
+
 // Turning sharing off forgets the install id, so turning it on again starts as a new, unlinked install.
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && changes.settings?.oldValue?.sharePrices && !changes.settings.newValue?.sharePrices) {
+  const was = changes.settings?.oldValue, now = changes.settings?.newValue;
+  if (area === 'sync' && (was?.sharePrices || was?.shareFacts) && !now?.sharePrices && !now?.shareFacts) {
     chrome.storage.local.remove('fn:installId').catch(() => {});
     chrome.storage.session.remove('fn:shared').catch(() => {});
     communityCache.clear();
@@ -574,8 +651,10 @@ chrome.storage.onChanged.addListener((changes, area) => {
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   (async () => {
     if (msg.type === 'open-options') { chrome.runtime.openOptionsPage(); return send({ ok: true }); }
+    if (msg.type === 'open-favs') { chrome.tabs.create({ url: chrome.runtime.getURL('favourites.html') }); return send({ ok: true }); }
     if (msg.type === 'community') return send(await communityPrices(msg.perfumeId, msg.currency));
     if (msg.type === 'share') { sharePrices(msg.perfumeId, msg.prices, sender.url); return send({ ok: true }); }
+    if (msg.type === 'facts') { shareFacts(msg.perfumeId, msg.facts, sender.url); return send({ ok: true }); }
     if (msg.type === 'note') return send(await noteInfo(msg.url));
     if (msg.type === 'opinions') return send(await englishOpinions(msg.url));
     if (msg.type !== 'lookup') return;

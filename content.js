@@ -6,6 +6,9 @@
   // "Perfume" in the shop languages we support (Latin-script words use word boundaries).
   const FRAG_RE = /\b(parfums?|perfumes?|perfumy|perfumy|profum[oi]|parf[ée]m|parf[üu]m|eau de|cologne|colonia|edp|edt|extrait|fragrances?|fragancia|fragranza|geur|duft|doft|tuoksu|illat|koku|vůně|zapach)\b|духи|парфюм|туалетн|парфум|άρωμα|香水|フレグランス|향수|عطر|בושם/i;
 
+  // Parts of a page about other products, or the site's own chrome (same list as readPrices uses).
+  const OTHER_PRODUCTS_SEL = '[class*="related" i],[class*="recommend" i],[class*="carousel" i],[class*="slider" i],[class*="upsell" i],[class*="cross-sell" i],[class*="similar" i],[class*="product-tile" i],[class*="productcard" i],[class*="product-card" i],[class*="recently" i],header,footer,nav,aside';
+
   // ---------- product detection ----------
   function collectProducts(d, out) {
     if (!d) return;
@@ -80,7 +83,7 @@
     let n = withoutBrand(trimDescription(name), brand);
     n = FN.stripConc(n)
       .replace(/(?:\b\d+(?:[.,]\d+)?|[.,]\d+)\s?(?:fl\.?\s?)?(ml|oz|g)\b\.?/gi, ' ')
-      .replace(/\b(spray|vapo|vaporisateur|vaporizador|vaporizzatore|zerst[aä]uber|natural spray|navulling|refill|nachf[uü]llung|tester|for (wo)?men|(wo)?men'?s|pour (homme|femme)|unisex|limited edition)\b/gi, ' ')
+      .replace(/\b(spray|vapo|vaporisateur|vaporizador|vaporizzatore|zerst[aä]uber|natural spray|navulling|refill|nachf[uü]llung|tester|refillable|rechargeable|recargable|ricaricabile|nachf[uü]llbar|navulbaar|coffret|gift set|geschenkset|for (wo)?men|(wo)?men'?s|pour (homme|femme)|unisex|limited edition)\b/gi, ' ')
       .replace(/[|•–—,-]+\s*$/, ' ')
       .replace(/^\s*[|•–—,-]+/, ' ');
     return n.replace(/\s+/g, ' ').trim();
@@ -115,20 +118,128 @@
     // Also look at the size options and breadcrumbs ("Parfum › Herrendüfte") for the word "perfume".
     const offerNames = (p?.offers && [].concat(p.offers).map(o => o?.name || '').join(' ')) || '';
     // Only the outermost breadcrumb elements: on some shops the first match is a single "Home" item.
+    // The text pieces are joined with spaces: textContent glues the items together on shops like Douglas
+    // ("ParfumHerenparfum"), and then "Heren" is no longer a word of its own.
     const crumbEls = [...document.querySelectorAll('nav[aria-label*="breadcrumb" i], [class*="breadcrumb" i], [itemtype$="BreadcrumbList"]')];
+    const spacedText = el => {
+      const parts = [], walk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) { const t = walk.currentNode.nodeValue.trim(); if (t) parts.push(t); }
+      return parts.join(' ');
+    };
     const crumbs = crumbEls.filter(e => !crumbEls.some(o => o !== e && o.contains(e)))
-      .slice(0, 2).map(e => e.textContent).join(' ').slice(0, 400);
+      .slice(0, 2).map(spacedText).join(' ').slice(0, 400);
     const path = decodeURIComponent(location.pathname).replace(/[-_/.]+/g, ' ');   // e.g. "/en/fruity-perfumes/…"
     const blob = `${brand} ${candidates.join(' ')} ${p?.category || ''} ${offerNames} ${crumbs} ${path} ${document.title}`;
     // Only real product pages count (not the homepage or category pages).
     const isProduct = !!p || !!document.querySelector('meta[property="og:type"][content*="product" i]');
     const isFragrance = !!name && FRAG_RE.test(blob);
+    // Keep "Pour Homme" / "Pour Femme" from the name: cleanName drops them, but they tell versions apart
+    // (Gucci Guilty Pour Homme vs the women's Gucci Guilty). Only the explicit phrase, not descriptions.
+    const gText = ` ${name} ${h1Text} `.toLowerCase();
+    const gender = /\b(pour homme|for men|for him)\b/.test(gText) ? 'Pour Homme'
+      : /\b(pour femme|for women|for her)\b/.test(gText) ? 'Pour Femme' : '';
     return {
-      query: [brand, cleaned, FN.CONC_PHRASE[conc] || ''].filter(Boolean).join(' ').trim(),
+      query: [brand, cleaned, gender, FN.CONC_PHRASE[conc] || ''].filter(Boolean).join(' ').trim(),
+      brand, name: cleaned, product: p, crumbs,
       conc,
       isProduct,
       isFragrance,
       show: isProduct && isFragrance
+    };
+  }
+
+  // ---------- product facts (opt-in: "Help build the open perfume database") ----------
+  // Facts a shop shows about the perfume on its product page: barcode, the notes it lists, the fragrance
+  // family and who it's for. Only sent when the user turned that setting on (see background.js).
+  const NOTE_LABELS = {
+    // Dutch: topnoot/topnoten/topnote(s) (Notino: "Topnoten", "Hartnoten", "Basisnoten"), also with a space.
+    top: /^(top ?notes?|head notes?|(top|kop) ?no(ot|ten?|tes)|kopfnoten?|note(s)? de t[êe]te|notas? de salida|notas? altas|notas? de topo|notas? de sa[ií]da|note di testa|nuty g[łl]owy|nuty g[óo]rne)$/i,
+    heart: /^(heart notes?|middle notes?|hart ?no(ot|ten?|tes)|herznoten?|note(s)? de c(œ|oe)ur|notas? de coraz[óo]n|notas? de cora[çc][ãa]o|note di cuore|nuty serca)$/i,
+    base: /^(base notes?|basis ?no(ot|ten?|tes)|note(s)? de fond|notas? de fondo|notas? de base|notas? de fundo|note di fondo|note di base|nuty bazy|nuty g[łl][ęe]bi)$/i,
+    family: /^(fragrance famil(y|ies)|olfactory famil(y|ies)|scent famil(y|ies)|geurfamilie|geursoort|geurnoot|duftfamilie|duftnote|duftrichtung|famille olfactive|familia olfativa|famiglia olfattiva|fam[ií]lia olfativa|rodzina zapach[óo]w|rodzina zapachowa|nuta zapachowa)$/i
+  };
+  const splitNotes = v => String(v || '').split(/\s*(?:,|;|\/|\s&\s|\s\+\s|\s(?:and|en|und|et|y|e|i|и)\s)\s*/i)
+    .map(x => x.replace(/^[\s\-–•·.:]+|[\s.]+$/g, '').trim())
+    .filter(x => x.length >= 2 && x.length <= 40 && !/\d{3,}/.test(x)).slice(0, 15);
+  function readNotes() {
+    const found = {};
+    const els = document.querySelectorAll('dt, th, td, span, div, strong, b, p, li, h3, h4, h5, label');
+    for (const el of els) {
+      if (el.closest('[data-fn-host]') || el.closest(OTHER_PRODUCTS_SEL)) continue;
+      const own = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!own || own.length > 400) continue;
+      // "Label: value" in one element, or a label element followed by its value.
+      const m = own.match(/^([^:]{3,32}):\s*(.+)$/);
+      const label = (m ? m[1] : own).trim();
+      for (const [k, re] of Object.entries(NOTE_LABELS)) {
+        if (found[k] || !re.test(label)) continue;
+        let value = m ? m[2] : '';
+        if (!value && own.length <= 32) {
+          // The value is the next element; when the label sits alone in a wrapper (<th><span>Topnoten</span></th>),
+          // it's the wrapper's next element.
+          let src = el;
+          for (let i = 0; i < 3 && !src.nextElementSibling && src.parentElement && src.parentElement.textContent.trim() === src.textContent.trim(); i++) src = src.parentElement;
+          value = (src.nextElementSibling?.textContent || '').replace(/\s+/g, ' ').trim();
+        }
+        const list = value && value.length <= 300 ? splitNotes(value) : [];
+        if (list.length) found[k] = list;
+      }
+      if (found.top && found.heart && found.base && found.family) break;
+    }
+    return found;
+  }
+  // Barcodes (GTIN/EAN) from the shop's product data, only when the check digit is right.
+  const validGtin = g => {
+    if (!/^\d{8}$|^\d{12,14}$/.test(g)) return false;
+    const d = g.split('').map(Number), check = d.pop();
+    const sum = d.reverse().reduce((s, x, i) => s + x * (i % 2 === 0 ? 3 : 1), 0);
+    return (10 - (sum % 10)) % 10 === check;
+  };
+  function readGtins(p) {
+    const out = new Set();
+    const take = o => ['gtin13', 'gtin', 'gtin12', 'gtin14', 'gtin8', 'ean'].forEach(k => {
+      const v = String(o?.[k] ?? '').replace(/\D/g, '');
+      if (validGtin(v)) out.add(v.padStart(13, '0').slice(-13));
+    });
+    take(p);
+    [].concat(p?.offers || []).forEach(o => { take(o); [].concat(o?.offers || []).forEach(take); });
+    [].concat(p?.hasVariant || []).forEach(take);
+    document.querySelectorAll('[itemprop^="gtin"]').forEach(el => take({ gtin: el.getAttribute('content') || el.textContent }));
+    return [...out].slice(0, 8);
+  }
+  const genderOf = t => {
+    t = ' ' + String(t || '').toLowerCase() + ' ';
+    if (/\bunisex\b/.test(t)) return 'u';
+    if (/\b(pour femme|for women|for her|dames|damen|vrouwen|femme|women|donna|mujer|damsk|kobiet|femin)/.test(t)) return 'f';
+    if (/\b(pour homme|for men|for him|heren|herren|mannen|homme|men|uomo|hombre|m[eę]sk|mascul)/.test(t)) return 'm';
+    return '';
+  };
+  // Breadcrumb names from the shop's product data (Notino: "Parfums › Heren parfums"), for the gender.
+  function ldCrumbs() {
+    const names = [];
+    const walk = o => {
+      if (!o || typeof o !== 'object' || names.length > 20) return;
+      if (Array.isArray(o)) return o.forEach(walk);
+      if (Array.isArray(o.itemListElement) && /BreadcrumbList/i.test([].concat(o['@type'] || '').join(' ')))
+        o.itemListElement.forEach(li => { const n = li?.name || li?.item?.name; if (typeof n === 'string') names.push(n); });
+      Object.values(o).forEach(walk);
+    };
+    document.querySelectorAll('script[type="application/ld+json"]').forEach(s => { try { walk(JSON.parse(s.textContent)); } catch {} });
+    return names.join(' ').slice(0, 300);
+  }
+  function readFacts(cur, prices) {
+    const notes = readNotes();
+    const h1 = document.querySelector('h1')?.textContent || '';
+    return {
+      brand: String(cur.brand || '').slice(0, 80),
+      name: String(cur.name || '').slice(0, 120),
+      conc: cur.conc || '',
+      gender: genderOf(`${h1} ${cur.crumbs || ''} ${ldCrumbs()}`),
+      sizes: [...new Set(prices.map(p => p.ml).filter(ml => ml > 0 && ml <= 1000))].slice(0, 8),
+      gtins: readGtins(cur.product),
+      notes: { top: notes.top || [], heart: notes.heart || [], base: notes.base || [] },
+      families: notes.family || [],
+      lang: (document.documentElement.lang || '').slice(0, 5).toLowerCase()
     };
   }
 
@@ -398,6 +509,7 @@
   });
 
   $('.x').addEventListener('click', e => { e.stopPropagation(); close(); });
+  $('.hfav').addEventListener('click', e => { e.stopPropagation(); chrome.runtime.sendMessage({ type: 'open-favs' }).catch(() => {}); });
 
   // ---------- resizing (drag the inner corner) ----------
   function setSize(w, h) {
@@ -610,6 +722,7 @@
     chrome.storage.local.get('fn:lookups').then(o => chrome.storage.local.set({ 'fn:lookups': (o['fn:lookups'] || 0) + 1 })).catch(() => {});
   };
   let pricesOpen = false;
+  const factsSent = new Set();   // product pages whose facts were sent (once per page load)
   const perfumeId = url => (String(url || '').match(/-(\d+)\.html/) || [])[1];
   async function seenPrices(d, prices) {
     const id = perfumeId(d.url);
@@ -640,6 +753,8 @@
     if (lastRender?.data !== d) return;    // a newer render started meanwhile
     const opts = { cached, query, prices: S.sections.perMl ? prices : [], elsewhere, othersAll: false, host: location.hostname, pricesOpen, community: null,
       askShare: !S.sharePrices && !S.shareAsked && !!FN.builtInShop(location.hostname) };
+    opts.fav = perfumeId(d.url) ? { on: await FN.favs.has(perfumeId(d.url)) } : null;
+    if (lastRender?.data !== d) return;
     const paint = () => {
       body.innerHTML = renderBody(d, S, opts);
       body.querySelector('.refresh')?.addEventListener('click', () => lookup(query, true));
@@ -649,6 +764,18 @@
       const answer = on => { S.sharePrices = on || S.sharePrices; S.shareAsked = true; chrome.storage.sync.set({ settings: S }).catch(() => {}); };
       body.querySelector('.ask-on')?.addEventListener('click', () => answer(true));
       body.querySelector('.ask-no')?.addEventListener('click', () => answer(false));
+      // ♥ saves the perfume to the favourites (toolbar menu → Favourites).
+      body.querySelector('.fav')?.addEventListener('click', async e => {
+        const btn = e.currentTarget;
+        const on = !opts.fav.on;
+        const ok = on ? await FN.favs.add(d) : (await FN.favs.remove(perfumeId(d.url)), true);
+        if (!ok) return;
+        opts.fav.on = on;
+        btn.classList.toggle('on', on);
+        btn.classList.toggle('pop', on);
+        btn.setAttribute('aria-pressed', String(on));
+        btn.title = FN.t(S.lang, on ? 'faved' : 'fav');
+      });
       body.querySelector('details.others')?.addEventListener('toggle', e => {
         if (e.target.open === pricesOpen) return;
         pricesOpen = opts.pricesOpen = e.target.open;
@@ -675,6 +802,12 @@
     pricesOpen = opts.pricesOpen = false;   // the other-shops list always starts closed
     paint();
     priceWatch = { d, opts, paint, pid: perfumeId(d.url) };
+
+    // "Help build the open perfume database" (off by default): the facts this shop shows about the perfume.
+    if (S.shareFacts && current.isProduct && FN.builtInShop(location.hostname) && !factsSent.has(location.pathname)) {
+      factsSent.add(location.pathname);
+      try { chrome.runtime.sendMessage({ type: 'facts', perfumeId: perfumeId(d.url) || '', facts: readFacts(current, prices) }).catch(() => {}); } catch {}
+    }
 
     // "Share prices anonymously" (off by default): first get other users' prices for this perfume,
     // then share the ones on this page, so your own report doesn't count in the label you see.

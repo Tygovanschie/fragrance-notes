@@ -1,9 +1,14 @@
-"""Fragrance Notes price API: anonymous, crowd-sourced perfume prices.
+"""Fragrance Notes API: anonymous, crowd-sourced perfume prices and the open perfume database.
 
 Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenotes.app), which does TLS.
 
   POST /prices              {perfumeId, ml, price, currency, shop}   header X-Install-Id: <uuid4>
   GET  /prices/{perfumeId}  ?currency=EUR (optional; defaults to the most-reported one)
+  POST /facts               product facts a shop shows (opt-in "Help build the open perfume database")
+  GET  /facts/stats         how the collection is growing
+  GET  /catalog/stats       the combined open perfume database (see catalog.py; includes Open Beauty Facts, obf.py)
+  GET  /catalog/search?q=   find perfumes in it
+  GET  /catalog/perfume/{id}
   GET  /health
 
 Privacy: no IP addresses are stored or logged. The install id is a random UUID made by the
@@ -18,6 +23,8 @@ import sqlite3
 import statistics
 import threading
 import time
+
+import catalog
 from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -40,6 +47,10 @@ def origin_ok(origin):
 WINDOW_DAYS = 30          # stats cover the last 30 days
 RETENTION_DAYS = 90       # rows older than this are deleted
 MAX_BODY = 1024
+MAX_FACTS_BODY = 4096
+# Facts: a page sends one report, so far fewer per install than prices.
+FACT_LIMITS = [(600, 30), (86400, 120)]
+GLOBAL_FACT_LIMIT = (3600, 3000)
 LIMITS = [(600, 60), (86400, 500)]   # per install: 60 reports / 10 min, 500 / day (a page sends up to 8 sizes)
 GLOBAL_LIMIT = (3600, 5000)          # all installs together
 # Outliers are never rejected or deleted, only left out when stats are calculated (on every GET):
@@ -114,6 +125,15 @@ def init_db():
             currency TEXT NOT NULL, day TEXT NOT NULL, price REAL NOT NULL, t INTEGER NOT NULL,
             PRIMARY KEY (install, perfume_id, shop, ml, currency, day))""")
         con.execute("CREATE INDEX IF NOT EXISTS daily_lows_lookup ON daily_lows (perfume_id, currency, day)")
+        # Product facts for the open perfume database: one row per install, shop, perfume and UTC day.
+        # Nothing about the user: no IP, no page address; the install id only as the salted hash.
+        con.execute("""CREATE TABLE IF NOT EXISTS facts (
+            install TEXT NOT NULL, day TEXT NOT NULL, shop TEXT NOT NULL, perfume_id INTEGER,
+            brand TEXT NOT NULL, name TEXT NOT NULL, conc TEXT NOT NULL DEFAULT '', gender TEXT NOT NULL DEFAULT '', lang TEXT,
+            sizes TEXT NOT NULL, gtins TEXT NOT NULL, notes TEXT NOT NULL, families TEXT NOT NULL,
+            PRIMARY KEY (install, shop, brand, name, conc, gender, day))""")
+        con.execute("CREATE INDEX IF NOT EXISTS facts_day ON facts (day)")
+        catalog.init(con)
         if new:   # one-time migration: start the history with the prices we have
             con.execute("""INSERT OR IGNORE INTO daily_lows (install, perfume_id, shop, ml, currency, day, price, t)
                 SELECT install, perfume_id, shop, ml, currency, date(t / 1000, 'unixepoch'), price, t FROM reports""")
@@ -124,6 +144,10 @@ def purge_old():
     with db() as con:
         con.execute("DELETE FROM reports WHERE t < ?", (cutoff,))
         con.execute("DELETE FROM daily_lows WHERE day < ?", (day_of(cutoff),))
+        # Facts stay (they're about perfumes, not people), but after RETENTION_DAYS the install hash is
+        # replaced by a random value per row, so old rows can't be linked to each other or to an install.
+        con.execute("""UPDATE facts SET install = 'old-' || lower(hex(randomblob(12)))
+            WHERE day < ? AND install NOT LIKE 'old-%'""", (day_of(cutoff),))
 
 
 def day_of(ms):
@@ -206,6 +230,122 @@ def validate(body):
     if not (PER_ML_EUR[0] <= per_eur <= PER_ML_EUR[1]):
         raise Invalid("price per ml is not plausible")
     return int(pid), round(ml, 2), round(price, 2), cur, shop_of(body.get("shop"))
+
+
+FACT_FIELDS = {"shop", "perfumeId", "brand", "name", "conc", "gender", "sizes", "gtins", "notes", "families", "lang"}
+CONCS = {"extrait", "parfum", "edp", "edt", "edc"}
+GTIN_RE = re.compile(r"^[0-9]{8,14}$")
+LANG_RE = re.compile(r"^[a-z]{2}(-[a-z]{2})?$")
+
+
+def text(v, name, max_len, required=False):
+    if v is None and not required:
+        return ""
+    if not isinstance(v, str):
+        raise Invalid(f"{name} must be a string")
+    s = re.sub(r"\s+", " ", v).strip()
+    if required and not s:
+        raise Invalid(f"{name} is required")
+    if len(s) > max_len:
+        raise Invalid(f"{name} is longer than {max_len} characters")
+    return s
+
+
+def text_list(v, name, max_items, max_len):
+    if v is None:
+        return []
+    if not isinstance(v, list) or len(v) > max_items:
+        raise Invalid(f"{name} must be a list of at most {max_items} items")
+    out = []
+    for x in v:
+        s = text(x, name, max_len)
+        if s and s.lower() not in (o.lower() for o in out):
+            out.append(s)
+    return out
+
+
+def validate_facts(body):
+    if not isinstance(body, dict):
+        raise Invalid("body must be a JSON object")
+    extra = set(body) - FACT_FIELDS
+    if extra:
+        raise Invalid("unknown fields: " + ", ".join(sorted(extra)))
+    pid = body.get("perfumeId")
+    if isinstance(pid, int) and not isinstance(pid, bool):
+        pid = str(pid)
+    if pid is not None and (not isinstance(pid, str) or not ID_RE.match(pid)):
+        raise Invalid("perfumeId must be a Fragrantica perfume number or null")
+    conc = body.get("conc")
+    if conc is not None and conc not in CONCS:
+        raise Invalid("conc must be one of " + ", ".join(sorted(CONCS)) + " or null")
+    gender = body.get("gender")
+    if gender is not None and gender not in ("m", "f", "u"):
+        raise Invalid("gender must be m, f, u or null")
+    lang = body.get("lang")
+    if lang is not None and (not isinstance(lang, str) or not LANG_RE.match(lang)):
+        raise Invalid("lang must look like nl or nl-nl")
+    sizes = body.get("sizes") or []
+    if not isinstance(sizes, list) or len(sizes) > 8:
+        raise Invalid("sizes must be a list of at most 8 numbers")
+    sizes = sorted({round(num(x, "sizes", 0.5, 1000), 1) for x in sizes})
+    gtins = body.get("gtins") or []
+    if not isinstance(gtins, list) or len(gtins) > 8 or not all(isinstance(g, str) and GTIN_RE.match(g) for g in gtins):
+        raise Invalid("gtins must be a list of at most 8 barcodes (8-14 digits)")
+    notes = body.get("notes") or {}
+    if not isinstance(notes, dict) or set(notes) - {"top", "heart", "base"}:
+        raise Invalid("notes must be an object with top, heart and base lists")
+    notes = {k: text_list(notes.get(k), "notes", 15, 40) for k in ("top", "heart", "base")}
+    return {
+        "shop": shop_of(body.get("shop")),
+        "perfume_id": int(pid) if pid else None,
+        "brand": text(body.get("brand"), "brand", 80, required=True),
+        "name": text(body.get("name"), "name", 120, required=True),
+        "conc": conc or "",
+        "gender": gender or "",
+        "lang": lang,
+        "sizes": sizes,
+        "gtins": sorted({g.zfill(13)[-13:] if len(g) <= 13 else g for g in gtins}),
+        "notes": notes,
+        "families": text_list(body.get("families"), "families", 6, 40),
+    }
+
+
+def add_facts(install, f):
+    with db() as con:
+        con.execute("""INSERT INTO facts (install, day, shop, perfume_id, brand, name, conc, gender, lang,
+                sizes, gtins, notes, families) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT (install, shop, brand, name, conc, gender, day) DO UPDATE SET
+              perfume_id=excluded.perfume_id, lang=excluded.lang, sizes=excluded.sizes,
+              gtins=excluded.gtins, notes=excluded.notes, families=excluded.families""",
+                    (install, day_of(now_ms()), f["shop"], f["perfume_id"], f["brand"], f["name"], f["conc"],
+                     f["gender"], f["lang"], json.dumps(f["sizes"]), json.dumps(f["gtins"]),
+                     json.dumps(f["notes"], ensure_ascii=False), json.dumps(f["families"], ensure_ascii=False)))
+
+
+_facts_stats = {"t": 0, "data": None}
+
+
+def facts_stats():
+    if time.monotonic() - _facts_stats["t"] < 60 and _facts_stats["data"]:
+        return _facts_stats["data"]
+    since = day_of(now_ms() - 30 * 86400_000)
+    with db() as con:
+        q = lambda sql, *a: con.execute(sql, a).fetchone()[0]
+        data = {
+            "rows": q("SELECT COUNT(*) FROM facts"),
+            "perfumes": q("SELECT COUNT(*) FROM (SELECT 1 FROM facts GROUP BY lower(brand), lower(name), conc)"),
+            # Installs of the last RETENTION_DAYS: older rows have a random 'old-…' value per row instead.
+            "installs": q("SELECT COUNT(DISTINCT install) FROM facts WHERE install NOT LIKE 'old-%'"),
+            "withNotes": q("""SELECT COUNT(*) FROM facts WHERE json_array_length(notes, '$.top')
+                + json_array_length(notes, '$.heart') + json_array_length(notes, '$.base') > 0"""),
+            "gtins": q("SELECT COUNT(DISTINCT value) FROM facts, json_each(facts.gtins)"),
+            "shops": {r[0]: r[1] for r in con.execute(
+                "SELECT shop, COUNT(*) FROM facts GROUP BY shop ORDER BY COUNT(*) DESC LIMIT 50")},
+            "perDay": {r[0]: r[1] for r in con.execute(
+                "SELECT day, COUNT(*) FROM facts WHERE day >= ? GROUP BY day ORDER BY day", (since,))},
+        }
+    _facts_stats.update(t=time.monotonic(), data=data)
+    return data
 
 
 def stats(pid, currency=None):
@@ -377,6 +517,10 @@ class Handler(BaseHTTPRequestHandler):
         u = urlsplit(self.path)
         if u.path == "/health":
             return self.reply(200, {"ok": True})
+        if u.path == "/facts/stats":
+            return self.reply(200, facts_stats(), [("Cache-Control", "public, max-age=60")])
+        if u.path.startswith("/catalog/"):
+            return self.catalog_get(u)
         m = re.fullmatch(r"/prices/([0-9]+)", u.path)
         if not m or not ID_RE.match(m.group(1)):
             return self.reply(404, {"error": "not found"})
@@ -384,6 +528,22 @@ class Handler(BaseHTTPRequestHandler):
         if cur is not None and cur not in EUR_PER:
             return self.reply(400, {"error": "unknown currency"})
         self.reply(200, stats(int(m.group(1)), cur), [("Cache-Control", "public, max-age=300")])
+
+    def catalog_get(self, u):
+        cache = [("Cache-Control", "public, max-age=300")]
+        if u.path == "/catalog/stats":
+            with db() as con:
+                return self.reply(200, catalog.stats(con), cache)
+        if u.path == "/catalog/search":
+            q = (parse_qs(u.query).get("q") or [""])[0][:100]
+            with db() as con:
+                return self.reply(200, {"results": catalog.search(con, q)}, cache)
+        m = re.fullmatch(r"/catalog/perfume/([0-9a-f]{12})", u.path)
+        if m:
+            with db() as con:
+                p = catalog.perfume(con, m.group(1))
+            return self.reply(200, p, cache) if p else self.reply(404, {"error": "not found"})
+        return self.reply(404, {"error": "not found"})
 
     def do_POST(self):
         self.close_connection = True   # never reuse a connection whose body we may not have read
@@ -393,9 +553,11 @@ class Handler(BaseHTTPRequestHandler):
             length = -1
         # Read (or drain) the body first, so an early error reply isn't lost to a connection reset.
         raw = self.rfile.read(min(max(length, 0), 65536))
-        if not (0 < length <= MAX_BODY):
-            return self.reply(413 if length > MAX_BODY else 400, {"error": "body must be 1-1024 bytes"})
-        if urlsplit(self.path).path != "/prices":
+        path = urlsplit(self.path).path
+        limit = MAX_FACTS_BODY if path == "/facts" else MAX_BODY
+        if not (0 < length <= limit):
+            return self.reply(413 if length > limit else 400, {"error": f"body must be 1-{limit} bytes"})
+        if path not in ("/prices", "/facts"):
             return self.reply(404, {"error": "not found"})
         if self.headers.get("Origin") and not origin_ok(self.headers.get("Origin")):
             return self.reply(403, {"error": "origin not allowed"})
@@ -405,6 +567,18 @@ class Handler(BaseHTTPRequestHandler):
         if not (self.headers.get("Content-Type") or "").startswith("application/json"):
             return self.reply(415, {"error": "use application/json"})
         key = hashlib.sha256(SALT + install.encode()).hexdigest()[:32]
+        if path == "/facts":
+            for k, lim in (("f:" + key, FACT_LIMITS), ("f:*", [GLOBAL_FACT_LIMIT])):
+                wait = LIMITER.allow(k, lim)
+                if wait:
+                    return self.reply(429, {"error": "too many reports"}, [("Retry-After", str(wait))])
+            try:
+                add_facts(key, validate_facts(json.loads(raw)))
+            except Invalid as e:
+                return self.reply(422, {"error": str(e)})
+            except ValueError:
+                return self.reply(400, {"error": "invalid JSON"})
+            return self.reply(201, {"ok": True})
         for k, lim in ((key, LIMITS), ("*", [GLOBAL_LIMIT])):
             wait = LIMITER.allow(k, lim)
             if wait:
@@ -427,6 +601,41 @@ def purge_loop():
             print("purge failed:", e, flush=True)
 
 
+def obf_loop():
+    """Import Open Beauty Facts once every OBF_EVERY seconds (default a week), then rebuild the catalog.
+    The last import time is stored, so restarts don't download it again; after a failed import (network
+    error, or an export without perfumes) it waits at least a day (obf.RETRY_AFTER). OBF_EVERY=0 turns it off."""
+    every = int(os.environ.get("OBF_EVERY", str(7 * 86400)))
+    if every <= 0:
+        return
+    time.sleep(int(os.environ.get("OBF_DELAY", "600")))   # let the API settle after a restart
+    while True:
+        try:
+            with db() as con:
+                due = catalog.obf.due(con, every)
+            if due:
+                with db() as con:
+                    lines, kept = catalog.obf.run(con)
+                    n = catalog.build(con)
+                print(f"open beauty facts: {kept} perfumes from {lines} products; catalog {n} perfumes", flush=True)
+        except Exception as e:  # keep serving; obf.due waits a day before the next download
+            print("open beauty facts import failed:", e, flush=True)
+        time.sleep(3600)
+
+
+def catalog_loop():
+    """Rebuild the open perfume database from the collected facts every CATALOG_EVERY seconds."""
+    every = int(os.environ.get("CATALOG_EVERY", "3600"))
+    while True:
+        try:
+            with db() as con:
+                n = catalog.build(con)
+            print(f"catalog rebuilt: {n} perfumes", flush=True)
+        except Exception as e:  # keep serving even if a rebuild fails
+            print("catalog rebuild failed:", e, flush=True)
+        time.sleep(every)
+
+
 def make_server(port=PORT):
     global SALT
     SALT = load_salt()
@@ -439,5 +648,7 @@ if __name__ == "__main__":
     srv = make_server()
     srv.daemon_threads = True
     threading.Thread(target=purge_loop, daemon=True).start()
+    threading.Thread(target=catalog_loop, daemon=True).start()
+    threading.Thread(target=obf_loop, daemon=True).start()
     print(f"fragrance-api listening on :{PORT}, {len(SHOPS)} shops", flush=True)
     srv.serve_forever()

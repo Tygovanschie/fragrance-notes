@@ -34,6 +34,18 @@ def report(pid=9828, ml=100, price=300, currency="EUR", shop="douglas.nl", insta
                 install or str(uuid.uuid4()), **kw)
 
 
+FACT = {"shop": "douglas.nl", "perfumeId": "64501", "brand": "Armani",
+        "name": "Emporio Armani Stronger With You Absolutely", "conc": "parfum", "gender": "m",
+        "sizes": [50, 100], "gtins": ["3614273642454"],
+        "notes": {"top": ["Rum", "Bergamot"], "heart": ["Ceder", "Davana"], "base": ["Lavendel", "Cederhout"]},
+        "families": ["Houtachtig", "Oriëntaal"], "lang": "nl"}
+
+
+def fact(install=None, **changes):
+    body = {**FACT, **changes}
+    return call("POST", "/facts", {k: v for k, v in body.items() if v is not ...}, install or str(uuid.uuid4()))
+
+
 class ApiTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -50,6 +62,10 @@ class ApiTest(unittest.TestCase):
         with app.db() as con:
             con.execute("DELETE FROM reports")
             con.execute("DELETE FROM daily_lows")
+            con.execute("DELETE FROM facts")
+            con.execute("DELETE FROM catalog")
+            con.execute("DELETE FROM catalog_keys")
+        app._facts_stats.update(t=0, data=None)
         app.LIMITER.hits.clear()
 
     def test_health(self):
@@ -274,6 +290,93 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(codes[:60], [201] * 60)
         self.assertEqual(codes[60], 429)
         self.assertEqual(report()[0], 201)   # other installs are not affected
+
+    def test_facts_stored_and_counted(self):
+        self.assertEqual(fact()[0], 201)
+        self.assertEqual(fact(shop="www.notino.nl", name="Stronger With You Absolutely", gender=None)[0], 201)
+        s, body, _ = call("GET", "/facts/stats")
+        self.assertEqual(s, 200)
+        self.assertEqual((body["rows"], body["perfumes"], body["withNotes"], body["gtins"]), (2, 2, 2, 1))
+        self.assertEqual(body["shops"], {"douglas.nl": 1, "notino.nl": 1})
+        with app.db() as con:
+            row = dict(con.execute("SELECT * FROM facts WHERE shop='douglas.nl'").fetchone())
+        self.assertEqual(json.loads(row["notes"])["top"], ["Rum", "Bergamot"])
+        self.assertNotIn("-", row["install"])        # salted hash, not the install id itself
+        self.assertEqual(fact(shop="douglas.de", notes={})[0], 201)   # a shop that lists no notes
+        app._facts_stats.update(t=0, data=None)
+        body = call("GET", "/facts/stats")[1]
+        self.assertEqual((body["rows"], body["withNotes"]), (3, 2))
+
+    def test_same_install_same_day_updates(self):
+        install = str(uuid.uuid4())
+        fact(install)
+        fact(install, notes={"top": ["Rum"], "heart": [], "base": []})
+        with app.db() as con:
+            rows = con.execute("SELECT notes FROM facts").fetchall()
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(json.loads(rows[0][0])["top"], ["Rum"])
+
+    def test_facts_validation(self):
+        self.assertEqual(fact(extra=1)[0], 422)
+        self.assertEqual(fact(brand="")[0], 422)
+        self.assertEqual(fact(name=...)[0], 422)
+        self.assertEqual(fact(shop="example.com")[0], 422)
+        self.assertEqual(fact(conc="perfume")[0], 422)
+        self.assertEqual(fact(gender="x")[0], 422)
+        self.assertEqual(fact(gtins=["12ab5678"])[0], 422)
+        self.assertEqual(fact(sizes=[50] * 9)[0], 422)
+        self.assertEqual(fact(notes={"top": ["x"] * 16})[0], 422)
+        self.assertEqual(fact(notes={"middle": []})[0], 422)
+        self.assertEqual(fact(name="x" * 121)[0], 422)
+        self.assertEqual(fact(perfumeId="abc")[0], 422)
+        self.assertEqual(fact(perfumeId=None, conc=None, gender=None, lang=None, gtins=[], families=[])[0], 201)
+        big = {**FACT, "families": ["x" * 40] * 6, "notes": {k: ["y" * 40] * 15 for k in ("top", "heart", "base")}}
+        self.assertEqual(call("POST", "/facts", big, str(uuid.uuid4()))[0], 201)   # the biggest valid body fits
+        raw = json.dumps(FACT).encode() + b" " * 4100
+        self.assertEqual(call("POST", "/facts", install=str(uuid.uuid4()), raw=raw)[0], 413)
+
+    def test_facts_origin_and_rate_limit(self):
+        self.assertEqual(call("POST", "/facts", FACT, str(uuid.uuid4()), headers={"Origin": "https://evil.example"})[0], 403)
+        install = str(uuid.uuid4())
+        codes = [fact(install, name=f"Perfume {i}")[0] for i in range(31)]
+        self.assertEqual(codes[-1], 429)
+        self.assertEqual(report()[0], 201)   # prices have their own limits
+
+    def test_old_facts_unlinked_from_installs(self):
+        install = str(uuid.uuid4())
+        fact(install)
+        fact(install, name="Another One")
+        old = app.day_of(app.now_ms() - (app.RETENTION_DAYS + 1) * 86400_000)
+        with app.db() as con:
+            con.execute("UPDATE facts SET day=?", (old,))
+        app.purge_old()
+        with app.db() as con:
+            hashes = [r[0] for r in con.execute("SELECT install FROM facts")]
+        self.assertEqual(len(hashes), 2)                     # the facts stay
+        self.assertTrue(all(h.startswith("old-") for h in hashes))
+        self.assertEqual(len(set(hashes)), 2)                 # and can't be linked to each other
+        app._facts_stats.update(t=0, data=None)
+        self.assertEqual(call("GET", "/facts/stats")[1]["installs"], 0)   # unlinked rows aren't installs
+        app.purge_old()
+        with app.db() as con:
+            self.assertEqual(sorted(r[0] for r in con.execute("SELECT install FROM facts")), sorted(hashes))
+
+    def test_catalog_endpoints(self):
+        fact()
+        fact(shop="notino.nl", brand="Giorgio Armani", name="Stronger With You Absolutely", gender=None,
+             notes={"top": ["Rum"], "heart": [], "base": []})
+        with app.db() as con:
+            self.assertEqual(app.catalog.build(con), 1)
+        s, body, _ = call("GET", "/catalog/search?q=stronger%20absolutely")
+        self.assertEqual(s, 200)
+        p = body["results"][0]
+        self.assertEqual((p["name"], p["shops"]), ("Stronger With You Absolutely", 2))
+        s, full, _ = call("GET", "/catalog/perfume/" + p["id"])
+        self.assertEqual(s, 200)
+        self.assertTrue(next(n for n in full["notes"]["top"] if n["name"] == "Rum")["confirmed"])
+        self.assertEqual(call("GET", "/catalog/perfume/000000000000")[0], 404)
+        s, st, _ = call("GET", "/catalog/stats")
+        self.assertEqual((st["perfumes"], st["withConfirmedNotes"], st["license"]), (1, 1, "ODbL-1.0"))
 
     def test_no_install_id_stored(self):
         me = str(uuid.uuid4())

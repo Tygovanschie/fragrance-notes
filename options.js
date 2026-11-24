@@ -131,6 +131,8 @@
   document.querySelectorAll('input[name=theme]').forEach(r => r.addEventListener('change', e => { S.theme = e.target.value; save(); }));
   $('sharePrices').checked = !!S.sharePrices;
   $('sharePrices').addEventListener('change', e => { S.sharePrices = e.target.checked; save(); });
+  $('shareFacts').checked = !!S.shareFacts;
+  $('shareFacts').addEventListener('change', e => { S.shareFacts = e.target.checked; save(); });
   $('themeAuto').checked = !!S.themeAuto;
   $('themeAuto').addEventListener('change', e => { S.themeAuto = e.target.checked; save(); });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => save());
@@ -209,7 +211,7 @@
 
   // Keep in sync if settings change elsewhere (e.g. the toolbar menu).
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.settings) FN.loadSettings().then(s => { const langChanged = s.lang !== S.lang; S = s; $('sharePrices').checked = !!S.sharePrices; if (langChanged) translatePage(); updatePreview(); });
+    if (area === 'sync' && changes.settings) FN.loadSettings().then(s => { const langChanged = s.lang !== S.lang; S = s; $('sharePrices').checked = !!S.sharePrices; $('shareFacts').checked = !!S.shareFacts; if (langChanged) translatePage(); updatePreview(); });
     if (area === 'sync' && changes.customShops) { customShops = changes.customShops.newValue || []; renderCustomShops(); }
   });
 

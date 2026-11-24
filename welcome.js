@@ -19,6 +19,14 @@
     await chrome.storage.sync.set({ settings: S });
   });
 
+  const facts = document.getElementById('shareFacts');
+  facts.checked = !!S.shareFacts;
+  facts.addEventListener('change', async () => {
+    S = await FN.loadSettings();
+    S.shareFacts = facts.checked;
+    await chrome.storage.sync.set({ settings: S });
+  });
+
   // Firefox can install the extension without access to the sites (or the user can take it away later).
   // Then ask here; in Chrome and Edge this is granted at install, so the card stays hidden.
   // The check uses the Fragrantica/Bing permissions: Firefox doesn't report shop-site access granted through

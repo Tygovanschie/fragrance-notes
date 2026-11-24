@@ -58,6 +58,8 @@
   @media (prefers-reduced-motion: reduce) { .sw i, .sw i::before { transition:none; } }
   [hidden] { display:none !important; }
   .perm { margin-bottom:24px; }
+  .share.facts { margin-top:18px; }
+  .share.facts b { margin-top:0; }
   .perm .btn { flex:none; }
   .perm.ok h2 { display:none; }
 </style>
@@ -100,6 +102,14 @@
       <p data-i18n="shareD"></p>
     </div>
     <label class="sw"><input type="checkbox" id="sharePrices"><i></i></label>
+  </section>
+
+  <section class="share facts">
+    <div class="l">
+      <b data-i18n="factsT"></b>
+      <p data-i18n="factsD"></p>
+    </div>
+    <label class="sw"><input type="checkbox" id="shareFacts"><i></i></label>
   </section>
 
   <div class="end">

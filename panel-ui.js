@@ -34,8 +34,8 @@
     .head { display:flex; align-items:center; gap:8px; padding:9px 10px 9px 14px;
       background:var(--head); color:var(--headFg); font-size:13px; font-weight:600; flex:none; }
     .head .t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:var(--display); font-weight:700; font-size:14px; }
-    .gear, .x { background:none; border:0; color:inherit; opacity:.7; cursor:pointer; padding:3px; border-radius:6px; line-height:0; }
-    .gear:hover, .x:hover { opacity:1; background:rgba(127,127,127,.18); }
+    .gear, .x, .hfav { background:none; border:0; color:inherit; opacity:.7; cursor:pointer; padding:3px; border-radius:6px; line-height:0; }
+    .gear:hover, .x:hover, .hfav:hover { opacity:1; background:rgba(127,127,127,.18); }
 
     form { display:flex; gap:6px; padding:10px 16px; flex:none; background:var(--card); }
     input { flex:1; min-width:0; padding:7px 12px; border:1.5px solid var(--inputBorder); border-radius:999px; font-size:12.5px; color:var(--fg); background:var(--input); }
@@ -126,6 +126,13 @@
     .top-info .photo { width:58px; height:72px; flex:none; border-radius:8px; background:#fff; object-fit:contain; padding:3px; border:1px solid var(--border); }
     .top-info .ti { min-width:0; flex:1; }
     .top-info h2 { overflow-wrap:anywhere; text-wrap:balance; }
+    .fav { flex:none; background:none; border:0; padding:4px; margin:-2px -4px 0 0; border-radius:999px; color:var(--muted); cursor:pointer; line-height:0; }
+    .fav:hover { color:var(--accent); background:var(--chip); }
+    .fav.on { color:var(--accent); }
+    .fav.on svg { fill:currentColor; }
+    .fav.pop svg { animation:favPop .25s ease-out; }
+    @keyframes favPop { 50% { transform:scale(1.25); } }
+    @media (prefers-reduced-motion: reduce) { .fav.pop svg { animation:none; } }
 
     .sims { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; }
     .simc { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:12px; background:var(--card); color:var(--fg); min-width:0; }
@@ -313,6 +320,7 @@
   `;
 
   const flower = size => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true"><g fill="#f58fb8">${[0, 72, 144, 216, 288].map(r => `<ellipse cx="12" cy="6.6" rx="3.9" ry="5.2" transform="rotate(${r} 12 12)"/>`).join('')}</g><circle cx="12" cy="12" r="3" fill="#ffd36e"/></svg>`;
+  const heartIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.4 8 3.4 4.5 7 4.5c2.1 0 3.6 1.2 5 3 1.4-1.8 2.9-3 5-3 3.6 0 5.6 3.5 4.3 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>`;
   const closeIcon = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>`;
   const gearIcon = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.2.6.77 1 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 
@@ -595,6 +603,7 @@
               on.meta && !summary && d.rating && `★ ${esc(d.rating)} (${fmt(+d.ratingCount || 0)})`
             ].filter(Boolean).join('<span>·</span>')}${dealLabel}</div>` : ''}
           </div>
+          ${opts.fav ? `<button class="fav${opts.fav.on ? ' on' : ''}" type="button" aria-pressed="${opts.fav.on}" title="${esc(FN.t(S.lang, opts.fav.on ? 'faved' : 'fav'))}" aria-label="${esc(FN.t(S.lang, 'fav'))}">${heartIcon}</button>` : ''}
         </div>
         ${summary ? `<div class="tiles">${summary}</div>` : ''}
       </div>
@@ -623,7 +632,7 @@
   // Panel markup (header, search form, body). Used in-page and in the preview.
   const panelHtml = `
     <div class="rz"></div>
-    <div class="head">${flower(16)}<span class="t">Fragrance notes</span><button class="srch" type="button" title="Search">${searchIcon}</button><button class="gear" title="Settings">${gearIcon}</button><button class="x" type="button" title="Close" aria-label="Close">${closeIcon}</button></div>
+    <div class="head">${flower(16)}<span class="t">Fragrance notes</span><button class="hfav" type="button" title="Favourites">${heartIcon.replace('width="20" height="20"', 'width="15" height="15"')}</button><button class="srch" type="button" title="Search">${searchIcon}</button><button class="gear" title="Settings">${gearIcon}</button><button class="x" type="button" title="Close" aria-label="Close">${closeIcon}</button></div>
     <form><input name="q" placeholder="Brand + perfume, or a Fragrantica URL"><button>Search</button></form>
     <div class="body"></div>`;
 
@@ -635,6 +644,7 @@
     set('form input', el => { el.placeholder = FN.t(lang, 'placeholder'); });
     set('form button', el => { el.textContent = FN.t(lang, 'search'); });
     set('.srch', el => { el.title = FN.t(lang, 'search'); });
+    set('.hfav', el => { el.title = FN.t(lang, 'favs'); el.setAttribute('aria-label', el.title); });
     set('.x', el => { el.title = FN.t(lang, 'close'); el.setAttribute('aria-label', el.title); });
   }
 
