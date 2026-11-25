@@ -229,6 +229,40 @@ class PagesTest(unittest.TestCase):
         self.assertIn("€68.95", get("/database")[1])
         self.assertNotIn('class="szpick"', body)   # one size: nothing to pick
 
+    def test_prices_per_country(self):
+        import regions
+        self.assertEqual(regions.country_of("douglas.nl", "EUR"), "NL")
+        self.assertEqual(regions.country_of("tomfordbeauty.com", "USD"), "US")
+        self.assertEqual(regions.country_of("tomfordbeauty.com", "EUR"), "EU")      # euros, country unknown
+        self.assertEqual(regions.country_of("notino.co.uk", "GBP"), "GB")
+        self.assertEqual(regions.country_of("ulta.com", "USD"), "US")
+        self.assertEqual(regions.country_of("douglas.de", "USD"), "US")              # the currency wins
+        now = int(time.time() * 1000)
+        with app.db() as con:
+            for shop, cur, price in (("douglas.nl", "EUR", 79.0), ("notino.nl", "EUR", 75.5), ("tomfordbeauty.com", "USD", 120.0),
+                                     ("ulta.com", "USD", 115.0)):
+                con.execute("INSERT INTO reports VALUES (?,?,?,?,?,?,?,?)", (52802, 100, price, cur, price / 100, shop, "c-" + shop, now))
+            con.commit()
+        page = f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely"
+        _, nl, _ = get(page + "?vc=NL")
+        self.assertIn("€75.50", nl)
+        self.assertNotIn("$", nl.split('id="prices"')[1].split("</section>")[0])     # never dollars for a Dutch visitor
+        _, us, _ = get(page + "?vc=US")
+        self.assertIn("$115.00", us)
+        self.assertNotIn("€75.50", us)
+        _, de, _ = get(page + "?vc=DE")                                              # no German shop: the eurozone
+        self.assertIn("€75.50", de)
+        self.assertIn("No shop in \U0001F1E9\U0001F1EA DE yet", de)
+        _, jp, _ = get(page + "?vc=JP")                                              # nothing in yen: say so
+        self.assertIn("No prices for \U0001F1EF\U0001F1F5 JP yet", jp)
+        self.assertNotIn("$115.00", jp)
+        _, picked, _ = get(page + "?vc=NL&region=US")                                # the visitor's own choice wins
+        self.assertIn("$115.00", picked)
+        self.assertIn('href="' + page + '?region=US#prices" aria-current="true"', picked)
+        _, cards, _ = get("/database?vc=NL")
+        self.assertIn("€75.50", cards)
+        self.assertNotIn("$115.00", cards)
+
     def test_price_size_picker(self):
         now = int(time.time() * 1000)
         with app.db() as con:

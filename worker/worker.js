@@ -21,8 +21,18 @@ const PAGES = new RegExp(
 const STALE_DAYS = 14;
 const FROM = "alerts@fragrancenotes.app";
 
-function staleKey(url) {
-  return new Request(`https://stale.fragrancenotes.app${url.pathname}${url.search}`);
+function staleKey(url, country = "") {
+  const extra = country ? (url.search ? "&" : "?") + "vc=" + country : "";
+  return new Request(`https://stale.fragrancenotes.app${url.pathname}${url.search}${extra}`);
+}
+
+// The perfume pages show prices for the visitor's country: Cloudflare's country of the request goes to the server as
+// ?vc=NL, so Cloudflare's cache (keyed by that URL) and the saved copies keep one version per country. Photos, the
+// stylesheet and the sitemap are the same for everyone. Nothing about the visitor is stored.
+function visitorCountry(request, url) {
+  if (/^\/(photo|assets)\//.test(url.pathname) || url.pathname === "/sitemap.xml") return "";
+  const c = request.cf && request.cf.country;
+  return typeof c === "string" && /^[A-Z]{2}$/.test(c) && c !== "XX" && c !== "T1" ? c : "";
 }
 
 const DOWN_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -63,9 +73,12 @@ async function fromServer(request, url, ctx) {
   // personal message: both straight from the server with only that cookie, never cached or saved.
   const voter = (request.headers.get("Cookie") || "").split(";").map(c => c.trim()).find(c => /^fn_voter=[0-9a-f]{32}$/.test(c));
   const fresh = url.searchParams.has("vote") || !!voter;
+  const country = visitorCountry(request, url);
+  const target = new URL(API + url.pathname + url.search);
+  if (country) target.searchParams.set("vc", country);
   let upstream;
   try {
-    upstream = await fetch(API + url.pathname + url.search, {
+    upstream = await fetch(target.toString(), {
       method: request.method,
       headers: { Accept: request.headers.get("Accept") || "*/*", ...(voter ? { Cookie: voter } : {}) },
       redirect: "manual",
@@ -77,7 +90,7 @@ async function fromServer(request, url, ctx) {
   }
   // 5xx, or Cloudflare's own errors when the tunnel is down (52x, 530): use the last good copy.
   if (!upstream || upstream.status >= 500) {
-    const old = await cache.match(staleKey(url));
+    const old = await cache.match(staleKey(url, country));
     if (old) {
       const h = new Headers(old.headers);
       h.set("Cache-Control", "no-store");
@@ -98,7 +111,7 @@ async function fromServer(request, url, ctx) {
     const copy = response.clone();
     const h = new Headers(copy.headers);
     h.set("Cache-Control", `public, max-age=${STALE_DAYS * 86400}`);
-    ctx.waitUntil(cache.put(staleKey(url), new Response(copy.body, { status: 200, headers: h })));
+    ctx.waitUntil(cache.put(staleKey(url, country), new Response(copy.body, { status: 200, headers: h })));
   }
   return response;
 }

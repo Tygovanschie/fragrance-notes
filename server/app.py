@@ -33,6 +33,7 @@ import time
 
 import catalog
 import maintenance
+import regions
 import pages
 import notephotos
 import votes
@@ -430,24 +431,45 @@ def facts_stats():
     return data
 
 
-def page_prices(fragrantica_id):
-    """Price stats for a perfume page (pages.py), in the most-reported currency, plus "history": per size the
-    lowest price of each day in the window (all shops together), for the price chart."""
+def page_prices(fragrantica_id, visitor=None, region=None):
+    """Price stats for a perfume page (pages.py) plus "history": per size the lowest price of each day in the window
+    (all shown shops together), for the price chart. Only the prices for one country (regions.pick: the visitor's,
+    the one picked in the menu, or the eurozone), never mixed currencies; "region" says which, and where else there
+    are prices. Without a visitor country (tests, the API): the most-reported currency, as before."""
     pid = int(fragrantica_id)
-    out = stats(pid)
+    since = now_ms() - WINDOW_DAYS * 86400_000
+    with db() as con:
+        available = {}
+        for shop, cur in con.execute("SELECT DISTINCT shop, currency FROM reports WHERE perfume_id=? AND t>=?", (pid, since)):
+            available.setdefault(regions.country_of(shop, cur), cur)
+    countries, kind = regions.pick(available, visitor, region)
+    region_info = {"kind": kind, "want": (region or visitor or "").upper(), "shown": sorted(countries or available),
+                   "available": available}
+    if kind == "none":
+        return {"perfumeId": str(pid), "currency": None, "count": 0, "sizes": [], "history": {}, "region": region_info}
+    cur = available[next(iter(countries))] if countries else None
+    out = stats(pid, cur, countries)
     cur = out.get("currency")
+    region_info["shown"] = sorted(countries) if countries else sorted(c for c, x in available.items() if x == cur)
     history = defaultdict(list)
     if cur:
+        lows = defaultdict(lambda: None)
         with db() as con:
-            for ml, day, low in con.execute(
-                    "SELECT ml, day, MIN(price) FROM daily_lows WHERE perfume_id=? AND currency=? AND day>=? "
-                    "GROUP BY ml, day ORDER BY ml, day", (pid, cur, day_of(now_ms() - WINDOW_DAYS * 86400_000))):
-                history[ml].append((day, round(low, 2)))
+            for ml, day, shop, low in con.execute(
+                    "SELECT ml, day, shop, MIN(price) FROM daily_lows WHERE perfume_id=? AND currency=? AND day>=? "
+                    "GROUP BY ml, day, shop", (pid, cur, day_of(since))):
+                if countries is None or regions.country_of(shop, cur) in countries:
+                    k = (ml, day)
+                    lows[k] = low if lows[k] is None else min(lows[k], low)
+        for (ml, day) in sorted(lows):
+            history[ml].append((day, round(lows[(ml, day)], 2)))
     out["history"] = dict(history)
+    out["region"] = region_info
     return out
 
 
-def stats(pid, currency=None):
+def stats(pid, currency=None, countries=None):
+    """countries: only prices for these countries (regions.country_of), e.g. {"NL"}; None: all of the currency."""
     since = now_ms() - WINDOW_DAYS * 86400_000
     with db() as con:
         curs = [r[0] for r in con.execute(
@@ -457,11 +479,14 @@ def stats(pid, currency=None):
         all_rows = con.execute(
             "SELECT ml, price, per_ml, shop, install, t FROM reports WHERE perfume_id=? AND currency=? AND t>=?",
             (pid, cur, since)).fetchall() if cur else []
+        if countries is not None:
+            all_rows = [r for r in all_rows if regions.country_of(r["shop"], cur) in countries]
         history = defaultdict(list)   # (ml, shop) -> daily lowest prices in the window
         for ml, shop, price in (con.execute(
                 "SELECT ml, shop, price FROM daily_lows WHERE perfume_id=? AND currency=? AND day>=?",
                 (pid, cur, day_of(since))) if cur else []):
-            history[(ml, shop)].append(price)
+            if countries is None or regions.country_of(shop, cur) in countries:
+                history[(ml, shop)].append(price)
     out = {"perfumeId": str(pid), "currency": cur, "currencies": curs, "days": WINDOW_DAYS, "count": len(all_rows)}
     if not all_rows:
         return out
@@ -679,7 +704,13 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, pages.sitemap(con), "application/xml; charset=utf-8", "public, max-age=3600")
             # Someone who voted before (fn_voter cookie) gets the page with their own vote filled in: never cached.
             token = self.voter_token()
-            code, body, location = pages.route(con, path, u.query, page_prices,
+            # Prices for the visitor's country: the Worker adds Cloudflare's country of the request as ?vc=NL (and
+            # caches a copy per country); ?region= is the visitor's own choice in the price menu. Neither is stored.
+            q = parse_qs(u.query)
+            code_re = re.compile(r"[A-Z]{2}|" + regions.ZONE)
+            vc = next((v for v in q.get("vc", []) if code_re.fullmatch(v)), None)
+            region = next((v for v in q.get("region", []) if code_re.fullmatch(v)), None)
+            code, body, location = pages.route(con, path, u.query, lambda fid: page_prices(fid, vc, region),
                                                votes.voter_hash(SALT, token) if token else None)
         if location:
             return self.send(301, "", html_t, headers=[("Location", location)])

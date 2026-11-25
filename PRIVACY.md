@@ -45,6 +45,10 @@ While **Help other perfume lovers** is on, on a perfume product page of a *built
 - **Connection:** the same as for price sharing (through Cloudflare, see above).
 - **Turning the setting off** stops this too (see above).
 
+## Prices for your country on fragrancenotes.app (website only)
+
+The perfume pages show shop prices for the country you visit from, so you only see prices you can actually buy at. That country comes from Cloudflare, which already knows it from the connection; the site passes only the two-letter country code (for example NL) to the server to pick the prices, and neither stores it nor links it to you. You can pick another country in the price menu.
+
 ## Voting on fragrancenotes.app (website only)
 
 The perfume pages on fragrancenotes.app let you rate a perfume (stars, longevity, sillage, value for money and who it is for). Voting is optional and needs no account.

@@ -33,6 +33,7 @@ import catalog
 import obf
 import accords
 import maintenance
+import regions
 import notephotos
 import votes
 
@@ -693,7 +694,7 @@ details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.si
 .dbhero h1{font-size:clamp(2.2rem,4.4vw,3.6rem);max-width:none;margin:0}.dbhero .lead{font-size:1.0625rem;margin:0 0 6px}
 section.part.first{padding-top:44px}.parthead{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .parthead h2{margin:0}.parthead h2 small{font:600 1rem/1 var(--text);color:var(--ink-soft);margin-left:6px;vertical-align:middle}
-section.part.first .parthead{margin-bottom:22px}.showsel ul{min-width:150px}
+section.part.first .parthead{margin-bottom:22px}.showsel ul,.regsel ul{min-width:150px}#prices .parthead{margin-bottom:6px}#prices .parthead h2{margin:0}
 .pager{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin:30px 0 0}
 .pager a,.pager span{min-width:40px;height:40px;padding:0 12px;display:inline-grid;place-items:center;border-radius:999px;font:600 .9375rem/1 var(--text);text-decoration:none}
 .pager a{background:var(--white);border:1.5px solid var(--line);color:var(--ink)}.pager a:hover{border-color:var(--mauve);color:var(--plum)}
@@ -791,6 +792,37 @@ def img_tag(con, p, cls="", size=400):
     if not ph:
         return ""
     return f'<img{f" class={chr(34)}{cls}{chr(34)}" if cls else ""} src="/photo/{e(ph[0])}" alt="" width="{size}" height="{size}" loading="lazy">'
+
+
+# The country menu on the price card (regions.py): (summary word, eurozone, "no prices for X yet", "fallback to the
+# eurozone" note).
+REGION_T = {
+    "en": ("Prices for", "Eurozone", "No prices for {where} yet. Prices are known for:", "No shop in {where} yet: prices from other eurozone shops."),
+    "nl": ("Prijzen voor", "Eurozone", "Nog geen prijzen voor {where}. Wel bekend voor:", "Nog geen winkel in {where}: prijzen van andere winkels in de eurozone."),
+    "de": ("Preise für", "Eurozone", "Noch keine Preise für {where}. Bekannt für:", "Noch kein Shop in {where}: Preise anderer Shops in der Eurozone."),
+    "fr": ("Prix pour", "Zone euro", "Pas encore de prix pour {where}. Prix connus pour :", "Pas encore de boutique en {where} : prix d’autres boutiques de la zone euro."),
+    "es": ("Precios para", "Eurozona", "Aún no hay precios para {where}. Hay precios para:", "Aún no hay tiendas en {where}: precios de otras tiendas de la eurozona."),
+    "it": ("Prezzi per", "Eurozona", "Ancora nessun prezzo per {where}. Prezzi noti per:", "Ancora nessun negozio in {where}: prezzi di altri negozi dell’eurozona."),
+    "pt": ("Preços para", "Zona euro", "Ainda não há preços para {where}. Há preços para:", "Ainda não há lojas em {where}: preços de outras lojas da zona euro."),
+    "pl": ("Ceny dla", "Strefa euro", "Brak jeszcze cen dla {where}. Ceny są znane dla:", "Brak jeszcze sklepu w {where}: ceny z innych sklepów strefy euro."),
+}
+
+
+def region_name(code, lang):
+    return f"{regions.flag(code)} {REGION_T[lang][1] if code == regions.ZONE else code}"
+
+
+def region_menu(info, lang, path):
+    """Links to the same page with the prices of another country (or the whole eurozone): no script needed."""
+    avail = info.get("available") or {}
+    if not avail:
+        return ""
+    opts = sorted(avail) + ([regions.ZONE] if sum(1 for c in avail.values() if c == "EUR") >= 2 else [])
+    now = regions.ZONE if info.get("kind") == "zone" else (info["shown"][0] if len(info.get("shown") or []) == 1 else None)
+    label = region_name(now, lang) if now else REGION_T[lang][0]
+    return (f'<details class="langsel regsel"><summary aria-label="{REGION_T[lang][0]}">{label}</summary><ul>'
+            + "".join(f'<li><a href="{P(lang, path)}?region={c}#prices"{" aria-current=" + chr(34) + "true" + chr(34) if c == now else ""}>'
+                      f'{region_name(c, lang)}</a></li>' for c in opts) + "</ul></details>")
 
 
 def best_prices(stats):
@@ -1028,13 +1060,23 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
         picker = (f'<div class="szpick" role="group" aria-label="{t["size"]}">'
                   + "".join(f'<label for="{k}-{i}">{ml(r[0])}</label>' for i, r in enumerate(rows)) + "</div>") if len(rows) > 1 else ""
         shops_n = len({s for r in rows for s in r[5]})
-        price_html = f"""<section class="card" aria-labelledby="price-h"><h2 id="price-h">{t["prices"]}</h2>
-<p class="sub">{t["pricesSub"].format(days=st.get("days", 30), shops=t["shops"](shops_n))}</p>
+        info = st.get("region") or {}
+        zone_note = (f'<p class="muted">{REGION_T[lang][3].format(where=region_name(info["want"], lang))}</p>'
+                     if info.get("kind") == "zone" and info.get("want") not in ("", regions.ZONE) else "")
+        price_html = f"""<section class="card" id="prices" aria-labelledby="price-h"><div class="parthead"><h2 id="price-h">{t["prices"]}</h2>{region_menu(info, lang, perfume_path(p))}</div>
+<p class="sub">{t["pricesSub"].format(days=st.get("days", 30), shops=t["shops"](shops_n))}</p>{zone_note}
 <table><thead><tr><th>{t["size"]}</th><th class="num">{t["lowest"]}</th><th>{t["at"]}</th><th class="num hide-sm">{t["perMl"]}</th><th class="num hide-sm">{t["range"]}</th></tr></thead>
 <tbody>{trs}</tbody></table>
 <div class="sizes">{inputs}{picker}{"".join(panels)}</div></section>"""
         offers = {"@type": "AggregateOffer", "priceCurrency": cur, "lowPrice": f"{min(r[1] for r in rows):.2f}",
                   "highPrice": f"{max(r[3] for r in rows):.2f}", "offerCount": shops_n}
+    elif st and (st.get("region") or {}).get("kind") == "none" and st["region"].get("available"):
+        # Prices exist, but not for the visitor's country: say so and offer the others (never show them unasked).
+        info = st["region"]
+        price_html = (f'<section class="card" id="prices" aria-labelledby="price-h"><div class="parthead"><h2 id="price-h">{t["prices"]}</h2>'
+                      f'{region_menu(info, lang, perfume_path(p))}</div><p class="sub">'
+                      f'{REGION_T[lang][2].format(where=region_name(info["want"], lang))} '
+                      f'{", ".join(region_name(c, lang) for c in sorted(info["available"]))}</p></section>')
 
     fams = [note_name(f["key"], lang) if f["key"] in catalog.NOTE_EN else f["name"] for f in p.get("families", [])
             if f["confirmed"] or f["key"] in catalog.NOTE_EN]
