@@ -58,10 +58,10 @@ def _n(one, many):
 
 T = {
     "en": {
-        "langName": "English", "getExt": "Get the extension", "back": "← Back to the database",
+        "langName": "English", "getExt": "Get the extension", "back": "← All perfumes",
         "notePhotos": "Note photos: Wikimedia Commons",
         "accordsH": "Main accords", "accordsSub": "Worked out from the notes and fragrance families the shops give, not voted.",
-        "theDb": "The database", "allNotes": "All notes", "privacy": "Privacy", "source": "Source",
+        "theDb": "All perfumes", "allNotes": "All notes", "privacy": "Privacy", "source": "Source",
         "footData": 'From the open Fragrance Notes perfume database: what perfume shops show on their own pages, shared '
                     'anonymously by users, and <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Available under the '
                     '<a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Photos from Open Beauty Facts (CC BY-SA).',
@@ -99,8 +99,8 @@ T = {
         "brandMore": "{n} more perfumes by {brand} are in the database, but don't have enough confirmed notes for a page yet.",
         "brandTitle": "{brand} perfumes – notes and prices | Fragrance Notes",
         "from": "{size} from",
-        "dbH1": "An open perfume database, built while you shop",
-        "dbLead": "Every perfume shop describes its perfumes a little differently. When people who use Fragrance Notes visit a shop page, it can share what that shop says. Where shops agree, a note gets confirmed. Everything is free to use.",
+        "dbH1": "Find your next perfume",
+        "dbLead": "Notes, accords, prices and what people who wear them think. From the shops that sell them and from the brands themselves.",
         "searchPh": "Search a perfume, brand or note", "search": "Search",
         "statPerfumes": "perfumes", "statBrands": "brands", "statConfirmed": "with confirmed notes", "statShops": "shops with prices",
         "counted": "Counted {day}. It grows with every shop page people visit.",
@@ -109,7 +109,7 @@ T = {
         "step1T": "You visit a perfume page", "step1D": "On any of 300+ supported shops, as you normally would. Sharing is off until you turn on “Help other perfume lovers”.",
         "step2T": "The shop's facts are shared", "step2D": "The notes, family, sizes, barcode and price that the shop itself shows. Never who you are or what you buy.",
         "step3T": "Shops agree, it's confirmed", "step3D": 'Once two different shops list the same note, it gets <span class="chip">confirmed</span> and shows up in the extension and on this site.',
-        "withConfirmed": "Perfumes with confirmed notes", "pageRule": "A perfume gets its own page once at least {n} of its notes are confirmed.",
+        "withConfirmed": "All perfumes", "pageRule": "A perfume gets its own page once at least {n} of its notes are confirmed.",
         "nextT": "Yours could be next", "nextD": "Visit a perfume at two shops with sharing on.",
         "brandsH": "Brands", "notesH": "Most confirmed notes",
         "openH": "Open data",
@@ -117,8 +117,8 @@ T = {
         "openD2": 'It also includes perfume data from <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>.',
         "apiSearch": "Search", "apiOne": "One perfume", "apiStats": "Totals", "growBtn": "Help it grow: get the extension",
         "dsName": "Fragrance Notes open perfume database",
-        "dbTitle": "The open perfume database | Fragrance Notes",
-        "dbDesc": "An open perfume database built by shoppers: notes confirmed by several shops, sizes, barcodes and anonymous prices. Free under the Open Database License.",
+        "dbTitle": "Perfumes: notes, accords and prices | Fragrance Notes",
+        "dbDesc": "Find perfumes by name, brand or note: notes, accords, prices across shops and what people who wear them think.",
         "noMatch": "No perfume page matches that yet.",
         "moreMatch": _n("{n} more perfume in the database matches, but doesn't have enough confirmed notes for a page yet.",
                         "{n} more perfumes in the database match, but don't have enough confirmed notes for a page yet."),
@@ -142,10 +142,10 @@ T = {
         "nfD": "This perfume or note has no page yet. A perfume gets one once at least {n} of its notes are confirmed by two different shops.",
     },
     "nl": {
-        "langName": "Nederlands", "getExt": "Installeer de extensie", "back": "← Terug naar de database",
+        "langName": "Nederlands", "getExt": "Installeer de extensie", "back": "← Alle parfums",
         "notePhotos": "Foto’s van noten: Wikimedia Commons",
         "accordsH": "Hoofdaccoorden", "accordsSub": "Afgeleid uit de geurnoten en geurfamilies die de winkels noemen, niet gestemd.",
-        "theDb": "De database", "allNotes": "Alle geurnoten", "privacy": "Privacy", "source": "Broncode",
+        "theDb": "Alle parfums", "allNotes": "Alle geurnoten", "privacy": "Privacy", "source": "Broncode",
         "footData": 'Uit de open parfumdatabase van Fragrance Notes: wat parfumwinkels op hun eigen pagina\'s laten zien, anoniem '
                     'gedeeld door gebruikers, en <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Beschikbaar onder de '
                     '<a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Foto\'s van Open Beauty Facts (CC BY-SA).',
@@ -183,8 +183,8 @@ T = {
         "brandMore": "Er staan nog {n} parfums van {brand} in de database, maar die hebben nog te weinig bevestigde noten voor een eigen pagina.",
         "brandTitle": "Parfums van {brand} – geurnoten en prijzen | Fragrance Notes",
         "from": "{size} vanaf",
-        "dbH1": "Een open parfumdatabase, gebouwd terwijl je shopt",
-        "dbLead": "Elke parfumwinkel beschrijft zijn parfums net iets anders. Als mensen met Fragrance Notes een winkelpagina bezoeken, kan de extensie delen wat die winkel zegt. Waar winkels het eens zijn, wordt een geurnoot bevestigd. Alles is vrij te gebruiken.",
+        "dbH1": "Vind je volgende parfum",
+        "dbLead": "Geurnoten, accoorden, prijzen en wat dragers ervan vinden. Van de winkels die ze verkopen en van de merken zelf.",
         "searchPh": "Zoek een parfum, merk of geurnoot", "search": "Zoeken",
         "statPerfumes": "parfums", "statBrands": "merken", "statConfirmed": "met bevestigde noten", "statShops": "winkels met prijzen",
         "counted": "Geteld op {day}. Hij groeit met elke winkelpagina die mensen bezoeken.",
@@ -193,7 +193,7 @@ T = {
         "step1T": "Je bezoekt een parfumpagina", "step1D": "Bij een van de 300+ ondersteunde winkels, zoals je normaal doet. Delen staat uit tot je “Help andere parfumliefhebbers” aanzet.",
         "step2T": "De gegevens van de winkel worden gedeeld", "step2D": "De geurnoten, familie, inhoud, barcode en prijs die de winkel zelf laat zien. Nooit wie je bent of wat je koopt.",
         "step3T": "Winkels zijn het eens: bevestigd", "step3D": 'Zodra twee verschillende winkels dezelfde noot noemen, wordt hij <span class="chip">bevestigd</span> en verschijnt hij in de extensie en op deze site.',
-        "withConfirmed": "Parfums met bevestigde noten", "pageRule": "Een parfum krijgt een eigen pagina zodra minstens {n} van zijn noten bevestigd zijn.",
+        "withConfirmed": "Alle parfums", "pageRule": "Een parfum krijgt een eigen pagina zodra minstens {n} van zijn noten bevestigd zijn.",
         "nextT": "Jouw parfum kan de volgende zijn", "nextD": "Bekijk een parfum bij twee winkels met delen aan.",
         "brandsH": "Merken", "notesH": "Meest bevestigde noten",
         "openH": "Open data",
@@ -201,8 +201,8 @@ T = {
         "openD2": 'Hij bevat ook parfumgegevens van <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>.',
         "apiSearch": "Zoeken", "apiOne": "Eén parfum", "apiStats": "Totalen", "growBtn": "Help hem groeien: installeer de extensie",
         "dsName": "Open parfumdatabase van Fragrance Notes",
-        "dbTitle": "De open parfumdatabase | Fragrance Notes",
-        "dbDesc": "Een open parfumdatabase, gebouwd door shoppers: geurnoten bevestigd door meerdere winkels, inhoud, barcodes en anonieme prijzen. Gratis onder de Open Database License.",
+        "dbTitle": "Parfums: geurnoten, accoorden en prijzen | Fragrance Notes",
+        "dbDesc": "Zoek parfums op naam, merk of geurnoot: geurnoten, accoorden, prijzen bij verschillende winkels en wat dragers ervan vinden.",
         "noMatch": "Nog geen parfumpagina die daarop past.",
         "moreMatch": _n("Er past nog {n} parfum in de database, maar die heeft te weinig bevestigde noten voor een pagina.",
                         "Er passen nog {n} parfums in de database, maar die hebben te weinig bevestigde noten voor een pagina."),
@@ -586,7 +586,7 @@ dl.facts dt{font:600 .8125rem/1.2 var(--text);color:var(--ink-soft);text-transfo
 .stats{display:grid;grid-template-columns:repeat(4,1fr);background:var(--white);border:1px solid var(--line);border-radius:22px;overflow:hidden}
 .stats div{padding:26px 26px 24px;border-left:1px solid var(--line)}.stats div:first-child{border-left:0}
 .stats b{display:block;font:800 clamp(2rem,4vw,2.8rem)/1 var(--display);letter-spacing:-.03em}
-.stats span{display:block;margin-top:8px;color:var(--ink-soft);font-size:.9375rem;line-height:1.35}.stats .hl b{color:var(--ok)}
+.stats span{display:block;margin-top:8px;color:var(--ink-soft);font-size:.9375rem;line-height:1.35}.stats .hl b{color:var(--plum)}
 .asof{margin:12px 0 0;color:var(--ink-soft);font-size:.875rem}
 section.part{padding:80px 0 0}section.part h2{font-size:clamp(1.8rem,3.4vw,2.5rem);margin-bottom:14px}
 .intro{margin:0 0 32px;color:var(--ink-soft);max-width:38em}
@@ -689,10 +689,19 @@ details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.si
 .sizes{margin-top:24px}.szpick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .szpick label{padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--white);font:600 .875rem/1 var(--text);color:var(--ink-soft);cursor:pointer}
 .szpick label:hover{border-color:var(--mauve);color:var(--ink)}.szp{display:none}.sizes .bars{margin-top:18px}
-.dbhero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px;align-items:end;padding:28px 0 4px}
-.dbhero h1{font-size:clamp(2.2rem,4.4vw,3.6rem);max-width:none;margin:0}.dbhero .lead{font-size:1.0625rem;margin:0 0 18px}
+.dbhero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:end;padding:28px 0 4px}
+.dbhero h1{font-size:clamp(2.2rem,4.4vw,3.6rem);max-width:none;margin:0}.dbhero .lead{font-size:1.0625rem;margin:0 0 6px}
 section.part.first{padding-top:44px}.parthead{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.parthead h2{margin:0}section.part.first .intro{margin:8px 0 24px}.showsel ul{min-width:150px}
+.parthead h2{margin:0}.parthead h2 small{font:600 1rem/1 var(--text);color:var(--ink-soft);margin-left:6px;vertical-align:middle}
+section.part.first .parthead{margin-bottom:22px}.showsel ul{min-width:150px}
+.pager{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px;margin:30px 0 0}
+.pager a,.pager span{min-width:40px;height:40px;padding:0 12px;display:inline-grid;place-items:center;border-radius:999px;font:600 .9375rem/1 var(--text);text-decoration:none}
+.pager a{background:var(--white);border:1.5px solid var(--line);color:var(--ink)}.pager a:hover{border-color:var(--mauve);color:var(--plum)}
+.pager .cur{background:var(--plum);color:var(--white)}.pager .gap{color:var(--ink-soft);min-width:20px;padding:0}.pager .step{padding:0 16px}
+.top .wrap{gap:18px}.hsearch{flex:1;max-width:440px;display:flex;align-items:center;background:var(--white);border:1.5px solid var(--line);border-radius:999px;padding:3px 3px 3px 16px}
+.hsearch:focus-within{border-color:var(--mauve)}.hsearch input{flex:1;min-width:0;border:0;background:none;font:400 .9688rem/1.2 var(--text);color:var(--ink);padding:8px 0;outline:none}
+.hsearch button{border:0;background:var(--plum);color:var(--white);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer}.hsearch button:hover{background:var(--plum-deep)}
+@media (max-width:760px){.top .wrap{flex-wrap:wrap}.hsearch{order:3;flex-basis:100%;max-width:none}}
 .how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
 .how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
 .how .steps h3{font-size:1rem}.how .steps p{font-size:.875rem}
@@ -753,6 +762,7 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None,
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{SITE}"><img src="{SITE}img/icon.png" alt="">Fragrance Notes</a>
+<form class="hsearch" role="search" action="{P(lang, '/database/search')}"><input type="search" name="q" placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" required maxlength="100"><button type="submit" aria-label="{t["search"]}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></form>
 <nav>{menu}
 <a class="btn small" href="{STORE}">{t["getExt"]}</a></nav>
 </div></header>
@@ -1241,22 +1251,51 @@ OFFICIAL = {"en": "Confirmed by the brand's own website: {site}", "nl": "Bevesti
             "pt": "Confirmado pelo site oficial da marca: {site}", "pl": "Potwierdzone przez oficjalną stronę marki: {site}"}
 
 
-SHOW_STEPS = (16, 32, 64, 128)
+# Cards per page: multiples of 12, so the grid's 1, 2, 3 or 4 columns always end in a full row.
+SHOW_STEPS = (24, 48, 96)
 SHOW = {"en": "Show {n}", "nl": "Toon {n}", "de": "{n} anzeigen", "fr": "Afficher {n}", "es": "Mostrar {n}",
         "it": "Mostra {n}", "pt": "Mostrar {n}", "pl": "Pokaż {n}"}
+PAGER = {"en": ("Previous", "Next", "Pages"), "nl": ("Vorige", "Volgende", "Pagina's"), "de": ("Zurück", "Weiter", "Seiten"),
+         "fr": ("Précédent", "Suivant", "Pages"), "es": ("Anterior", "Siguiente", "Páginas"),
+         "it": ("Precedente", "Successiva", "Pagine"), "pt": ("Anterior", "Seguinte", "Páginas"),
+         "pl": ("Poprzednia", "Następna", "Strony")}
 
 
-def database_page(con, prices=None, lang="en", show=16):
+def db_link(lang, show, page):
+    """/database with only the settings that differ from the defaults."""
+    q = "&".join(x for x in (f"show={show}" if show != SHOW_STEPS[0] else "", f"page={page}" if page > 1 else "") if x)
+    return P(lang, "/database") + (f"?{q}" if q else "") + "#perfumes"
+
+
+def pager(lang, show, page, pages):
+    """Page numbers under the cards: previous, 1 … around the current page … last, next (links, no script)."""
+    if pages <= 1:
+        return ""
+    prev_t, next_t, label = PAGER[lang]
+    nums = sorted({1, pages, *range(max(1, page - 2), min(pages, page + 2) + 1)})
+    out, last = [], 0
+    for n in nums:
+        if n - last > 1:
+            out.append('<span class="gap">…</span>')
+        out.append(f'<span class="cur" aria-current="page">{n}</span>' if n == page else f'<a href="{db_link(lang, show, n)}">{n}</a>')
+        last = n
+    prev = f'<a class="step" href="{db_link(lang, show, page - 1)}" rel="prev">← {prev_t}</a>' if page > 1 else ""
+    nxt = f'<a class="step" href="{db_link(lang, show, page + 1)}" rel="next">{next_t} →</a>' if page < pages else ""
+    return f'<nav class="pager" aria-label="{label}">{prev}{"".join(out)}{nxt}</nav>'
+
+
+def database_page(con, prices=None, lang="en", show=24, page=1):
     t = T[lang]
     idx = index(con)
     s = catalog.stats(con)
     shops = con.execute("SELECT COUNT(DISTINCT shop) FROM reports").fetchone()[0] if _has(con, "reports") else 0
     show = show if show in SHOW_STEPS else SHOW_STEPS[0]
-    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][:show])
+    pages = max(1, -(-len(idx["perfumes"]) // show))
+    page = min(max(1, page), pages)
+    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][(page - 1) * show:page * show])
     # How many cards to show, as a menu of links (the pages have no script), like the language menu.
-    base = P(lang, "/database")
     showsel = (f'<details class="langsel showsel"><summary>{SHOW[lang].format(n=show)}</summary><ul>'
-               + "".join(f'<li><a href="{base}{"" if n == SHOW_STEPS[0] else f"?show={n}"}#perfumes"'
+               + "".join(f'<li><a href="{db_link(lang, n, 1)}"'
                          f'{" aria-current=" + chr(34) + "true" + chr(34) if n == show else ""}>{SHOW[lang].format(n=n)}</a></li>'
                          for n in SHOW_STEPS) + "</ul></details>")
     brands = "".join(f'<li><a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}<small>{len(b["perfumes"])}</small></a></li>'
@@ -1265,12 +1304,11 @@ def database_page(con, prices=None, lang="en", show=16):
                     for k, v in sorted(idx["notes"].items(), key=lambda kv: (-len(kv[1]["perfumes"]), kv[0]))[:16])
     body = f"""<section class="hero dbhero">
 <h1>{t["dbH1"]}</h1>
-<div><p class="lead">{t["dbLead"]}</p>
-<form class="search" role="search" action="{P(lang, '/database/search')}"><input type="search" name="q" placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" required maxlength="100"><button class="btn" type="submit">{t["search"]}</button></form></div>
+<p class="lead">{t["dbLead"]}</p>
 </section>
-<section class="part first" id="perfumes"><div class="parthead"><h2>{t["withConfirmed"]}</h2>{showsel}</div>
-<p class="intro">{t["pageRule"].format(n=PAGE_MIN_CONFIRMED)}</p>
-<div class="cards">{cards}<div class="pcard soon"><div><b>{t["nextT"]}</b>{t["nextD"]}</div></div></div>
+<section class="part first" id="perfumes"><div class="parthead"><h2>{t["withConfirmed"]} <small>{num(len(idx["perfumes"]), lang)}</small></h2>{showsel}</div>
+<div class="cards">{cards}</div>
+{pager(lang, show, page, pages)}
 </section>
 <section class="part"><div class="stats">
 <div><b>{num(s["perfumes"], lang)}</b><span>{t["statPerfumes"]}</span></div>
@@ -1355,11 +1393,14 @@ def route(con, path, query, prices, voter=None):
     if path in ("/", ""):
         return 301, None, P(lang, "/database")
     if path in ("/database", "/database/"):
-        try:
-            show = int((urllib.parse.parse_qs(query).get("show") or ["16"])[0])
-        except ValueError:
-            show = 16
-        return 200, database_page(con, prices, lang, show), None
+        qs = urllib.parse.parse_qs(query)
+
+        def number(k, default):
+            try:
+                return int((qs.get(k) or [default])[0])
+            except ValueError:
+                return default
+        return 200, database_page(con, prices, lang, number("show", SHOW_STEPS[0]), number("page", 1)), None
     if path == "/database/search":
         q = (urllib.parse.parse_qs(query).get("q") or [""])[0]
         return 200, search_page(con, q, lang), None

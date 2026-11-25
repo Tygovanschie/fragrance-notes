@@ -181,11 +181,23 @@ class PagesTest(unittest.TestCase):
         self.assertIn('class="astrip mini"', body)                                      # accord strip on each card
         self.assertEqual(body.count('class="pcard"'), body.count('<div class="pimg">'))              # every card has its square
         self.assertIn('<span class="ph" style="background:linear-gradient(140deg,', body)              # no photo: accord colours
-        self.assertEqual(get("/database?show=32")[0], 200)
-        self.assertEqual(get("/database?show=abc")[0], 200)
+        self.assertNotIn('class="pcard soon"', body)                                     # no card left alone in a row
+        self.assertIn('<form class="hsearch" role="search" action="/database/search">', body)   # search in the header
+        self.assertIn('<form class="hsearch" role="search" action="/nl/database/search">', get("/nl/database")[1])
+        self.assertEqual(get("/database?show=48&page=2")[0], 200)
+        self.assertEqual(get("/database?show=abc&page=x")[0], 200)
+        self.assertTrue(all(n % 12 == 0 for n in pages.SHOW_STEPS))                       # full rows in 1-4 columns
         self.assertEqual(pages.database_page(app.db(), None, "en", 7).count('class="pcard"'),
-                         min(16, len(pages.index(app.db())["perfumes"])))                 # unknown count: 16
-        self.assertIn("Back to the database", get("/note/tonka-bean")[1])
+                         min(24, len(pages.index(app.db())["perfumes"])))                 # unknown count: 24
+        self.assertIn("← All perfumes", get("/note/tonka-bean")[1])
+        # Page numbers: 30 perfumes in pages of 24 → 2 pages; 100 → 1 … around the current one … 5.
+        self.assertEqual(pages.pager("en", 24, 1, 1), "")
+        p = pages.pager("en", 24, 1, 2)
+        self.assertIn('aria-current="page">1<', p)
+        self.assertIn('href="/database?page=2#perfumes" rel="next">Next →', p)
+        p = pages.pager("en", 48, 5, 9)
+        self.assertEqual(re.findall(r">(\d+|…)<", p), ["1", "…", "3", "4", "5", "6", "7", "…", "9"])
+        self.assertIn('href="/database?show=48&page=4#perfumes" rel="prev"', p)
         code, body, _ = get("/database/search?q=stronger")
         self.assertEqual(code, 200)
         self.assertIn("Stronger With You Intensely", body)
@@ -285,7 +297,7 @@ class PagesTest(unittest.TestCase):
         self.assertIn("Hoe het ruikt", body)
         self.assertIn("cumaruboom", body)                      # the Dutch text from note_texts.json
         self.assertEqual(get("/nl/database")[0], 200)
-        self.assertIn("Terug naar de database", get("/nl/notes")[1])
+        self.assertIn("← Alle parfums", get("/nl/notes")[1])
         self.assertEqual(get("/nl")[0], 301)
         self.assertEqual(get("/nl/nothing")[0], 404)
         # The other languages, and the language menu on every page.
