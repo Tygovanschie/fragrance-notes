@@ -32,6 +32,7 @@ from datetime import date
 import catalog
 import obf
 import accords
+import maintenance
 import notephotos
 import votes
 
@@ -250,6 +251,32 @@ def load_texts(path=TEXTS_FILE):
 
 
 TEXTS = load_texts()
+_auto = {"mtime": None, "texts": {}}
+
+
+# The credit under a note description the nightly job put online by itself (maintenance.py): checked against its
+# source by the computer, not by a person.
+AI_AUTO = {"en": "Written by our own AI model from the source text and checked against it automatically.",
+           "nl": "Geschreven door ons eigen AI-model op basis van de brontekst en daar automatisch mee vergeleken.",
+           "de": "Von unserem eigenen KI-Modell aus dem Quelltext geschrieben und automatisch damit abgeglichen.",
+           "fr": "Écrit par notre propre modèle d’IA à partir du texte source et vérifié automatiquement par rapport à celui-ci.",
+           "es": "Escrito por nuestro propio modelo de IA a partir del texto fuente y comprobado automáticamente con él.",
+           "it": "Scritto dal nostro modello di IA a partire dal testo della fonte e confrontato automaticamente con esso.",
+           "pt": "Escrito pelo nosso próprio modelo de IA a partir do texto da fonte e verificado automaticamente com ele.",
+           "pl": "Napisane przez nasz własny model AI na podstawie tekstu źródłowego i automatycznie z nim porównane."}
+
+
+def auto_texts():
+    """Note descriptions the nightly job wrote (maintenance.py, data/auto.db), read again when the file changes."""
+    try:
+        m = os.path.getmtime(maintenance.AUTO_DB)
+    except OSError:
+        return {}
+    if _auto["mtime"] != m:
+        _auto.update(mtime=m, texts=maintenance.texts())
+    return _auto["texts"]
+
+
 e = html.escape
 
 
@@ -1083,7 +1110,7 @@ def note_page(con, slug_, lang="en"):
     path = note_path(key)
     name = note_name(key, lang)
     aka = [n for n, _ in x["names"].most_common() if catalog.plain(n) not in (key, catalog.plain(name))][:6]
-    text = TEXTS.get(key)
+    text = TEXTS.get(key) or auto_texts().get(key)   # reviewed by hand first, then the nightly job's
     about = ""
     if text:
         smell = text.get(f"smell_{lang}") or text["smell"]
@@ -1092,7 +1119,7 @@ def note_page(con, slug_, lang="en"):
         src = text.get("source", "")
         about = f"""<section class="card"{' lang="en"' if english else ""}><h2>{t["smellsLike"]}</h2><p>{e(smell)}</p>
 <h2 style="margin-top:26px">{t["comesFrom"]}</h2><p>{e(origin)}</p>
-<p class="src">{t["aiNote"]}
+<p class="src">{AI_AUTO[lang] if text.get("auto") else t["aiNote"]}
 {f'{t["sourceWord"]}: <a href="{e(src)}" rel="nofollow">{e(text.get("sourceName", "source"))}</a> ({e(text.get("license", ""))}).' if src else ""}</p></section>"""
     items = []
     for p, shops in sorted(x["perfumes"], key=lambda q: (-q[1], q[0]["name"])):

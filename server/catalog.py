@@ -341,6 +341,8 @@ plum blossom: pruimenbloesem | plum blossom | pflaumenblute | fleur de prunier
 NOTE_CANON = {v.strip(): canon.strip() for line in NOTE_WORDS.strip().splitlines()
               for canon, variants in [line.split(":", 1)] for v in variants.split("|") if v.strip()}
 NOTE_EN = set(NOTE_CANON.values())   # the English names, given as "en" on notes the table knows
+# Spellings the nightly job (llm_review.py) mapped to a known note, from data/auto.db; reloaded on every build.
+LEARNED = {}
 
 
 def plain(s):
@@ -433,6 +435,8 @@ def note_key(note):
         key = core
     if key in NOTE_CANON:
         return NOTE_CANON[key]
+    if key in LEARNED:               # a spelling the nightly job mapped to a known note (maintenance.py)
+        return LEARNED[key]
     # "Ceder Hout", "Vetiver Hout": the material's wood is the note itself.
     if key.endswith(" hout") and key[:-5] in NOTE_CANON:
         return NOTE_CANON[key[:-5]]
@@ -801,8 +805,12 @@ def combine(rows, ids=None, brands=None):
     }
 
 
-def build(con):
-    """Rebuild the catalog table from all facts. Returns the number of perfumes."""
+def build(con, learned=None):
+    """Rebuild the catalog table from all facts. Returns the number of perfumes. `learned`: note spellings the
+    nightly job mapped (maintenance.aliases(), read from data/auto.db when not given)."""
+    import maintenance   # here: catalog is also imported by the nightly job on the host
+    LEARNED.clear()
+    LEARNED.update(maintenance.aliases() if learned is None else learned)
     con.row_factory = sqlite3.Row
     rows, sources = [], []
     for r in con.execute("SELECT * FROM facts"):

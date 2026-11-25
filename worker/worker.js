@@ -130,6 +130,39 @@ async function mail(env, subject, text) {
   await env.ALERT.send(new EmailMessage(FROM, env.ALERT_TO, raw));
 }
 
+// Once a week (Monday from 07:00 UTC): what the nightly maintenance job fixed by itself and what it left for a
+// person (GET /maintenance/week, see server/maintenance.py). The week that was sent is kept in STATE.
+async function weekly(env) {
+  const now = new Date();
+  if (now.getUTCDay() !== 1 || now.getUTCHours() < 7) return;
+  const week = now.toISOString().slice(0, 10);
+  if ((await env.STATE.get("weeklySent")) === week) return;
+  let d;
+  try {
+    const r = await fetch(`${API}/maintenance/week`, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) return;
+    d = await r.json();
+  } catch (err) { return; }   // the server is down: the down-alert covers that; try again in 5 minutes
+  const byKind = (list) => list.reduce((m, x) => ((m[x.kind] ||= []).push(x), m), {});
+  const block = (list, empty) => {
+    const groups = byKind(list);
+    const kinds = Object.keys(groups);
+    if (!kinds.length) return empty + "\n";
+    return kinds.map((k) => `${k} (${groups[k].length}):\n` +
+      groups[k].slice(0, 25).map((x) => `  - ${x.item}: ${x.detail}`).join("\n")).join("\n\n") + "\n";
+  };
+  const text = [
+    `Fragrance Notes maintenance, ${d.since} to ${week}`,
+    "",
+    "FIXED BY ITSELF (take a night back on the server with: python3 llm_review.py --undo YYYY-MM-DD)",
+    block(d.changes || [], "Nothing this week."),
+    "FOR YOU TO DECIDE (tell Claude which ones are right)",
+    block(d.todo || [], "Nothing this week."),
+  ].join("\n");
+  await mail(env, `Fragrance Notes: weekly maintenance (${(d.changes || []).length} fixed, ${(d.todo || []).length} to check)`, text);
+  await env.STATE.put("weeklySent", week);
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -147,6 +180,7 @@ export default {
 
   async scheduled(event, env, ctx) {
     if (!env.STATE) return;
+    ctx.waitUntil(weekly(env));
     const ok = await healthy();
     const downSince = await env.STATE.get("downSince");
     const now = new Date().toISOString();

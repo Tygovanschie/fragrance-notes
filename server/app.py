@@ -13,6 +13,7 @@ Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenote
   GET  /catalog/perfume/{id}
   GET  /catalog/lookup?gtin=&brand=&name=&conc=&gender=   the perfume on a shop page (anonymous, query not logged)
   GET  /health
+  GET  /maintenance/week   what the nightly job fixed and left for a person (maintenance.py), for the weekly email
 
   Web pages (pages.py), for fragrancenotes.app: /database, /database/search?q=, /perfume/{id}-{slug},
   /note/{slug}, /photo/{barcode}.jpg, /assets/pages.css, /sitemap.xml
@@ -31,6 +32,7 @@ import threading
 import time
 
 import catalog
+import maintenance
 import pages
 import notephotos
 import votes
@@ -612,6 +614,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlsplit(self.path)
+        if u.path == "/maintenance/week":
+            # What the nightly job fixed and left for a person (note and perfume names, counts): the Worker mails it weekly.
+            return self.reply(200, maintenance.week())
         if u.path == "/health":
             return self.reply(200, {"ok": True})
         if u.path == "/facts/mine":

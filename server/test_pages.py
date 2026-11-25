@@ -485,6 +485,50 @@ class PagesTest(unittest.TestCase):
         with urllib.request.urlopen(f"{BASE}/photo/c-{pid}.jpg", timeout=5) as r:
             self.assertEqual(r.read(), JPEG)
 
+    def test_nightly_maintenance(self):
+        import maintenance
+        old = maintenance.AUTO_DB
+        with tempfile.TemporaryDirectory() as d:
+            maintenance.AUTO_DB = os.path.join(d, "auto.db")
+            try:
+                self.assertEqual(maintenance.aliases(), {})          # no file yet: nothing learned, nothing breaks
+                self.assertEqual(maintenance.week()["changes"], [])
+                con = maintenance.open_rw()
+                day = time.strftime("%Y-%m-%d")
+                con.execute("INSERT INTO note_alias VALUES ('kardemonn', 'cardamom', ?)", (day,))
+                con.execute("INSERT INTO note_text VALUES ('juniper', 'Warm, sweet and almondy.', 'Seeds of a tree.', "
+                            "'https://en.wikipedia.org/wiki/Tonka_bean', ?)", (day,))
+                con.execute("INSERT INTO changes VALUES (?, 'note name', 'Kardemonn', 'now read as cardamom')", (day,))
+                con.execute("INSERT INTO todo VALUES (?, 'same perfume?', 'Armani: A = B', 'edp')", (day,))
+                con.commit()
+                con.close()
+                # A spelling the job learned is read as the known note at the next rebuild.
+                with app.db() as db:
+                    add(db, "deloox.nl", "Armani", "Stronger With You Intensely", top=["Kardemonn"], pid=52802)
+                    add(db, "kruidvat.nl", "Armani", "Stronger With You Intensely", top=["Kardemom"], pid=52802)
+                    catalog.build(db)
+                    db.commit()
+                    p = catalog.perfume(db, self.pid("Intensely"))
+                keys = [n["key"] for t in p["notes"].values() for n in t]
+                self.assertIn("cardamom", keys)
+                self.assertNotIn("kardemonn", keys)
+                # Its note text is on the note page; the weekly summary lists both lists.
+                pages._cache["stamp"] = None
+                _, body, _ = get("/note/juniper")
+                self.assertIn("Warm, sweet and almondy.", body)
+                self.assertIn("checked against it automatically", body)          # honest: not checked by hand
+                self.assertNotIn("Warm, sweet and almondy.", get("/note/tonka-bean")[1] or "")   # hand-made text wins
+                with urllib.request.urlopen(BASE + "/maintenance/week", timeout=5) as r:
+                    w = json.loads(r.read())
+                self.assertEqual([c["item"] for c in w["changes"]], ["Kardemonn"])
+                self.assertEqual([t["kind"] for t in w["todo"]], ["same perfume?"])
+            finally:
+                maintenance.AUTO_DB = old
+                pages._auto.update(mtime=None, texts={})
+                with app.db() as db:
+                    catalog.build(db)
+                    db.commit()
+
     def test_note_photos(self):
         import notephotos
 
