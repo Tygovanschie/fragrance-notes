@@ -118,7 +118,7 @@
     // Edge Add-ons: add the ID and link here once the listing is live.
   })[typeof chrome !== 'undefined' && chrome.runtime?.id] || null;
 
-  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close', 'fav', 'faved', 'favs'];
+  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close', 'fav', 'faved', 'favs', 'tierTop', 'tierHeart', 'tierBase', 'ownNotes', 'shareTeaser'];
   const EN_FALLBACK = { accords: 'Main accords', wear: 'When to wear', longevity: 'Longevity', sillage: 'Sillage', gender: 'Gender', similar: 'Reminds people of' };
   const t = (lang, key) => {
     const table = globalThis.FN_PANEL_I18N || {};
@@ -200,6 +200,9 @@
   };
   // Shared prices ("Share prices anonymously"). Only used when the user turns that setting on.
   const API_BASE = 'https://api.fragrancenotes.app';
+  // "Own database first": the panel shows the Fragrance Notes database's notes instead of Fragrantica's when
+  // at least this many of them are confirmed (two or more shops agree). Fewer: Fragrantica's notes, as before.
+  const OWN_MIN_CONFIRMED = 3;
   // The built-in shop a host belongs to ("nl.zalando.nl" → "zalando.nl"), or '' for shops the user added.
   let builtIn = null;
   const builtInShop = host => {
@@ -250,5 +253,5 @@
     async remove(id) { try { await chrome.storage.sync.remove('fav:' + id); } catch {} }
   };
 
-  globalThis.FN = { API_BASE, IS_FIREFOX, REVIEW_URL, favs, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
+  globalThis.FN = { API_BASE, OWN_MIN_CONFIRMED, IS_FIREFOX, REVIEW_URL, favs, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
 })();

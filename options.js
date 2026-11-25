@@ -129,10 +129,14 @@
   document.querySelectorAll('input[name=style]').forEach(r => r.addEventListener('change', e => { S.style = e.target.value; save(); }));
   document.querySelectorAll('input[name=accStyle]').forEach(r => r.addEventListener('change', e => { S.accStyle = e.target.value; save(); }));
   document.querySelectorAll('input[name=theme]').forEach(r => r.addEventListener('change', e => { S.theme = e.target.value; save(); }));
-  $('sharePrices').checked = !!S.sharePrices;
-  $('sharePrices').addEventListener('change', e => { S.sharePrices = e.target.checked; save(); });
-  $('shareFacts').checked = !!S.shareFacts;
-  $('shareFacts').addEventListener('change', e => { S.shareFacts = e.target.checked; save(); });
+  // "Help other perfume lovers": one switch for price sharing and the open perfume database together.
+  // (Installs from before 1.3 may have only one of the two on; the switch shows on then, and sets both.)
+  $('shareAll').checked = !!(S.sharePrices || S.shareFacts);
+  $('shareAll').addEventListener('change', e => {
+    S.sharePrices = S.shareFacts = e.target.checked;
+    S.shareAsked = true;
+    save();
+  });
   $('themeAuto').checked = !!S.themeAuto;
   $('themeAuto').addEventListener('change', e => { S.themeAuto = e.target.checked; save(); });
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => save());
@@ -211,7 +215,7 @@
 
   // Keep in sync if settings change elsewhere (e.g. the toolbar menu).
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.settings) FN.loadSettings().then(s => { const langChanged = s.lang !== S.lang; S = s; $('sharePrices').checked = !!S.sharePrices; $('shareFacts').checked = !!S.shareFacts; if (langChanged) translatePage(); updatePreview(); });
+    if (area === 'sync' && changes.settings) FN.loadSettings().then(s => { const langChanged = s.lang !== S.lang; S = s; $('shareAll').checked = !!(S.sharePrices || S.shareFacts); if (langChanged) translatePage(); updatePreview(); });
     if (area === 'sync' && changes.customShops) { customShops = changes.customShops.newValue || []; renderCustomShops(); }
   });
 

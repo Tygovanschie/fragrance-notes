@@ -171,6 +171,9 @@
     .ask-btns button { border:0; border-radius:999px; padding:6px 13px; font-size:12px; font-weight:600; cursor:pointer; }
     .ask-on { background:var(--accent); color:var(--onAccent); }
     .ask-no { background:none; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft); }
+    .teaser { display:block; margin-top:6px; font-size:11.5px; }
+    .own { margin-top:6px; font-size:11px; color:var(--muted); }
+    .chip .ok { font-style:normal; font-weight:700; color:var(--good); margin-inline-start:4px; }
     .sz-card { background:var(--card); border-radius:12px; padding:8px 10px; font-size:12px; }
     .sz-top { display:grid; grid-template-columns:auto auto 1fr; gap:12px; align-items:baseline; }
     .sz-top .pr { color:var(--muted); white-space:nowrap; }
@@ -408,9 +411,10 @@
       const img = typeof n === 'string' ? '' : n.img;
       const url = typeof n === 'string' ? '' : n.url || '';
       const attrs = url ? ` data-note="${esc(url)}" data-name="${esc(name)}" data-img="${esc(okImg(img) ? img : '')}" role="button" tabindex="0"` : '';
+      const ok = opts.own?.has(name) ? '<i class="ok" aria-hidden="true">✓</i>' : '';
       return okImg(img)
-        ? `<span class="chip${url ? ' nb' : ''}"${attrs}><img src="${esc(img)}" alt="">${esc(name)}</span>`
-        : `<span class="chip noimg${url ? ' nb' : ''}"${attrs}>${esc(name)}</span>`;
+        ? `<span class="chip${url ? ' nb' : ''}"${attrs}><img src="${esc(img)}" alt="">${esc(name)}${ok}</span>`
+        : `<span class="chip noimg${url ? ' nb' : ''}"${attrs}>${esc(name)}${ok}</span>`;
     };
     const votes = [
       on.longevity && voteBlock(esc(T('longevity')), d.longevity),
@@ -545,7 +549,10 @@
     const ask = opts.askShare && on.perMl && prices.length ? `<div class="ask"><b>${esc(FN.t(S.lang, 'shareAsk'))}</b>
       <p>${esc(FN.t(S.lang, 'shareAskD'))} <a href="https://fragrancenotes.app/privacy.html" target="_blank" rel="noopener">${esc(FN.t(S.lang, 'privacy'))}</a></p>
       <div class="ask-btns"><button type="button" class="ask-on">${esc(FN.t(S.lang, 'shareOn'))}</button><button type="button" class="ask-no">${esc(FN.t(S.lang, 'shareNo'))}</button></div></div>` : '';
-    const pricesBlock = perMl || othersFold ? `<h3>${esc(FN.t(S.lang, 'perMl'))}</h3>${ask}${perMl}${othersFold}` : '';
+    // Without sharing: a quiet link to what sharing gives (it brings back the card above, with its explanation).
+    const teaser = !ask && opts.teaser && on.perMl && prices.length
+      ? `<button type="button" class="linkbtn teaser">${esc(FN.t(S.lang, 'shareTeaser'))} →</button>` : '';
+    const pricesBlock = perMl || othersFold ? `<h3>${esc(FN.t(S.lang, 'perMl'))}</h3>${ask}${perMl}${teaser}${othersFold}` : '';
 
     // 4. Header tinted with the perfume's top accord colours.
     const tint = (c, a) => {
@@ -585,10 +592,13 @@
           `<div class="accbar" title="${esc(a.name)} · ${Math.round(a.width)}%" style="width:${Math.max(30, Math.round(a.width / maxAcc * 100))}%;background:${accBg(a.bg)};color:${accFg(a.fg)}">${esc(a.name)}</div>`).join('')}</div>`;
 
     // 5. Notes as a pyramid: tier name in a narrow column on the left, notes on the right.
+    // Notes the Fragrance Notes database confirmed (2+ shops agree) get a ✓ (opts.own, see content.js), with a
+    // line under the pyramid saying what it means. Without confirmed notes the panel looks as before.
     const multi = (d.notes || []).length > 1;
+    const ownLine = opts.own ? `<div class="own">✓ ${esc(FN.t(S.lang, 'ownNotes'))} · ODbL</div>` : '';
     const notesHtml = !on.notes ? '' : `<h3>${esc(FN.t(S.lang, 'notes'))}</h3>${d.notes?.length
       ? `<div class="pyr${multi ? '' : ' flat'}">${d.notes.map((t, i) =>
-          `<div class="tier lv${i}">${multi && t.label ? `<div class="tl"><span>${esc(t.label)}</span></div>` : ''}<div class="chips">${t.names.map(noteChip).join('')}</div></div>`).join('')}</div>`
+          `<div class="tier lv${i}">${multi && t.label ? `<div class="tl"><span>${esc(t.label)}</span></div>` : ''}<div class="chips">${t.names.map(noteChip).join('')}</div></div>`).join('')}</div>${ownLine}`
       : `<div class="muted">${esc(FN.t(S.lang, 'noNotes'))}</div>`}`;
 
     return `

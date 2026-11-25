@@ -181,12 +181,65 @@
           for (let i = 0; i < 3 && !src.nextElementSibling && src.parentElement && src.parentElement.textContent.trim() === src.textContent.trim(); i++) src = src.parentElement;
           value = (src.nextElementSibling?.textContent || '').replace(/\s+/g, ' ').trim();
         }
+        // An empty box followed by the next box's label ("Geurfamilie" then "SUBFAMILIE" on Parfumerie.nl) is no value.
+        if (Object.values(NOTE_LABELS).some(re => re.test(value)) || /^(sub ?)?famil(y|ie|le|ia)\b/i.test(value)) value = '';
         const list = value && value.length <= 300 ? splitNotes(value) : [];
         if (list.length) found[k] = list;
       }
       if (found.top && found.heart && found.base && found.family) break;
     }
+    // No notes table on this page: try the description text (textNotes, below).
+    if (!found.top && !found.heart && !found.base) Object.assign(found, textNotes());
     return found;
+  }
+  // ---------- notes in running text ----------
+  // Shops without a notes table often write them in the description: "het kruidige akkoord van de topnoten: een mix
+  // van kardemom, roze peperkorrel en vioolblaadjes" (Kruidvat), "De basisnoten zijn subtieler met warme zoete
+  // vanille, gember en … kastanje" (Parfumerie.nl). Only sentences that say which level they describe are read, and
+  // from those only known note words (KNOWN_NOTES), so adjectives ("warme zoete") and ingredient lists stay out.
+  // NOTE_GROUPS (spelling > the note's English name) is generated from NOTE_WORDS in server/catalog.py, without
+  // fragrance families such as "zoet", "fris" or "hout" (adjectives in running text); regenerate it when that table
+  // grows. It's also how the panel recognises a Fragrantica note as one the database confirmed (see ownChecks).
+  const NOTE_GROUPS = new Map('schwarze johannisbeere>blackcurrant|frutto della passione>passion fruit|feuilles de violette>violet leaf|feuille de violette>violet leaf|fruit de la passion>passion fruit|lirio de los valles>lily of the valley|chiodi di garofano>clove|foglia di violetta>violet leaf|fruta de la pasion>passion fruit|lelietje van dalen>lily of the valley|lily of the valley|muschio di quercia>oakmoss|baies de genievre>juniper|roze peperkorrels>pink pepper|schwarzer pfeffer>black pepper|viooltjesbladeren>violet leaf|pink peppercorns>pink pepper|roze peperkorrel>pink pepper|sciroppo d acero>maple syrup|clou de girofle>clove|fiore d arancio>orange blossom|fiori d arancio>orange blossom|fleur d oranger>orange blossom|hoja de violeta>violet leaf|juniper berries>juniper|mousse de chene>oakmoss|noix de muscade>nutmeg|pink peppercorn>pink pepper|veilchenblatter>violet leaf|bois de santal>sandalwood|grosella negra>blackcurrant|jarabe de arce>maple syrup|musgo de roble>oakmoss|orange blossom|passionsfrucht>passion fruit|pimienta negra>black pepper|sirop d erable>maple syrup|wacholderbeere>juniper|black currant>blackcurrant|bois de cedre>cedar|bois de gaiac>guaiac wood|feve de tonka>tonka bean|jeneverbessen>juniper|jeneverstruik>juniper|juniper berry>juniper|orangenbluete>orange blossom|oranjebloesem>orange blossom|passion fruit|pimienta rosa>pink pepper|sour cherries>sour cherry|veilchenblatt>violet leaf|violet leaves>violet leaf|vioolblaadjes>violet leaf|viooltjesblad>violet leaf|zwarte bessen>blackcurrant|black pepper|blackcurrant|karamelsnoep>toffee|maiglockchen>lily of the valley|noce moscata>nutmeg|noix de coco>coconut|nuez moscada>nutmeg|orangenblute>orange blossom|pamplemousse>grapefruit|passievrucht>passion fruit|peperkorrels>pepper|rosa pfeffer>pink pepper|sauerkirsche>sour cherry|zwarte peper>black pepper|ahornsiroop>maple syrup|baies roses>pink pepper|bois ambres>amberwood|gewurznelke>clove|guaiac hout>guaiac wood|guaiac wood|kruidnagels>clove|maple syrup|nootmuskaat>nutmeg|peperkorrel>pepper|peppercorns>pepper|pink pepper|poivre noir>black pepper|poivre rose>pink pepper|rosa pepper>pink pepper|sinaasappel>orange|sour cherry|tonka beans>tonka bean|tonka bohne>tonka bean|violet leaf|zure kersen>sour cherry|ahornsirup>maple syrup|amber wood>amberwood|bergamotte>bergamot|bergamotto>bergamot|bois ambre>amberwood|bois d oud>oud|cioccolato>chocolate|eichenmoos>oakmoss|fava tonka>tonka bean|feve tonka>tonka bean|grapefruit|guaiachout>guaiac wood|guajakholz>guaiac wood|haba tonka>tonka bean|jeneverbes>juniper|kruidnagel>clove|mintachtig>mint|muskatnuss>nutmeg|peppercorn>pepper|pompelmoes>grapefruit|ribes nero>blackcurrant|roze peper>pink pepper|rozemarijn>rosemary|sandalwood|sandelholz>sandalwood|sandelhout>sandalwood|schokolade>chocolate|tonka bean|tonkabohne>tonka bean|tonkabonen>tonka bean|zedernholz>cedar|zwarte bes>blackcurrant|adlerholz>oud|amberhout>amberwood|amberwood|basilicum>basil|basilikum>basil|bergamota>bergamot|caramello>caramel|cardamome>cardamom|cardamomo>cardamom|cedarwood>cedar|cederhout>cedar|chataigne>chestnut|chestnuts>chestnut|chocolade>chocolate|chocolate|framboise>raspberry|frambozen>raspberry|frambuesa>raspberry|gelsomino>jasmine|gingembre>ginger|kastanien>chestnut|kastanjes>chestnut|kokosnoot>coconut|kokosnuss>coconut|mandarijn>mandarin|mandarina>mandarin|mandarine>mandarin|mandarino>mandarin|melocoton>peach|patchoeli>patchouli|patchouli|patchouly>patchouli|pepe nero>black pepper|pepe rosa>pink pepper|pineapple|raspberry|rosmarino>rosemary|tonkaboon>tonka bean|tubereuse>tuberose|vioolblad>violet leaf|viooltjes>violet|wacholder>juniper|weihrauch>incense|wildleder>suede|zafferano>saffron|zure kers>sour cherry|agarwood>oud|albahaca>basil|almendra>almond|almizcle>musk|basilico>basil|baunilha>vanilla|benzoino>benzoin|bergamot|camoscio>suede|cannella>cinnamon|cannelle>cinnamon|caramelo>caramel|cardamom|castagna>chestnut|cherries>cherry|chestnut|chocolat>chocolate|ciliegia>cherry|cinnamon|eikenmos>oakmoss|framboos>raspberry|genievre>juniper|geranium|himbeere>raspberry|incienso>incense|jengibre>ginger|karamell>caramel|kardamom>cardamom|kardemom>cardamom|kastanie>chestnut|kastanje>chestnut|kirschen>cherry|lavendel>lavender|lavender|mandarin|mandorla>almond|maracuja>passion fruit|mughetto>lily of the valley|oak moss>oakmoss|pfirsich>peach|pimienta>pepper|pompelmo>grapefruit|rosemary|rosmarin>rosemary|saffraan>saffron|tuberoos>tuberose|tuberosa>tuberose|tuberose|vainilla>vanilla|vaniglia>vanilla|veilchen>violet|vetivert>vetiver|violetta>violet|violette>violet|viooltje>violet|amandel>almond|amarena>sour cherry|arancia>orange|azafran>saffron|basilic>basil|benjoin>benzoin|benzoin|caramel|castana>chestnut|citroen>lemon|coconut|geranie>geranium|geranio>geranium|ginepro>juniper|griotte>sour cherry|guaiaco>guaiac wood|guayaco>guaiac wood|incense|incenso>incense|jasmijn>jasmine|jasmine|jenever>juniper|juniper|karamel>caramel|kirsche>cherry|lampone>raspberry|lavanda>lavender|lavande>lavender|leather|manzana>apple|moschus>musk|muschio>musk|naranja>orange|oakmoss|oudhout>oud|pachuli>patchouli|pfeffer>pepper|pimenta>pepper|romarin>rosemary|saffron|sandalo>sandalwood|tabacco>tobacco|tobacco|vanilla|vanille>vanilla|vetiver|vetyver>vetiver|violeta>violet|wanilia>vanilla|wierook>incense|zenzero>ginger|zitrone>lemon|almond|amande>almond|ananas>pineapple|azahar>orange blossom|benjui>benzoin|benzoe>benzoin|canela>cinnamon|cassis>blackcurrant|cereza>cherry|cerise>cherry|cherry|citron>lemon|cloves>clove|coffee|encens>incense|enebro>juniper|gamuza>suede|gember>ginger|ginger|guinda>sour cherry|honing>honey|ingwer>ginger|jasmin>jasmine|jazmin>jasmine|kaffee>coffee|kaneel>cinnamon|kersen>cherry|koffie>coffee|limone>lemon|mandel>almond|marron>chestnut|meloen>melon|melone>melon|menthe>mint|muguet>lily of the valley|muskus>musk|myrrhe>myrrh|nutmeg|pepper|perzik>peach|poivre>pepper|pomelo>grapefruit|romero>rosemary|safran>saffron|salbei>sage|salvia>sage|santal>sandalwood|tabaco>tobacco|toffee|violet|ambar>amber|amber|ambra>amber|ambre>amber|apfel>apple|appel>apple|apple|basil|birne>pear|cacao>cocoa|caffe>coffee|cedar|ceder>cedar|cedre>cedar|cedro>cedar|clavo>clove|clove|cocco>coconut|cocoa|cuero>leather|cuoio>leather|gaiac>guaiac wood|honey|honig>honey|kakao>cocoa|kokos>coconut|leder>leather|lemon|limon>lemon|melon|menta>mint|miele>honey|minty>mint|minze>mint|mirra>myrrh|mirre>myrrh|myrrh|nelke>clove|peach|peche>peach|peper>pepper|pesca>peach|poire>pear|pomme>apple|rosen>rose|roses>rose|rozen>rose|salie>sage|sauge>sage|suede|tabac>tobacco|tabak>tobacco|tonka>tonka bean|zeder>cedar|cafe>coffee|cuir>leather|daim>suede|kers>cherry|miel>honey|mint|munt>mint|musc>musk|musk|oudh>oud|pear|peer>pear|pepe>pepper|pina>pineapple|roos>rose|rose|sage|thee>tea|zimt>cinnamon|oud|tea|tee>tea'.split('|').map(x => { const [v, c] = x.split('>'); return [v, c || v]; }));
+  const KNOWN_NOTES = [...NOTE_GROUPS.keys()];   // longest first
+  const plainText = s => String(s || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const TIER_CUES = [
+    ['top', /\b(?:top|kop|hoofd)\s?no(?:ot|ten|te|tes)\b|\btop notes?\b|\bhead notes?\b|\bopening\b|\bopent\b|\bopens\b|\beerste\b|\bfirst\b|\bbegint\b|\bkopfnoten?\b|\bnotes? de tete\b|\bnotas? de salida\b|\bnote di testa\b/],
+    ['heart', /\bhart\s?no(?:ot|ten|te|tes)\b|\bheart\b|\bhart\b|\bmidden\b|\bmiddle\b|\bherznoten?\b|\bnotes? de c(?:oe|œ)?ur\b|\bnotas? de corazon\b|\bnote di cuore\b/],
+    ['base', /\bbasis\s?no(?:ot|ten|te|tes)\b|\bbase notes?\b|\bdroogt\b|\bdry ?down\b|\bonderlaag\b|\bbasisnoten?\b|\bnotes? de fond\b|\bnotas? de fondo\b|\bnote di fondo\b/]
+  ];
+  const knownIn = p => {
+    let s = ` ${p} `;
+    const hits = [];
+    for (const w of KNOWN_NOTES) {
+      let i;
+      while ((i = s.indexOf(` ${w} `)) !== -1) {
+        hits.push([i, w]);
+        s = s.slice(0, i + 1) + ' '.repeat(w.length) + s.slice(i + 1 + w.length);   // a word is used once
+      }
+    }
+    return hits.sort((a, b) => a[0] - b[0]).map(([, w]) => w.charAt(0).toUpperCase() + w.slice(1));
+  };
+  function textNotes() {
+    const found = {};
+    const blocks = [...document.querySelectorAll('p, li, div, section, article, span, dd, td')].filter(el => {
+      const n = (el.textContent || '').length;
+      return n >= 40 && n <= 3000 && ![...el.children].some(c => (c.textContent || '').length >= 40) &&
+        !el.closest('[data-fn-host]') && !el.closest(OTHER_PRODUCTS_SEL) && !el.closest('[class*="review" i],[id*="review" i]');
+    });
+    for (const el of blocks.slice(0, 200)) {
+      for (const sentence of (el.textContent || '').split(/(?<=[.!?])\s+|\n+/)) {
+        const p = plainText(sentence);
+        let tier = null, at = Infinity;
+        for (const [k, re] of TIER_CUES) { const m = p.match(re); if (m && m.index < at) { tier = k; at = m.index; } }
+        if (!tier) continue;
+        const list = found[tier] || (found[tier] = []);
+        for (const n of knownIn(p)) if (!list.includes(n) && list.length < 15) list.push(n);
+      }
+    }
+    for (const k of Object.keys(found)) if (!found[k].length) delete found[k];
+    const total = Object.values(found).reduce((s, l) => s + l.length, 0);
+    return total >= 2 ? found : {};
   }
   // Barcodes (GTIN/EAN) from the shop's product data, only when the check digit is right.
   const validGtin = g => {
@@ -606,7 +659,21 @@
     }
     if (loadedFor !== query) return; // a newer search started
     pill.classList.remove('loading');
-    if (res.error) return renderError(res, query);
+    if (res.error) {
+      renderError(res, query);
+      // Fragrantica has nothing (or can't be reached): the database's confirmed notes, if it has them.
+      if (current.isProduct && query === current.query) {
+        askOwn(current.isProduct ? readPrices() : []).then(p => {
+          const notes = ownPyramid(p);
+          if (!notes || loadedFor !== query || lastRender) return;
+          const d = { title: `${p.brand} ${p.name}`.trim(), url: '', notes, accords: [] };
+          ownByPage.set(d, p);
+          render(d, false, query);
+          setReady(true);
+        });
+      }
+      return;
+    }
     render(res.data, !!res.cached, query);
     setReady(true);
     if (S.autoOpen && panel.hidden && !userClosed && current.show) open(false);
@@ -724,6 +791,49 @@
   let pricesOpen = false;
   const factsSent = new Set();   // product pages whose facts were sent (once per page load)
   const perfumeId = url => (String(url || '').match(/-(\d+)\.html/) || [])[1];
+
+  // ---------- own database first ----------
+  // What the Fragrance Notes database knows about the perfume on this page (background.js → GET /catalog/lookup).
+  const ownByPage = new WeakMap();   // Fragrantica result → database perfume
+  const askOwn = prices => {
+    try { return chrome.runtime.sendMessage({ type: 'own', facts: readFacts(current, prices) }).catch(() => null); }
+    catch { return Promise.resolve(null); }
+  };
+  const plainName = s => String(s || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const titleCase = s => String(s).replace(/(^|\s)\p{L}/gu, m => m.toUpperCase());
+  // A note as one key across languages and spellings: its English name from NOTE_GROUPS ("Viooltjesblad",
+  // "vioolblaadjes" → "violet leaf"), else its plain name with a plural ending dropped ("kastanjes" = "kastanje").
+  const noteKeyOf = s => {
+    const p = plainName(s);
+    const stem = p.length > 4 ? p.replace(/(?:en|es|s)$/, '') : p;
+    return NOTE_GROUPS.get(p) || NOTE_GROUPS.get(stem) || stem;
+  };
+  // While the database grows, the panel keeps Fragrantica's notes and marks the ones the database confirmed
+  // (2+ shops agree) with ✓. Returns null when none of this perfume's Fragrantica notes is confirmed, so the
+  // panel then looks exactly as before.
+  function ownChecks(d) {
+    const p = ownByPage.get(d);
+    const keys = new Set();
+    for (const tier of ['top', 'heart', 'base']) {
+      for (const n of p?.notes?.[tier] || []) {
+        if (n.confirmed) [n.key, n.en, n.name].filter(Boolean).forEach(x => keys.add(noteKeyOf(x)));
+      }
+    }
+    if (!keys.size) return null;
+    const has = name => keys.has(noteKeyOf(name));
+    return (d.notes || []).some(t => (t.names || []).some(n => has(n.name))) ? { has, shops: p.shops } : null;
+  }
+  // Only when Fragrantica has nothing for this page: the database's confirmed notes as the pyramid (no pictures),
+  // if there are at least FN.OWN_MIN_CONFIRMED of them.
+  function ownPyramid(p) {
+    if (!p || (p.confirmedNotes || 0) < FN.OWN_MIN_CONFIRMED) return null;
+    const tiers = [['top', 'tierTop'], ['heart', 'tierHeart'], ['base', 'tierBase']].map(([tier, label]) => ({
+      label: FN.t(S.lang, label),
+      names: (p.notes?.[tier] || []).filter(n => n.confirmed)
+        .map(n => ({ name: S.lang === 'en' && n.en ? titleCase(n.en) : n.name, img: '', url: '' }))
+    })).filter(t => t.names.length);
+    return tiers.length ? tiers : null;
+  }
   async function seenPrices(d, prices) {
     const id = perfumeId(d.url);
     if (!id) return [];
@@ -751,19 +861,29 @@
     const prices = current.isProduct ? readPrices() : [];
     const elsewhere = S.sections.elsewhere ? await seenPrices(d, prices) : [];
     if (lastRender?.data !== d) return;    // a newer render started meanwhile
+    const builtIn = !!FN.builtInShop(location.hostname);
     const opts = { cached, query, prices: S.sections.perMl ? prices : [], elsewhere, othersAll: false, host: location.hostname, pricesOpen, community: null,
-      askShare: !S.sharePrices && !S.shareAsked && !!FN.builtInShop(location.hostname) };
+      askShare: !S.sharePrices && !S.shareFacts && !S.shareAsked && builtIn, teaser: !S.sharePrices && builtIn,
+      own: ownChecks(d) };
     opts.fav = perfumeId(d.url) ? { on: await FN.favs.has(perfumeId(d.url)) } : null;
     if (lastRender?.data !== d) return;
     const paint = () => {
       body.innerHTML = renderBody(d, S, opts);
       body.querySelector('.refresh')?.addEventListener('click', () => lookup(query, true));
       body.querySelector('.more')?.addEventListener('click', () => { opts.othersAll = true; paint(); });
-      // The one-time "compare prices?" card. Saving the settings redraws the panel (see applySettings),
-      // which then fetches and shares prices when sharing was turned on.
-      const answer = on => { S.sharePrices = on || S.sharePrices; S.shareAsked = true; chrome.storage.sync.set({ settings: S }).catch(() => {}); };
+      // The one-time "help other perfume lovers?" card: yes turns on both sharing settings (prices and the
+      // open perfume database; Settings → Data has one switch for both too). Saving the settings redraws the panel
+      // (see applySettings), which then fetches and shares when sharing was turned on.
+      const answer = on => {
+        if (on) { S.sharePrices = true; S.shareFacts = true; }
+        else chrome.storage.local.set({ 'fn:shareDeclined': true }).catch(() => {});   // the toolbar menu won't ask either
+        S.shareAsked = true;
+        chrome.storage.sync.set({ settings: S }).catch(() => {});
+      };
       body.querySelector('.ask-on')?.addEventListener('click', () => answer(true));
       body.querySelector('.ask-no')?.addEventListener('click', () => answer(false));
+      // "Compare prices with other users →" (sharing off): shows the card again, with its explanation.
+      body.querySelector('.teaser')?.addEventListener('click', () => { opts.askShare = true; paint(); });
       // ♥ saves the perfume to the favourites (toolbar menu → Favourites).
       body.querySelector('.fav')?.addEventListener('click', async e => {
         const btn = e.currentTarget;
@@ -802,6 +922,17 @@
     pricesOpen = opts.pricesOpen = false;   // the other-shops list always starts closed
     paint();
     priceWatch = { d, opts, paint, pid: perfumeId(d.url) };
+
+    // Ask the Fragrance Notes database about this shop's perfume (anonymous, for everyone) and mark the notes it
+    // confirmed with ✓. Nothing changes when it doesn't know the perfume or can't be reached.
+    if (!opts.own && current.isProduct && query === current.query) {
+      askOwn(prices).then(p => {
+        if (!p || lastRender?.data !== d) return;
+        ownByPage.set(d, p);
+        opts.own = ownChecks(d);
+        if (opts.own) paint();
+      });
+    }
 
     // "Help build the open perfume database" (off by default): the facts this shop shows about the perfume.
     if (S.shareFacts && current.isProduct && FN.builtInShop(location.hostname) && !factsSent.has(location.pathname)) {

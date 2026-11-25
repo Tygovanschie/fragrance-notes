@@ -9,6 +9,7 @@ Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenote
   GET  /catalog/stats       the combined open perfume database (see catalog.py; includes Open Beauty Facts, obf.py)
   GET  /catalog/search?q=   find perfumes in it
   GET  /catalog/perfume/{id}
+  GET  /catalog/lookup?gtin=&brand=&name=&conc=&gender=   the perfume on a shop page (anonymous, query not logged)
   GET  /health
 
 Privacy: no IP addresses are stored or logged. The install id is a random UUID made by the
@@ -538,6 +539,15 @@ class Handler(BaseHTTPRequestHandler):
             q = (parse_qs(u.query).get("q") or [""])[0][:100]
             with db() as con:
                 return self.reply(200, {"results": catalog.search(con, q)}, cache)
+        if u.path == "/catalog/lookup":
+            # The extension asks this for the perfume on a shop page ("own database first"). Anonymous: no
+            # install id, nothing stored, and log_request writes only the path, never the query.
+            q = parse_qs(u.query)
+            one = lambda k, n: (q.get(k) or [""])[0][:n]
+            gtins = [g for g in one("gtin", 200).split(",") if g][:8]
+            with db() as con:
+                p = catalog.lookup(con, gtins, one("brand", 80), one("name", 120), one("conc", 10), one("gender", 1))
+            return self.reply(200, {"perfume": p}, cache)
         m = re.fullmatch(r"/catalog/perfume/([0-9a-f]{12})", u.path)
         if m:
             with db() as con:

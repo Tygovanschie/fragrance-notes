@@ -647,6 +647,33 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
+// "Own database first": what the Fragrance Notes database knows about the perfume on this shop page.
+// For everyone, not only users who share: it's an anonymous question (brand, name, concentration, gender, barcodes;
+// no install id), the server stores nothing and doesn't log it. Remembered for an hour per perfume.
+const ownCache = new Map();
+async function ownLookup(f) {
+  if (!f || typeof f !== 'object') return null;
+  const q = new URLSearchParams();
+  const gtins = strList(f.gtins, 8, 14).filter(g => /^\d{8,14}$/.test(g));
+  if (gtins.length) q.set('gtin', gtins.join(','));
+  if (f.brand) q.set('brand', String(f.brand).slice(0, 80));
+  if (f.name) q.set('name', String(f.name).slice(0, 120));
+  if (['extrait', 'parfum', 'edp', 'edt', 'edc'].includes(f.conc)) q.set('conc', f.conc);
+  if (['m', 'f'].includes(f.gender)) q.set('gender', f.gender);
+  if (!gtins.length && !(f.brand && f.name)) return null;
+  const key = q.toString();
+  const c = ownCache.get(key);
+  if (c && Date.now() - c.t < 3600e3) return c.data;
+  try {
+    const r = await fetch(`${FN.API_BASE}/catalog/lookup?${key}`, { credentials: 'omit', signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return null;
+    const data = (await r.json())?.perfume || null;
+    ownCache.set(key, { t: Date.now(), data });
+    if (ownCache.size > 200) ownCache.delete(ownCache.keys().next().value);
+    return data;
+  } catch { return null; }
+}
+
 // ---------- messaging ----------
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   (async () => {
@@ -655,6 +682,7 @@ chrome.runtime.onMessage.addListener((msg, sender, send) => {
     if (msg.type === 'community') return send(await communityPrices(msg.perfumeId, msg.currency));
     if (msg.type === 'share') { sharePrices(msg.perfumeId, msg.prices, sender.url); return send({ ok: true }); }
     if (msg.type === 'facts') { shareFacts(msg.perfumeId, msg.facts, sender.url); return send({ ok: true }); }
+    if (msg.type === 'own') return send(await ownLookup(msg.facts));
     if (msg.type === 'note') return send(await noteInfo(msg.url));
     if (msg.type === 'opinions') return send(await englishOpinions(msg.url));
     if (msg.type !== 'lookup') return;

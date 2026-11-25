@@ -9,23 +9,29 @@
   document.getElementById('privacy').textContent = FN.t(S.lang, 'privacy');
   document.title = 'Fragrance Notes – ' + st('wel_title');
 
-  // The same setting as Settings → Data. Answering here also means the panel won't ask again.
-  const share = document.getElementById('sharePrices');
-  share.checked = !!S.sharePrices;
-  share.addEventListener('change', async () => {
+  // One clear choice for both kinds of sharing (like the one switch in Settings → Data). Nothing is on until
+  // the user picks "Yes". Answering here also means the panel and the toolbar menu won't ask again.
+  const state = document.getElementById('choiceState');
+  const btns = document.getElementById('choiceBtns');
+  const showState = () => {
+    if (!S.shareAsked) return;
+    const on = S.sharePrices || S.shareFacts;
+    state.textContent = st(on ? 'wel_saidYes' : 'wel_saidNo');
+    state.hidden = false;
+    btns.hidden = true;
+  };
+  const choose = async on => {
     S = await FN.loadSettings();
-    S.sharePrices = share.checked;
+    S.sharePrices = on;
+    S.shareFacts = on;
     S.shareAsked = true;
     await chrome.storage.sync.set({ settings: S });
-  });
-
-  const facts = document.getElementById('shareFacts');
-  facts.checked = !!S.shareFacts;
-  facts.addEventListener('change', async () => {
-    S = await FN.loadSettings();
-    S.shareFacts = facts.checked;
-    await chrome.storage.sync.set({ settings: S });
-  });
+    if (!on) chrome.storage.local.set({ 'fn:shareDeclined': true }).catch(() => {});
+    showState();
+  };
+  document.getElementById('choiceYes').addEventListener('click', () => choose(true));
+  document.getElementById('choiceNo').addEventListener('click', () => choose(false));
+  showState();
 
   // Firefox can install the extension without access to the sites (or the user can take it away later).
   // Then ask here; in Chrome and Edge this is granted at install, so the card stays hidden.

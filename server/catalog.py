@@ -77,11 +77,11 @@ chestnut: kastanje | kastanjes | chestnut | chestnuts | kastanie | kastanien | c
 lavender: lavendel | lavender | lavande | lavanda
 cinnamon: kaneel | cinnamon | zimt | cannelle | canela | cannella
 sage: salie | sage | salbei | sauge | salvia
-pepper: peper | pepper | pfeffer | poivre | pimienta | pepe | pimenta
-pink pepper: roze peper | pink pepper | rosa pfeffer | rosa pepper | baies roses | poivre rose | pimienta rosa | pepe rosa
+pepper: peper | peperkorrel | peperkorrels | pepper | peppercorn | peppercorns | pfeffer | poivre | pimienta | pepe | pimenta
+pink pepper: roze peper | roze peperkorrel | roze peperkorrels | pink pepper | pink peppercorn | pink peppercorns | rosa pfeffer | rosa pepper | baies roses | poivre rose | pimienta rosa | pepe rosa
 black pepper: zwarte peper | black pepper | schwarzer pfeffer | poivre noir | pimienta negra | pepe nero
 cardamom: kardemom | cardamom | kardamom | cardamome | cardamomo
-juniper: jeneverbes | jeneverbessen | jenever | juniper | juniper berry | juniper berries | wacholder | wacholderbeere | genievre | baies de genievre | enebro | ginepro
+juniper: jeneverbes | jeneverbessen | jenever | jeneverstruik | juniper | juniper berry | juniper berries | wacholder | wacholderbeere | genievre | baies de genievre | enebro | ginepro
 ginger: gember | ginger | ingwer | gingembre | jengibre | zenzero
 bergamot: bergamot | bergamotte | bergamota | bergamotto
 lemon: citroen | lemon | zitrone | citron | limon | limone
@@ -123,7 +123,13 @@ benzoin: benzoe | benzoin | benjoin | benjui | benzoino
 incense: wierook | incense | weihrauch | encens | incienso | incenso
 myrrh: mirre | myrrh | myrrhe | mirra
 oakmoss: eikenmos | oakmoss | oak moss | eichenmoos | mousse de chene | musgo de roble | muschio di quercia
-mint: munt | mint | minze | menthe | menta
+mint: munt | mint | mintachtig | minty | minze | menthe | menta
+violet leaf: viooltjesblad | viooltjesbladeren | vioolblaadjes | vioolblad | violet leaf | violet leaves | veilchenblatt | veilchenblatter | feuille de violette | feuilles de violette | hoja de violeta | foglia di violetta
+toffee: toffee | karamelsnoep
+suede: suede | daim | wildleder | gamuza | camoscio
+melon: meloen | melon | melone
+guaiac wood: guaiac hout | guaiachout | guaiac wood | guajakholz | bois de gaiac | gaiac | guayaco | guaiaco
+amberwood: amberhout | amberwood | amber wood | bois ambre | bois ambres
 basil: basilicum | basil | basilikum | basilic | albahaca | basilico
 rosemary: rozemarijn | rosemary | rosmarin | romarin | romero | rosmarino
 geranium: geranium | geranie | geranio
@@ -151,6 +157,7 @@ musky: muskusachtig | musky | moschusartig | musque | almizclado | muschiato
 """
 NOTE_CANON = {v.strip(): canon.strip() for line in NOTE_WORDS.strip().splitlines()
               for canon, variants in [line.split(":", 1)] for v in variants.split("|") if v.strip()}
+NOTE_EN = set(NOTE_CANON.values())   # the English names, given as "en" on notes the table knows
 
 
 def plain(s):
@@ -273,6 +280,17 @@ def init(con):
     con.execute("CREATE INDEX IF NOT EXISTS catalog_shops ON catalog (shops DESC)")
     # Every key a perfume was ever known by, so its id stays the same when shops' spelling shifts.
     con.execute("CREATE TABLE IF NOT EXISTS catalog_keys (key TEXT PRIMARY KEY, id TEXT NOT NULL)")
+    # Barcode -> perfume, for /catalog/lookup (rebuilt with the catalog).
+    con.execute("CREATE TABLE IF NOT EXISTS catalog_gtins (gtin TEXT PRIMARY KEY, id TEXT NOT NULL)")
+
+
+def gender_tail(nk):
+    """("stronger with you homme") -> ("stronger with you", "m"): a gender word at the end of a name key is
+    the gender, not part of the name (see build). A name that is only that word keeps it."""
+    words = nk.split()
+    if len(words) > 1 and words[-1] in ("homme", "femme"):
+        return " ".join(words[:-1]), "m" if words[-1] == "homme" else "f"
+    return nk, ""
 
 
 def perfume_id(key):
@@ -337,7 +355,8 @@ def combine(rows, ids=None, brands=None):
     notes = {}
     for tier in ("top", "heart", "base"):
         c = counted((r["shop"], note_key(n), n) for r in rows for n in r["notes"].get(tier, []))
-        notes[tier] = sorted(c.values(), key=lambda x: (-x["shops"], x["name"].lower()))
+        notes[tier] = sorted(({**x, "en": x["key"]} if x["key"] in NOTE_EN else x for x in c.values()),
+                             key=lambda x: (-x["shops"], x["name"].lower()))
     families = sorted(counted((r["shop"], note_key(f), f) for r in rows for f in r["families"]).values(),
                       key=lambda x: (-x["shops"], x["name"].lower()))
     sizes = Counter()
@@ -397,11 +416,9 @@ def build(con):
         # apart through the gender. A name that is only that word ("Dior Homme") keeps it.
         d["_oldname"] = nk   # the key before this rule, so ids stay the same (see below)
         d["_rawg"] = d["gender"] if d["gender"] in ("m", "f") else ""
-        words = nk.split()
-        if len(words) > 1 and words[-1] in ("homme", "femme"):
-            nk = " ".join(words[:-1])
-            if d["gender"] not in ("m", "f", "u"):
-                d["gender"] = "m" if words[-1] == "homme" else "f"
+        nk, implied = gender_tail(nk)
+        if implied and d["gender"] not in ("m", "f", "u"):
+            d["gender"] = implied
         d["_name"] = f"{bk}|{nk}"
         d["_bk"] = bk
         rows.append(d)
@@ -461,6 +478,9 @@ def build(con):
         con.executemany("INSERT OR REPLACE INTO catalog_keys (key, id) VALUES (?, ?)",
                         [(k, p["id"]) for p in out for k in p["keys"]])
         con.execute("DELETE FROM catalog")
+        con.execute("DELETE FROM catalog_gtins")
+        con.executemany("INSERT OR IGNORE INTO catalog_gtins (gtin, id) VALUES (?, ?)",
+                        [(g, p["id"]) for p in out for g in p["data"]["gtins"]])
         con.executemany("""INSERT OR REPLACE INTO catalog (id, brand, name, conc, gender, search, shops, reports,
                 confirmed, review, data, updated) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                         [(p["id"], p["brand"], p["name"], p["conc"], p["gender"],
@@ -496,6 +516,40 @@ def perfume(con, pid):
     con.row_factory = sqlite3.Row
     r = con.execute("SELECT * FROM catalog WHERE id=?", (pid,)).fetchone()
     return row_out(r, full=True) if r else None
+
+
+GTIN_RE = re.compile(r"^\d{8,14}$")
+
+
+def lookup(con, gtins=(), brand="", name="", conc="", gender=""):
+    """The perfume a shop page shows, for the extension's "own database first" (GET /catalog/lookup):
+    first by barcode, then by brand + name + concentration (+ men/women) the same way build() matches.
+    Only exact matches; no guessing. Returns the full perfume or None."""
+    con.row_factory = sqlite3.Row
+    for g in gtins:
+        g = str(g).strip()
+        if GTIN_RE.match(g):
+            r = con.execute("SELECT id FROM catalog_gtins WHERE gtin=?", (g.zfill(13)[-13:] if len(g) <= 13 else g,)).fetchone()
+            if r and (p := perfume(con, r["id"])):
+                return p
+    bk = brand_key(brand)
+    nk, implied = gender_tail(name_key(name, bk))
+    if not bk or not nk:
+        return None
+    g = gender if gender in ("m", "f") else implied
+    # Every key this brand + name was ever known by (keys are "brand|name|conc|gender"; plain() keeps them free
+    # of LIKE wildcards). A concentration or gender the page gives must fit; what it doesn't give may be anything,
+    # but then it has to point at one perfume only (Guilty for men and for women: no match).
+    known = [(k.split("|")[2], k.split("|")[3], i) for k, i in
+             con.execute("SELECT key, id FROM catalog_keys WHERE key LIKE ?", (f"{bk}|{nk}|%",)) if k.count("|") == 3]
+    known = [(c, kg, i) for c, kg, i in known if (not conc or c in (conc, "")) and (not g or kg in (g, ""))]
+    for subset in ([x for x in known if x[0] == conc and x[1] == g], [x for x in known if x[0] == conc or x[1] == g], known):
+        ids = {i for _, _, i in subset if con.execute("SELECT 1 FROM catalog WHERE id=?", (i,)).fetchone()}
+        if len(ids) == 1:
+            return perfume(con, ids.pop())
+        if len(ids) > 1:
+            return None
+    return None
 
 
 def stats(con):

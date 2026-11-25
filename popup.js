@@ -40,8 +40,33 @@
 
   // ---------- review request ----------
   // Once, after 10 perfumes looked up (counted in content.js). Clicking either button hides it for good.
-  chrome.storage.local.get(['fn:lookups', 'fn:reviewAsked']).then(({ 'fn:lookups': n = 0, 'fn:reviewAsked': asked = false }) => {
-    if (n < 10 || asked || !FN.REVIEW_URL) return;
+  chrome.storage.local.get(['fn:lookups', 'fn:reviewAsked', 'fn:shareReminded', 'fn:shareDeclined']).then(({
+    'fn:lookups': n = 0, 'fn:reviewAsked': asked = false, 'fn:shareReminded': reminded = false, 'fn:shareDeclined': declined = false
+  }) => {
+    // The sharing reminder: also once, after 10 lookups, only while both sharing settings are off and not after a
+    // clear "No" on the welcome page or in this card; never together with the review card (that one goes first).
+    const reviewFirst = n >= 10 && !asked && !!FN.REVIEW_URL;
+    if (n >= 10 && !reviewFirst && !reminded && !declined && !S.sharePrices && !S.shareFacts) {
+      const done = no => chrome.storage.local.set(no ? { 'fn:shareReminded': true, 'fn:shareDeclined': true } : { 'fn:shareReminded': true });
+      $('shareText').textContent = st('p_shareT');
+      $('shareGo').textContent = st('p_shareGo');
+      $('shareNo').textContent = st('p_shareNo');
+      $('shareClose').title = $('shareClose').ariaLabel = st('p_revClose');
+      $('shareGo').addEventListener('click', async () => {
+        S = await FN.loadSettings();
+        S.sharePrices = true;
+        S.shareFacts = true;
+        S.shareAsked = true;
+        await chrome.storage.sync.set({ settings: S });
+        await done(false);
+        $('shareText').textContent = st('p_shareThanks');
+        $('shareGo').hidden = $('shareNo').hidden = true;
+      });
+      $('shareNo').addEventListener('click', () => { done(true); $('shareCard').hidden = true; });
+      $('shareClose').addEventListener('click', () => { done(false); $('shareCard').hidden = true; });
+      $('shareCard').hidden = false;
+    }
+    if (!reviewFirst) return;
     $('revGo').href = FN.REVIEW_URL;
     const done = () => chrome.storage.local.set({ 'fn:reviewAsked': true });
     $('revText').textContent = st('p_revT');

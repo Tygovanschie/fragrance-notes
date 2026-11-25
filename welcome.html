@@ -62,6 +62,12 @@
   .share.facts b { margin-top:0; }
   .perm .btn { flex:none; }
   .perm.ok h2 { display:none; }
+  .choice { border-width:2px; }
+  .choice p { font-size:14px; line-height:1.5; }
+  .choice-btns { display:flex; flex-direction:column; gap:8px; flex:none; }
+  .choice-btns .btn { min-width:210px; }
+  .choice-btns[hidden], .choice b[hidden] { display:none; }
+  @media (max-width:760px) { .choice-btns { flex-direction:row; flex-wrap:wrap; } .choice-btns .btn { min-width:0; } }
 </style>
 </head>
 <body>
@@ -95,21 +101,17 @@
     <li><span class="n">3</span><h2 data-i18n="wel_s3_t"></h2><p data-i18n="wel_s3_d"></p></li>
   </ol>
 
-  <section class="share">
+  <!-- One choice for both kinds of sharing (prices and the open perfume database), like the one switch in Settings → Data. -->
+  <section class="share choice" id="choice">
     <div class="l">
-      <h2 data-i18n="wel_shareH"></h2>
-      <b data-i18n="shareT"></b>
-      <p data-i18n="shareD"></p>
+      <h2 data-i18n="wel_choiceT"></h2>
+      <p data-i18n="wel_choiceD"></p>
+      <b id="choiceState" hidden></b>
     </div>
-    <label class="sw"><input type="checkbox" id="sharePrices"><i></i></label>
-  </section>
-
-  <section class="share facts">
-    <div class="l">
-      <b data-i18n="factsT"></b>
-      <p data-i18n="factsD"></p>
+    <div class="choice-btns" id="choiceBtns">
+      <button class="btn primary" id="choiceYes" data-i18n="wel_yes"></button>
+      <button class="btn quiet" id="choiceNo" data-i18n="wel_no"></button>
     </div>
-    <label class="sw"><input type="checkbox" id="shareFacts"><i></i></label>
   </section>
 
   <div class="end">

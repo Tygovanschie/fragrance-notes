@@ -190,6 +190,23 @@ class Build(unittest.TestCase):
         self.assertEqual(catalog.search(con, "armani beauty acqua")[0]["name"], "Acqua di Giò")   # old spellings still found
         self.assertEqual(len(catalog.search(con, "mannen")), 1)
 
+    def test_lookup(self):
+        con = db()
+        add(con, "douglas.nl", "Gucci", "Guilty Pour Homme", "edp", "m", gtins=["8005610298764"])
+        add(con, "douglas.nl", "Gucci", "Guilty", "edp", "f", install="b")
+        add(con, "notino.nl", "Armani", "Stronger With You", "edt", "m", install="c")
+        catalog.build(con)
+        name = lambda p: p and p["name"]
+        self.assertEqual(name(catalog.lookup(con, gtins=["8005610298764"])), "Guilty Pour Homme")
+        # Same name, men's and women's version: the shop's gender (or the name) decides; unknown is no match.
+        self.assertEqual(name(catalog.lookup(con, brand="Gucci", name="Guilty", conc="edp", gender="f")), "Guilty")
+        self.assertEqual(name(catalog.lookup(con, brand="GUCCI", name="Gucci Guilty voor Mannen", conc="edp")), "Guilty Pour Homme")
+        self.assertIsNone(catalog.lookup(con, brand="Gucci", name="Guilty", conc="edp"))
+        # Another shop's spelling and no concentration on the page.
+        self.assertEqual(name(catalog.lookup(con, brand="Giorgio Armani", name="Emporio Armani Stronger With You")), "Stronger With You")
+        self.assertIsNone(catalog.lookup(con, brand="Armani", name="Stronger With You", conc="parfum", gender="m"))
+        self.assertIsNone(catalog.lookup(con, brand="", name="", gtins=["123", "x"]))
+
     def test_armani_spellings(self):
         con = db()
         add(con, "zalando.nl", "Armani Beauty", "EA STRONGER WITH YOU INTENSELY", "edp")

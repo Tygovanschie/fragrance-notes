@@ -1,5 +1,7 @@
 """Self-contained API tests: starts the server on a temporary database and talks to it over HTTP.
 Run: python test_api.py   (inside the container: docker compose run --rm --no-deps api python test_api.py)"""
+import contextlib
+import io
 import json
 import os
 import tempfile
@@ -65,6 +67,7 @@ class ApiTest(unittest.TestCase):
             con.execute("DELETE FROM facts")
             con.execute("DELETE FROM catalog")
             con.execute("DELETE FROM catalog_keys")
+            con.execute("DELETE FROM catalog_gtins")
         app._facts_stats.update(t=0, data=None)
         app.LIMITER.hits.clear()
 
@@ -377,6 +380,26 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(call("GET", "/catalog/perfume/000000000000")[0], 404)
         s, st, _ = call("GET", "/catalog/stats")
         self.assertEqual((st["perfumes"], st["withConfirmedNotes"], st["license"]), (1, 1, "ODbL-1.0"))
+
+    def test_catalog_lookup_is_anonymous(self):
+        fact()
+        fact(shop="notino.nl", brand="Giorgio Armani", name="Stronger With You Absolutely", gtins=[],
+             notes={"top": ["Rum"], "heart": [], "base": []})
+        with app.db() as con:
+            app.catalog.build(con)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            by_gtin = call("GET", "/catalog/lookup?gtin=3614273642454")
+            by_name = call("GET", "/catalog/lookup?brand=Armani&name=Stronger%20With%20You%20Absolutely&conc=parfum&gender=m")
+            unknown = call("GET", "/catalog/lookup?brand=Creed&name=Aventus")
+        self.assertEqual((by_gtin[0], by_name[0], unknown[0]), (200, 200, 200))
+        self.assertEqual(by_gtin[1]["perfume"]["id"], by_name[1]["perfume"]["id"])
+        self.assertTrue(next(n for n in by_name[1]["perfume"]["notes"]["top"] if n["name"] == "Rum")["confirmed"])
+        self.assertIsNone(unknown[1]["perfume"])
+        # The log line has the path only: nothing about which perfume was looked up.
+        self.assertIn("GET /catalog/lookup 200", out.getvalue())
+        for secret in ("3614273642454", "Stronger", "Creed", "Aventus", "?"):
+            self.assertNotIn(secret, out.getvalue())
 
     def test_no_install_id_stored(self):
         me = str(uuid.uuid4())
