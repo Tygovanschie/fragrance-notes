@@ -179,6 +179,8 @@ class PagesTest(unittest.TestCase):
         self.assertLess(body.index('id="perfumes"'), body.index('class="stats"'))     # perfumes first, then numbers
         self.assertLess(body.index('class="stats"'), body.index('class="part how"'))
         self.assertIn('class="astrip mini"', body)                                      # accord strip on each card
+        self.assertEqual(body.count('class="pcard"'), body.count('<div class="pimg">'))              # every card has its square
+        self.assertIn('<span class="ph" style="background:linear-gradient(140deg,', body)              # no photo: accord colours
         self.assertEqual(get("/database?show=32")[0], 200)
         self.assertEqual(get("/database?show=abc")[0], 200)
         self.assertEqual(pages.database_page(app.db(), None, "en", 7).count('class="pcard"'),

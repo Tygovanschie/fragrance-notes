@@ -570,14 +570,18 @@ section.part{padding:80px 0 0}section.part h2{font-size:clamp(1.8rem,3.4vw,2.5re
 .chip{display:inline-flex;gap:6px;padding:3px 10px;border-radius:999px;background:var(--paper);color:var(--ink);font-weight:500;font-size:.875rem}
 .chip::before{content:"\\2713";color:var(--ok);font-weight:700}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-.pcard{display:block;background:var(--white);border:1px solid var(--line);border-radius:22px;padding:24px;color:var(--ink);text-decoration:none}
+.pcard{display:flex;flex-direction:column;background:var(--white);border:1px solid var(--line);border-radius:22px;padding:22px;color:var(--ink);text-decoration:none}
 .pcard:hover{color:var(--ink);box-shadow:0 18px 40px -22px rgba(74,26,59,.45)}
-.pcard .img{width:84px;height:84px;object-fit:contain;background:var(--paper);border-radius:14px;padding:6px;float:right;margin:0 0 8px 12px}
-.pcard .h{font:600 .9375rem/1 var(--display);color:var(--plum);margin:0 0 8px}.pcard .n{font:750 1.375rem/1.15 var(--display);margin:0 0 4px}
-.pcard .c{color:var(--ink-soft);font-size:.9375rem;margin:0 0 14px}
+.ptop{display:grid;grid-template-columns:minmax(0,1fr) 84px;gap:14px;height:100px;margin-bottom:12px}.pt{min-width:0}
+.pimg{width:84px;height:84px;border-radius:14px;background:var(--paper);overflow:hidden}
+.pimg img{width:100%;height:100%;object-fit:contain;padding:6px;display:block}
+.pimg .ph{display:grid;place-items:center;width:100%;height:100%;font:800 2.1rem/1 var(--display);color:#fff;text-shadow:0 1px 10px rgba(43,20,38,.35)}
+.pcard .h{font:600 .9375rem/1 var(--display);color:var(--plum);margin:0 0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard .n{font:750 1.25rem/1.15 var(--display);margin:0 0 4px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pcard .c{color:var(--ink-soft);font-size:.875rem;line-height:1.4;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pcard ul{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;padding:0;list-style:none}
 .pcard li{padding:4px 10px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);font-size:.8438rem}
-.pcard .p{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;font-size:.9375rem;color:var(--ink-soft);clear:both}
+.pcard .p{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;font-size:.9375rem;color:var(--ink-soft);margin-top:auto}
 .pcard .p b{color:var(--ink)}
 .soon{border-style:dashed;background:transparent;display:grid;place-content:center;text-align:center;color:var(--ink-soft);min-height:220px}
 .soon b{display:block;font:700 1.125rem/1.3 var(--display);color:var(--ink);margin-bottom:6px}
@@ -665,7 +669,7 @@ section.part.first{padding-top:44px}.parthead{display:flex;align-items:center;ju
 .how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
 .how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
 .how .steps h3{font-size:1rem}.how .steps p{font-size:.875rem}
-.astrip.mini{height:12px;border-radius:6px;gap:2px;margin:0 0 16px;clear:both}
+.astrip.mini{height:12px;border-radius:6px;gap:2px;margin:0 0 14px}.astrip.mini.none{background:var(--paper)}
 .official{margin:-12px 0 18px;font-size:.875rem;font-weight:600;color:var(--plum)}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
 @media (max-width:900px){.dbhero{grid-template-columns:1fr;gap:12px}.astrip.big{height:90px}}
 """
@@ -1186,12 +1190,20 @@ def card(con, p, prices=None, lang="en"):
     if rows:
         m, low, *_ = min(rows, key=lambda r: (abs(r[0] - 100), r[0]))
         tail = f'<p class="p"><span>{t["from"].format(size=ml(m))}</span><b>{e(money(low, st.get("currency"), lang))}</b></p>'
-    bits = [conc_name(p), (t["gender"].get(p.get("gender") or "", "") or "").lower(), t["sources"](p["shops"])]
+    bits = [conc_name(p), (t["gender"].get(p.get("gender") or "", "") or "").lower()]   # the sources count is on the page itself
     acc = shares(accords.main_accords(p))
-    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}">'
-            f'{img_tag(con, p, "img", 84)}<p class="h">{e(p["brand"])}</p>'
-            f'<p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
-            f'{accord_strip(acc, "mini") if acc else ""}'
+    # Every card has the same shape: a text block of fixed height with a square on the right (the bottle photo, or
+    # without one a field in the perfume's own accord colours with its initial), so the accord strips line up.
+    ph = img_tag(con, p, "", 84)
+    if not ph:
+        cols = [accords.COLOURS[a][0] for a, _ in acc[:3]] or ["#c58bb0", "#7e2f63"]
+        cols = cols * 2 if len(cols) == 1 else cols
+        ph = (f'<span class="ph" style="background:linear-gradient(140deg,{",".join(cols)})" aria-hidden="true">'
+              f'{e(p["name"][:1].upper())}</span>')
+    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}"><div class="ptop"><div class="pt">'
+            f'<p class="h">{e(p["brand"])}</p><p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
+            f'</div><div class="pimg">{ph}</div></div>'
+            f'{accord_strip(acc, "mini") if acc else "<div class=" + chr(34) + "astrip mini none" + chr(34) + "></div>"}'
             f'<ul>{"".join(f"<li>{e(c)}</li>" for c in conf[:8])}</ul>{tail}</a>')
 
 
