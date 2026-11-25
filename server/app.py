@@ -678,8 +678,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", cache)
         if ctype.startswith("text/html"):
-            # Pages run no scripts: only our CSS, the fonts and our own images.
-            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.bunny.net; "
+            # Pages run only our own script (/assets/live.js, the live search) and no inline code: our CSS, the fonts
+            # and our own images.
+            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'self'; connect-src 'self'; "
+                             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net; "
                              "font-src https://fonts.bunny.net; img-src 'self' https://fragrancenotes.app; form-action 'self'; "
                              "base-uri 'none'; frame-ancestors 'none'")
             self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
@@ -692,6 +694,8 @@ class Handler(BaseHTTPRequestHandler):
         """The public web pages (pages.py). Read-only; nothing about the visitor is stored."""
         html_t = "text/html; charset=utf-8"
         path = u.path
+        if path == "/assets/live.js":
+            return self.send(200, pages.LIVE_JS, "text/javascript; charset=utf-8", "public, max-age=31536000, immutable")
         if path == "/assets/pages.css":
             return self.send(200, pages.CSS, "text/css; charset=utf-8", "public, max-age=31536000, immutable")
         if path.startswith("/photo/"):

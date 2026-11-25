@@ -127,6 +127,7 @@ class PagesTest(unittest.TestCase):
         self.assertNotIn('class="note one"', body)
         self.assertIn('rel="canonical"', body)
         self.assertIn("default-src 'none'", h["Content-Security-Policy"])
+        self.assertIn("script-src 'self';", h["Content-Security-Policy"])                 # only our own file, no inline code
         self.assertEqual(re.findall(r'<script(?! type="application/ld\+json")', body), [])   # only the JSON-LD data block
         ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', body).group(1))
         self.assertEqual((ld["@type"], ld["name"], ld["brand"]["name"]), ("Product", "Stronger With You Intensely", "Armani"))
@@ -182,8 +183,22 @@ class PagesTest(unittest.TestCase):
         self.assertEqual(body.count('class="pcard"'), body.count('<div class="pimg">'))              # every card has its square
         self.assertIn('<span class="ph" style="background:linear-gradient(140deg,', body)              # no photo: accord colours
         self.assertNotIn('class="pcard soon"', body)                                     # no card left alone in a row
-        self.assertIn('<form class="hsearch" role="search" action="/database/search">', body)   # search in the header
-        self.assertIn('<form class="hsearch" role="search" action="/nl/database/search">', get("/nl/database")[1])
+        self.assertIn('<form class="listsearch" role="search" action="/database">', body)    # search under "All perfumes"
+        self.assertNotIn('class="hsearch"', body)                                           # not twice on this page
+        self.assertIn('<form class="hsearch" role="search" action="/nl/database/search">', get("/nl/note/tonka-bean")[1])
+        self.assertIn('<script src="/assets/live.js?v=', body)
+        self.assertNotIn("<small>", body.split('id="perfumes"')[1].split("</h2>")[0])        # no count next to the title
+        # The search filters the same page (also without the script), and pages keep the words.
+        _, found, _ = get("/database?q=stronger")
+        self.assertIn("Stronger With You Intensely", found)
+        self.assertIn("noindex", found)
+        _, found, _ = get("/database?q=tonka")                                               # by note, too
+        self.assertIn("Stronger With You Intensely", found)
+        _, none, _ = get("/database?q=zzzz")
+        self.assertIn('class="nomatch"', none)
+        self.assertEqual(pages.db_link("en", 48, 2, "tom ford"), "/database?q=tom+ford&amp;show=48&amp;page=2#perfumes")
+        with urllib.request.urlopen(BASE + "/assets/live.js", timeout=5) as r:
+            self.assertIn("listsearch", r.read().decode())
         self.assertEqual(get("/database?show=48&page=2")[0], 200)
         self.assertEqual(get("/database?show=abc&page=x")[0], 200)
         self.assertTrue(all(n % 12 == 0 for n in pages.SHOW_STEPS))                       # full rows in 1-4 columns
@@ -197,7 +212,7 @@ class PagesTest(unittest.TestCase):
         self.assertIn('href="/database?page=2#perfumes" rel="next">Next →', p)
         p = pages.pager("en", 48, 5, 9)
         self.assertEqual(re.findall(r">(\d+|…)<", p), ["1", "…", "3", "4", "5", "6", "7", "…", "9"])
-        self.assertIn('href="/database?show=48&page=4#perfumes" rel="prev"', p)
+        self.assertIn('href="/database?show=48&amp;page=4#perfumes" rel="prev"', p)
         code, body, _ = get("/database/search?q=stronger")
         self.assertEqual(code, 200)
         self.assertIn("Stronger With You Intensely", body)

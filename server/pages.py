@@ -703,6 +703,13 @@ section.part.first .parthead{margin-bottom:22px}.showsel ul,.regsel ul{min-width
 .hsearch:focus-within{border-color:var(--mauve)}.hsearch input{flex:1;min-width:0;border:0;background:none;font:400 .9688rem/1.2 var(--text);color:var(--ink);padding:8px 0;outline:none}
 .hsearch button{border:0;background:var(--plum);color:var(--white);width:38px;height:38px;border-radius:50%;display:grid;place-items:center;cursor:pointer}.hsearch button:hover{background:var(--plum-deep)}
 @media (max-width:760px){.top .wrap{flex-wrap:wrap}.hsearch{order:3;flex-basis:100%;max-width:none}}
+.listsearch{display:flex;align-items:center;max-width:560px;margin:0 0 24px;background:var(--white);border:1.5px solid var(--line);border-radius:999px;padding:4px 4px 4px 18px}
+.listsearch:focus-within{border-color:var(--mauve)}.listsearch input{flex:1;min-width:0;border:0;background:none;font:400 1rem/1.2 var(--text);color:var(--ink);padding:9px 0;outline:none}
+.listsearch button{border:0;background:var(--plum);color:var(--white);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer}.listsearch button:hover{background:var(--plum-deep)}
+.nomatch{margin:8px 0 0;color:var(--ink-soft)}.listsearch input::-webkit-search-cancel-button,.hsearch input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
+.pcard{transition:opacity .22s ease,transform .22s ease}.pcard.out{opacity:0;transform:scale(.96)}
+.pcard.in{animation:cardin .28s ease both}@keyframes cardin{from{opacity:0;transform:translateY(6px)}}
+.langsel summary{height:40px;padding:0 14px}.top .btn.small{height:40px;padding:0 18px}
 .how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
 .how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
 .how .steps h3{font-size:1rem}.how .steps p{font-size:.875rem}
@@ -726,7 +733,18 @@ def ld_json(obj):
     return s.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
-def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None, foot=""):
+def search_form(lang, cls, action, value="", hidden=""):
+    """The round search field with its magnifier button: in the header ("hsearch"), and under "All perfumes"
+    ("listsearch", filtered live as you type by /assets/live.js)."""
+    t = T[lang]
+    return (f'<form class="{cls}" role="search" action="{action}">{hidden}<input type="search" name="q" value="{e(value)}" '
+            f'placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" maxlength="100" autocomplete="off">'
+            f'<button type="submit" aria-label="{t["search"]}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" '
+            f'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/>'
+            f'<path d="m20 20-3.5-3.5"/></svg></button></form>')
+
+
+def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None, foot="", search=True, script=False):
     """A whole page. `path` is the page's path without the language prefix (the same in every language)."""
     t = T[lang]
     alt = "".join(f'<link rel="alternate" hreflang="{l}" href="{e(BASE + P(l, path))}">' for l in LANGS)
@@ -758,12 +776,12 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None,
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=bricolage-grotesque:600,700,750,800|figtree:400,500,600&display=swap">
 <link rel="stylesheet" href="/assets/pages.css?v={CSS_VERSION}">
-{ld}
+{ld}{f'<script src="/assets/live.js?v={JS_VERSION}" defer></script>' if script else ""}
 </head>
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{SITE}"><img src="{SITE}img/icon.png" alt="">Fragrance Notes</a>
-<form class="hsearch" role="search" action="{P(lang, '/database/search')}"><input type="search" name="q" placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" required maxlength="100"><button type="submit" aria-label="{t["search"]}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button></form>
+{search_form(lang, "hsearch", P(lang, "/database/search")) if search else ""}
 <nav>{menu}
 <a class="btn small" href="{STORE}">{t["getExt"]}</a></nav>
 </div></header>
@@ -781,6 +799,56 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None,
 
 
 CSS_VERSION = hashlib.sha1(CSS.encode()).hexdigest()[:8]
+
+# The only script on the site (CSP: script-src 'self'): live search in the perfume list. While you type it asks the
+# server for the same page with ?q= and lets the cards that no longer match fade out; matching cards stay where they
+# are. Without it the search form still works (Enter loads /database?q=).
+LIVE_JS = r"""(() => {
+  const form = document.querySelector('form.listsearch');
+  const box = document.getElementById('results');
+  if (!form || !box || !window.fetch || !window.DOMParser) return;
+  const input = form.querySelector('input[name=q]');
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let timer = 0, ctl = null, last = input.value.trim();
+  const key = a => a.getAttribute('href');
+  async function run(force) {
+    const q = input.value.trim();
+    if (q === last && !force) return;
+    last = q;
+    const url = new URL(form.getAttribute('action'), location.href);
+    for (const h of form.querySelectorAll('input[type=hidden]')) url.searchParams.set(h.name, h.value);
+    if (q) url.searchParams.set('q', q);
+    if (ctl) ctl.abort();
+    ctl = new AbortController();
+    let doc;
+    try {
+      const r = await fetch(url, { signal: ctl.signal, headers: { Accept: 'text/html' } });
+      doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    } catch (err) { return; }
+    const next = doc.getElementById('results');
+    if (!next || q !== input.value.trim()) return;
+    const cards = box.querySelector('.cards'), nextCards = next.querySelector('.cards');
+    const keep = new Set([...nextCards.children].map(key));
+    const gone = [...cards.children].filter(a => !keep.has(key(a)));
+    gone.forEach(a => a.classList.add('out'));
+    if (gone.length && !still) await new Promise(r => setTimeout(r, 230));
+    if (q !== input.value.trim()) return;
+    const have = new Map([...cards.children].map(a => [key(a), a]));
+    cards.replaceChildren(...[...nextCards.children].map(a => {
+      const old = have.get(key(a));
+      if (old) { old.classList.remove('out'); return old; }
+      if (!still) a.classList.add('in');
+      return a;
+    }));
+    [...box.children].filter(n => n !== cards).forEach(n => n.remove());
+    [...next.children].filter(n => !n.classList.contains('cards')).forEach(n => box.append(n));
+    history.replaceState(null, '', url.pathname + url.search);
+  }
+  input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(run, 160); });
+  form.addEventListener('submit', e => { e.preventDefault(); clearTimeout(timer); run(true); });
+})();
+"""
+JS_VERSION = hashlib.sha1(LIVE_JS.encode()).hexdigest()[:8]
 
 
 def back(lang):
@@ -1303,13 +1371,24 @@ PAGER = {"en": ("Previous", "Next", "Pages"), "nl": ("Vorige", "Volgende", "Pagi
          "pl": ("Poprzednia", "Następna", "Strony")}
 
 
-def db_link(lang, show, page):
-    """/database with only the settings that differ from the defaults."""
-    q = "&".join(x for x in (f"show={show}" if show != SHOW_STEPS[0] else "", f"page={page}" if page > 1 else "") if x)
-    return P(lang, "/database") + (f"?{q}" if q else "") + "#perfumes"
+def db_link(lang, show, page, q=""):
+    """/database with only the settings that differ from the defaults (and the search words, if any)."""
+    parts = [f"q={urllib.parse.quote_plus(q)}" if q else "", f"show={show}" if show != SHOW_STEPS[0] else "",
+             f"page={page}" if page > 1 else ""]
+    qs = "&amp;".join(x for x in parts if x)
+    return P(lang, "/database") + (f"?{qs}" if qs else "") + "#perfumes"
 
 
-def pager(lang, show, page, pages):
+def matches(p, words, lang):
+    """True when every search word starts a word of the perfume's brand, name or one of its notes (in English or
+    the page's language): "tom", "vanil", "stronger with" all find what you'd expect."""
+    notes = " ".join(f'{n.get("en") or ""} {note_name(n["en"], lang) if n.get("en") else n["name"]}'
+                     for tier in p["notes"].values() for n in tier if n["confirmed"])
+    hay = " " + catalog.plain(f'{p["brand"]} {p["name"]} {notes}')
+    return all(f" {w}" in hay for w in words)
+
+
+def pager(lang, show, page, pages, q=""):
     """Page numbers under the cards: previous, 1 … around the current page … last, next (links, no script)."""
     if pages <= 1:
         return ""
@@ -1319,25 +1398,31 @@ def pager(lang, show, page, pages):
     for n in nums:
         if n - last > 1:
             out.append('<span class="gap">…</span>')
-        out.append(f'<span class="cur" aria-current="page">{n}</span>' if n == page else f'<a href="{db_link(lang, show, n)}">{n}</a>')
+        out.append(f'<span class="cur" aria-current="page">{n}</span>' if n == page else f'<a href="{db_link(lang, show, n, q)}">{n}</a>')
         last = n
-    prev = f'<a class="step" href="{db_link(lang, show, page - 1)}" rel="prev">← {prev_t}</a>' if page > 1 else ""
-    nxt = f'<a class="step" href="{db_link(lang, show, page + 1)}" rel="next">{next_t} →</a>' if page < pages else ""
+    prev = f'<a class="step" href="{db_link(lang, show, page - 1, q)}" rel="prev">← {prev_t}</a>' if page > 1 else ""
+    nxt = f'<a class="step" href="{db_link(lang, show, page + 1, q)}" rel="next">{next_t} →</a>' if page < pages else ""
     return f'<nav class="pager" aria-label="{label}">{prev}{"".join(out)}{nxt}</nav>'
 
 
-def database_page(con, prices=None, lang="en", show=24, page=1):
+def database_page(con, prices=None, lang="en", show=24, page=1, q=""):
     t = T[lang]
     idx = index(con)
     s = catalog.stats(con)
     shops = con.execute("SELECT COUNT(DISTINCT shop) FROM reports").fetchone()[0] if _has(con, "reports") else 0
     show = show if show in SHOW_STEPS else SHOW_STEPS[0]
-    pages = max(1, -(-len(idx["perfumes"]) // show))
+    q = " ".join(str(q or "").split())[:100]
+    words = catalog.plain(q).split()
+    found = [p for p in idx["perfumes"] if matches(p, words, lang)] if words else idx["perfumes"]
+    pages = max(1, -(-len(found) // show))
     page = min(max(1, page), pages)
-    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][(page - 1) * show:page * show])
+    cards = "".join(card(con, p, prices, lang) for p in found[(page - 1) * show:page * show])
+    empty = f'<p class="nomatch">{t["noMatch"]}</p>' if not found else ""
+    hidden = f'<input type="hidden" name="show" value="{show}">' if show != SHOW_STEPS[0] else ""
+    listsearch = search_form(lang, "listsearch", P(lang, "/database"), q, hidden)
     # How many cards to show, as a menu of links (the pages have no script), like the language menu.
     showsel = (f'<details class="langsel showsel"><summary>{SHOW[lang].format(n=show)}</summary><ul>'
-               + "".join(f'<li><a href="{db_link(lang, n, 1)}"'
+               + "".join(f'<li><a href="{db_link(lang, n, 1, q)}"'
                          f'{" aria-current=" + chr(34) + "true" + chr(34) if n == show else ""}>{SHOW[lang].format(n=n)}</a></li>'
                          for n in SHOW_STEPS) + "</ul></details>")
     brands = "".join(f'<li><a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}<small>{len(b["perfumes"])}</small></a></li>'
@@ -1348,14 +1433,14 @@ def database_page(con, prices=None, lang="en", show=24, page=1):
 <h1>{t["dbH1"]}</h1>
 <p class="lead">{t["dbLead"]}</p>
 </section>
-<section class="part first" id="perfumes"><div class="parthead"><h2>{t["withConfirmed"]} <small>{num(len(idx["perfumes"]), lang)}</small></h2>{showsel}</div>
-<div class="cards">{cards}</div>
-{pager(lang, show, page, pages)}
+<section class="part first" id="perfumes"><div class="parthead"><h2>{t["withConfirmed"]}</h2>{showsel}</div>
+{listsearch}
+<div id="results"><div class="cards">{cards}</div>{empty}{pager(lang, show, page, pages, q)}</div>
 </section>
 <section class="part"><div class="stats">
 <div><b>{num(s["perfumes"], lang)}</b><span>{t["statPerfumes"]}</span></div>
 <div><b>{num(s["brands"], lang)}</b><span>{t["statBrands"]}</span></div>
-<div class="hl"><b>{num(s["withConfirmedNotes"], lang)}</b><span>{t["statConfirmed"]}</span></div>
+<div class="hl"><b>{num(len(idx["perfumes"]), lang)}</b><span>{t["statConfirmed"]}</span></div>
 <div><b>{num(shops, lang)}</b><span>{t["statShops"]}</span></div>
 </div>
 <p class="asof">{t["counted"].format(day=e(day(date.today().isoformat(), lang)))}</p></section>
@@ -1380,7 +1465,9 @@ def database_page(con, prices=None, lang="en", show=24, page=1):
           "isAccessibleForFree": True,
           "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json",
                             "contentUrl": "https://api.fragrancenotes.app/catalog/stats"}]}
-    return frame(lang, t["dbTitle"], t["dbDesc"], "/database", body, jsonld=ld)
+    # A search result (?q=) is the same page filtered: not a page of its own for search engines.
+    return frame(lang, t["dbTitle"], t["dbDesc"], "/database", body, noindex=bool(q), jsonld=None if q else ld,
+                 search=False, script=True)
 
 
 def search_page(con, q, lang="en"):
@@ -1442,7 +1529,8 @@ def route(con, path, query, prices, voter=None):
                 return int((qs.get(k) or [default])[0])
             except ValueError:
                 return default
-        return 200, database_page(con, prices, lang, number("show", SHOW_STEPS[0]), number("page", 1)), None
+        return 200, database_page(con, prices, lang, number("show", SHOW_STEPS[0]), number("page", 1),
+                                  (qs.get("q") or [""])[0]), None
     if path == "/database/search":
         q = (urllib.parse.parse_qs(query).get("q") or [""])[0]
         return 200, search_page(con, q, lang), None

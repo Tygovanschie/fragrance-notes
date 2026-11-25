@@ -17,7 +17,7 @@ const LANG = "(?:nl|de|fr|es|it|pt|pl)";
 const PAGES = new RegExp(
   `^(?:/${LANG})?/(?:database(?:/.*)?|perfume/[^/]+(?:/rate)?|note/[^/]+|notes|brand/[^/]+)$` +
   `|^/${LANG}/?$` +
-  "|^/(?:photo/(?:n/)?[^/]+|assets/pages\\.css|sitemap\\.xml)$");   // photo/n/: note photos
+  "|^/(?:photo/(?:n/)?[^/]+|assets/pages\\.css|assets/live\\.js|sitemap\\.xml)$");   // photo/n/: note photos
 const STALE_DAYS = 14;
 const FROM = "alerts@fragrancenotes.app";
 
