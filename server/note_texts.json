@@ -1,0 +1,52 @@
+{
+  "_about": "Reviewed note descriptions for the note pages (pages.py). Drafts come from llm_review.py (job_texts: the local model rewrites a cited source); only texts checked by hand go in here. Keys are the English note names of catalog.NOTE_WORDS.",
+  "tonka bean": {
+    "smell": "Warm and sweet, somewhere between vanilla, almond and fresh hay, with a slightly spicy edge that can remind you of pipe tobacco. It makes a perfume feel soft and cosy, and it's one of the notes you still smell hours later.",
+    "origin": "The seeds of the cumaru tree (Dipteryx odorata), which grows in northern South America. Most of the scent comes from coumarin, a substance in the seed. Perfumers use a tonka absolute extracted from the seeds, or coumarin made in a lab.",
+    "source": "https://en.wikipedia.org/wiki/Tonka_bean",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "pink pepper": {
+    "smell": "Bright, rosy and lightly spicy: more sparkle than heat. It's a top note, so you notice it in the first minutes, where it gives a perfume a fresh, peppery lift.",
+    "origin": "The pink berries of the Peruvian pepper tree (Schinus molle), sold as pink peppercorns. Despite the name, it isn't related to black pepper (Piper nigrum).",
+    "source": "https://en.wikipedia.org/wiki/Schinus_molle",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "sage": {
+    "smell": "Fresh, herbal and a little camphor-like, with a dry, warm edge. It usually sits at the top or in the heart of a perfume and gives it a clean, aromatic feel.",
+    "origin": "The leaves of common sage (Salvia officinalis), a small evergreen shrub native to the Mediterranean region.",
+    "source": "https://en.wikipedia.org/wiki/Salvia_officinalis",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "vanilla": {
+    "smell": "Sweet, creamy and warm, the smell most people know from desserts, often with a slightly smoky or boozy depth. It's a base note that lasts for hours and softens everything around it.",
+    "origin": "The cured seed pods of the vanilla orchid (Vanilla planifolia), native to Mexico and Central America and now grown mostly in Madagascar and other tropical regions around the Indian Ocean.",
+    "source": "https://en.wikipedia.org/wiki/Vanilla",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "cardamom": {
+    "smell": "Fresh and spicy at the same time, with hints of eucalyptus, citrus and a little sweetness. It's usually a top note that gives a perfume a cool, aromatic start.",
+    "origin": "The seeds of plants of the ginger family, from the genera Elettaria and Amomum, native to the Indian subcontinent and Indonesia.",
+    "source": "https://en.wikipedia.org/wiki/Cardamom",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "cinnamon": {
+    "smell": "Warm, sweet and spicy, like baking spices, sometimes with a slightly woody feel. It's usually a heart note that adds warmth and a cosy character.",
+    "origin": "The dried inner bark of several kinds of trees of the genus Cinnamomum.",
+    "source": "https://en.wikipedia.org/wiki/Cinnamon",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "chestnut": {
+    "smell": "Warm, nutty and slightly sweet, like roasted or candied chestnuts, often with a soft, creamy feel. It's a base note that gives a perfume a cosy, autumn character.",
+    "origin": "Chestnut is rarely extracted for perfume: in most perfumes it's an accord, built from other materials. The nut itself is the seed of the sweet chestnut tree (Castanea sativa), native to Southern Europe and Anatolia.",
+    "source": "https://en.wikipedia.org/wiki/Sweet_chestnut",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  }
+}

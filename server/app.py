@@ -12,6 +12,9 @@ Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenote
   GET  /catalog/lookup?gtin=&brand=&name=&conc=&gender=   the perfume on a shop page (anonymous, query not logged)
   GET  /health
 
+  Web pages (pages.py), for fragrancenotes.app: /database, /database/search?q=, /perfume/{id}-{slug},
+  /note/{slug}, /photo/{barcode}.jpg, /assets/pages.css, /sitemap.xml
+
 Privacy: no IP addresses are stored or logged. The install id is a random UUID made by the
 extension; only a salted hash of it is stored. Reports older than RETENTION_DAYS are deleted.
 """
@@ -26,6 +29,7 @@ import threading
 import time
 
 import catalog
+import pages
 from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -135,6 +139,7 @@ def init_db():
             PRIMARY KEY (install, shop, brand, name, conc, gender, day))""")
         con.execute("CREATE INDEX IF NOT EXISTS facts_day ON facts (day)")
         catalog.init(con)
+        pages.init(con)
         if new:   # one-time migration: start the history with the prices we have
             con.execute("""INSERT OR IGNORE INTO daily_lows (install, perfume_id, shop, ml, currency, day, price, t)
                 SELECT install, perfume_id, shop, ml, currency, date(t / 1000, 'unixepoch'), price, t FROM reports""")
@@ -349,6 +354,11 @@ def facts_stats():
     return data
 
 
+def page_prices(fragrantica_id):
+    """Price stats for a perfume page (pages.py), in the most-reported currency."""
+    return stats(int(fragrantica_id))
+
+
 def stats(pid, currency=None):
     since = now_ms() - WINDOW_DAYS * 86400_000
     with db() as con:
@@ -522,6 +532,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, facts_stats(), [("Cache-Control", "public, max-age=60")])
         if u.path.startswith("/catalog/"):
             return self.catalog_get(u)
+        if u.path.split("/")[1] in ("database", "perfume", "note", "photo", "assets", "sitemap.xml"):
+            return self.page_get(u)
         m = re.fullmatch(r"/prices/([0-9]+)", u.path)
         if not m or not ID_RE.match(m.group(1)):
             return self.reply(404, {"error": "not found"})
@@ -529,6 +541,55 @@ class Handler(BaseHTTPRequestHandler):
         if cur is not None and cur not in EUR_PER:
             return self.reply(400, {"error": "unknown currency"})
         self.reply(200, stats(int(m.group(1)), cur), [("Cache-Control", "public, max-age=300")])
+
+    def send(self, code, data, ctype, cache="public, max-age=600", headers=()):
+        if isinstance(data, str):
+            data = data.encode()
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", cache)
+        if ctype.startswith("text/html"):
+            # Pages run no scripts: only our CSS, the fonts and our own images.
+            self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'self' 'unsafe-inline' https://fonts.bunny.net; "
+                             "font-src https://fonts.bunny.net; img-src 'self' https://fragrancenotes.app; form-action 'self'; "
+                             "base-uri 'none'; frame-ancestors 'none'")
+            self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        for k, v in headers:
+            self.send_header(k, v)
+        self.end_headers()
+        self.wfile.write(data)
+
+    def page_get(self, u):
+        """The public web pages (pages.py). Read-only; nothing about the visitor is stored."""
+        html_t = "text/html; charset=utf-8"
+        path = u.path
+        if path == "/assets/pages.css":
+            return self.send(200, pages.CSS, "text/css; charset=utf-8", "public, max-age=31536000, immutable")
+        if path.startswith("/photo/"):
+            f = pages.image_file(path[7:])
+            if not f:
+                return self.send(404, "not found", "text/plain; charset=utf-8")
+            return self.send(200, f[0], f[1], "public, max-age=2592000")
+        with db() as con:
+            if path == "/sitemap.xml":
+                return self.send(200, pages.sitemap(con), "application/xml; charset=utf-8", "public, max-age=3600")
+            if path in ("/database", "/database/"):
+                return self.send(200, pages.database_page(con, page_prices), html_t)
+            if path == "/database/search":
+                q = (parse_qs(u.query).get("q") or [""])[0]
+                return self.send(200, pages.search_page(con, q), html_t, "public, max-age=300")
+            m = re.fullmatch(r"/perfume/([0-9a-f]{12})(?:-[a-z0-9-]*)?", path)
+            if m and (r := pages.perfume_page(con, m.group(1), page_prices)):
+                canon, body = r
+                if path != canon:
+                    return self.send(301, "", html_t, headers=[("Location", canon)])
+                return self.send(200, body, html_t)
+            m = re.fullmatch(r"/note/([a-z0-9-]{1,60})", path)
+            if m and (r := pages.note_page(con, m.group(1))):
+                return self.send(200, r[1], html_t)
+        return self.send(404, pages.not_found(), html_t, "public, max-age=300")
 
     def catalog_get(self, u):
         cache = [("Cache-Control", "public, max-age=300")]
@@ -641,6 +702,11 @@ def catalog_loop():
             with db() as con:
                 n = catalog.build(con)
             print(f"catalog rebuilt: {n} perfumes", flush=True)
+            if os.environ.get("PAGE_IMAGES", "1") != "0":
+                with db() as con:
+                    got = pages.refresh_images(con)
+                if got:
+                    print(f"pages: {got} new bottle photos", flush=True)
         except Exception as e:  # keep serving even if a rebuild fails
             print("catalog rebuild failed:", e, flush=True)
         time.sleep(every)

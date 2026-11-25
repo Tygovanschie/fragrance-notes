@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Nightly proposals from the local LLM (Ollama on 127.0.0.1, see ~/ollama). Runs on the host (cron), like backup.py.
 
-Three jobs, each writing a list to review/ for a person to check; the job itself never changes the database or
+Four jobs, each writing a list to review/ for a person to check; the job itself never changes the database or
 the code, because the model makes mistakes (it guessed "almond wood" for "Belambra Hout"):
 
 1. notes-DATE.md  Note names in the catalog that catalog.NOTE_WORDS doesn't know: an English name, and whether it
@@ -12,6 +12,9 @@ the code, because the model makes mistakes (it guessed "almond wood" for "Belamb
                   split one perfume in two when there's no barcode; (b) pairs of perfumes of the same house that
                   are probably the same perfume under another spelling. Good ones become rules in catalog.py.
 
+4. texts-DATE.md   Descriptions for the note pages (pages.py): the model rewrites the Wikipedia intro of the plant
+                  or material, with a check for names it added. Good ones go into server/note_texts.json by hand.
+
 What was asked before is remembered in review/seen.json, so each list only has new items.
 Prints one line per job; under cron through `systemd-cat -t fragrance-llm` (journalctl -t fragrance-llm).
 """
@@ -20,6 +23,8 @@ import json
 import os
 import sqlite3
 import sys
+import re
+import urllib.parse
 import urllib.request
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -227,6 +232,96 @@ def job_names(con, seen):
             f"{len(pairs)} pairs checked, {len(same)} the same -> {path}"), ["name:" + p[0] for p in new_names] + [k for k, _, _ in pairs]
 
 
+# ---------- 4. descriptions for the note pages ----------
+PAGE_MIN_CONFIRMED = int(os.environ.get("PAGE_MIN_CONFIRMED", "3"))   # as in pages.py
+TEXTS_PER_NIGHT = int(os.environ.get("LLM_TEXTS", "10"))
+WIKI = "https://en.wikipedia.org/w/api.php"
+# Notes whose Wikipedia article has another title than the note's name (the plant or material itself).
+WIKI_TITLES = {"sage": "Salvia officinalis", "cedar": "Cedrus", "juniper": "Juniperus communis", "pink pepper": "Schinus molle",
+               "violet leaf": "Viola odorata", "violet": "Viola odorata", "lavender": "Lavandula angustifolia",
+               "cardamom": "Cardamom", "chestnut": "Castanea sativa", "amber": "Amber (perfumery)", "musk": "Musk",
+               "iris": "Orris root", "orris": "Orris root", "oud": "Agarwood", "patchouli": "Patchouli",
+               "vetiver": "Chrysopogon zizanioides", "bergamot": "Bergamot orange", "mandarin": "Mandarin orange",
+               "orange blossom": "Neroli", "neroli": "Neroli", "tuberose": "Polianthes tuberosa", "jasmine": "Jasmine",
+               "rose": "Rose oil", "sandalwood": "Sandalwood", "tonka bean": "Tonka bean", "vanilla": "Vanilla",
+               "cinnamon": "Cinnamon", "leather": "Leather", "ambroxan": "Ambroxide", "guaiac wood": "Guaiacum"}
+TEXT_PROMPT = """You write short descriptions of perfume notes for a perfume website. Plain, friendly English for
+shoppers. No marketing words, no brand or perfume names, no lists.
+
+Note: {note}
+Source text (from Wikipedia):
+\"\"\"{source}\"\"\"
+
+Reply in JSON: {{"smell": ..., "origin": ..., "from_source": ...}}
+- "smell": 2 sentences: what this note smells like in a perfume and how it feels (for example warm, fresh,
+  powdery), and whether it is usually a top, heart or base note. Keep to what is common knowledge in perfumery.
+- "origin": 1 or 2 sentences on where it comes from. Use ONLY facts that are in the source text above (plant,
+  part used, region, main substance). Do not add anything that isn't in the source. If the source says nothing
+  useful about it, write "".
+- "from_source": true if every fact in "origin" is in the source text."""
+
+
+def wiki_intro(title):
+    """(title, url, plain-text intro) of an English Wikipedia article, or None (missing or a disambiguation page)."""
+    q = urllib.parse.urlencode({"action": "query", "prop": "extracts|info", "exintro": 1, "explaintext": 1,
+                                "redirects": 1, "inprop": "url", "format": "json", "titles": title})
+    req = urllib.request.Request(f"{WIKI}?{q}", headers={"User-Agent": "FragranceNotes/1.3 (https://fragrancenotes.app)"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        pg = next(iter(json.loads(r.read())["query"]["pages"].values()))
+    text = (pg.get("extract") or "").strip()
+    if "missing" in pg or not text or "may refer to" in text[:300]:
+        return None
+    return pg["title"], pg.get("fullurl", ""), text[:3000]
+
+
+def unsupported(origin, source):
+    """Names and numbers in the model's origin text that the source doesn't have (a sign it made them up)."""
+    words = re.findall(r"(?<![.!?]\s)(?<!^)\b[A-Z][a-z]{2,}\b|\b\d+\b", origin)
+    return sorted({w for w in words if w.lower() not in source.lower()})
+
+
+def job_texts(con, seen):
+    try:
+        with open(os.path.join(BASE, "note_texts.json"), encoding="utf-8") as f:
+            done = set(json.load(f))
+    except FileNotFoundError:
+        done = set()
+    want = {}
+    for (data,) in con.execute("SELECT data FROM catalog WHERE confirmed >= ?", (PAGE_MIN_CONFIRMED,)):
+        for tier in json.loads(data)["notes"].values():
+            for n in tier:
+                if n.get("en") and n["confirmed"]:
+                    want[n["en"]] = want.get(n["en"], 0) + 1
+    new = sorted((k for k in want if k not in done and k not in seen), key=lambda k: (-want[k], k))[:TEXTS_PER_NIGHT]
+    if not new:
+        return f"texts: nothing new ({len(want)} notes with a page, {len(done & set(want))} have a text)", []
+    rows, drafts, asked = [], {}, []
+    for k in new:
+        src = wiki_intro(WIKI_TITLES.get(k, k[:1].upper() + k[1:]))
+        asked.append(k)
+        if not src:
+            rows.append([k, "—", "—", "no source found: no text (the page shows facts only)", ""])
+            continue
+        title, url, text = src
+        a = ask(TEXT_PROMPT.format(note=k, source=text))
+        smell, origin = str(a.get("smell") or "").strip(), str(a.get("origin") or "").strip()
+        checks = []
+        if a.get("from_source") is not True:
+            checks.append("model: origin not fully from the source")
+        if (extra := unsupported(origin, text)):
+            checks.append("not in source: " + ", ".join(extra))
+        drafts[k] = {"smell": smell, "origin": origin, "source": url, "sourceName": "Wikipedia", "license": "CC BY-SA 4.0"}
+        rows.append([k, smell, origin, "; ".join(checks) or "ok", f"[{title}]({url})"])
+    path = write_list("texts", "Note descriptions to review",
+                      "Drafts only: nothing is online. Check each text against the source (the model sometimes gets facts\n"
+                      "wrong), fix it if needed, and copy the good ones from texts-" + DAY + ".json into server/note_texts.json.",
+                      ["Note", "Smells like (draft)", "Comes from (draft)", "Checks", "Source"], rows)
+    with open(os.path.join(OUT, f"texts-{DAY}.json"), "w", encoding="utf-8") as f:
+        json.dump(drafts, f, ensure_ascii=False, indent=2)
+    os.chmod(os.path.join(OUT, f"texts-{DAY}.json"), 0o600)
+    return f"texts: {len(drafts)} drafts, {len(rows) - len(drafts)} without a source -> {path}", asked
+
+
 def main():
     if not os.path.isfile(DB):
         raise RuntimeError(f"database not found: {DB}")
@@ -238,7 +333,7 @@ def main():
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     failed = []
     try:
-        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names)):
+        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts)):
             try:
                 line, asked = job(con, set(seen.get(name, [])))
             except Exception as e:   # one job failing doesn't stop the others
