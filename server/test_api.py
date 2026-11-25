@@ -333,7 +333,10 @@ class ApiTest(unittest.TestCase):
         self.assertEqual(fact(name="x" * 121)[0], 422)
         self.assertEqual(fact(perfumeId="abc")[0], 422)
         self.assertEqual(fact(perfumeId=None, conc=None, gender=None, lang=None, gtins=[], families=[])[0], 201)
-        big = {**FACT, "families": ["x" * 40] * 6, "notes": {k: ["y" * 40] * 15 for k in ("top", "heart", "base")}}
+        self.assertEqual(fact(notes={"top": ["Vanille"], "mentioned": ["x"] * 21})[0], 422)
+        self.assertEqual(fact(notes={"top": ["Vanille"], "mentioned": ["Chestnut", "Vanilla"]})[0], 201)
+        big = {**FACT, "families": ["x" * 40] * 6,
+               "notes": {**{k: ["y" * 40] * 15 for k in ("top", "heart", "base")}, "mentioned": ["z" * 40] * 20}}
         self.assertEqual(call("POST", "/facts", big, str(uuid.uuid4()))[0], 201)   # the biggest valid body fits
         raw = json.dumps(FACT).encode() + b" " * 4100
         self.assertEqual(call("POST", "/facts", install=str(uuid.uuid4()), raw=raw)[0], 413)

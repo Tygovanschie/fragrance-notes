@@ -632,7 +632,8 @@ async function shareFacts(perfumeId, f, pageUrl) {
     gender: ['m', 'f', 'u'].includes(f.gender) ? f.gender : null,
     sizes: (Array.isArray(f.sizes) ? f.sizes : []).map(Number).filter(x => x > 0 && x <= 1000).slice(0, 8),
     gtins: strList(f.gtins, 8, 14).filter(g => /^\d{8,14}$/.test(g)),
-    notes: { top: strList(f.notes?.top, 15, 40), heart: strList(f.notes?.heart, 15, 40), base: strList(f.notes?.base, 15, 40) },
+    notes: { top: strList(f.notes?.top, 15, 40), heart: strList(f.notes?.heart, 15, 40), base: strList(f.notes?.base, 15, 40),
+      mentioned: FN.officialSite(host) ? strList(f.notes?.mentioned, 20, 40) : [] },
     families: strList(f.families, 6, 40),
     lang: /^[a-z]{2}(-[a-z]{2})?$/.test(f.lang || '') ? f.lang : null
   };

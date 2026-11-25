@@ -316,9 +316,13 @@ def validate_facts(body):
     if not isinstance(gtins, list) or len(gtins) > 8 or not all(isinstance(g, str) and GTIN_RE.match(g) for g in gtins):
         raise Invalid("gtins must be a list of at most 8 barcodes (8-14 digits)")
     notes = body.get("notes") or {}
-    if not isinstance(notes, dict) or set(notes) - {"top", "heart", "base"}:
-        raise Invalid("notes must be an object with top, heart and base lists")
+    if not isinstance(notes, dict) or set(notes) - {"top", "heart", "base", "mentioned"}:
+        raise Invalid("notes must be an object with top, heart, base and mentioned lists")
     notes = {k: text_list(notes.get(k), "notes", 15, 40) for k in ("top", "heart", "base")}
+    # Notes a brand's own site names in its text, without a tier (catalog.OFFICIAL_SITES; ignored for other shops).
+    mentioned = text_list(notes_in.get("mentioned"), "notes", 20, 40) if isinstance(notes_in := body.get("notes"), dict) else []
+    if mentioned:
+        notes["mentioned"] = mentioned
     return {
         "shop": shop_of(body.get("shop")),
         "perfume_id": int(pid) if pid else None,

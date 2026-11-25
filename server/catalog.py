@@ -510,14 +510,51 @@ def usual_tier(key):
     return "top" if main in TOP_ACCORDS else "base" if main in BASE_ACCORDS else "heart"
 
 
+# A brand's own website: its notes are the official ones. They count as confirmed at once (no second shop needed),
+# but only for that brand's perfumes (armani.com confirms Armani, never another house). Besides a pyramid, a brand
+# site often only names notes in its story ("the signature chestnut accord with a leathered vanilla"): the extension
+# sends those as "mentioned", without a tier.
+OFFICIAL_SITES = {
+    "armani.com": "Armani", "armanibeauty.com": "Armani", "giorgioarmanibeauty.com": "Armani",
+    "dior.fr": "Dior", "dior.com": "Dior", "chanel.fr": "Chanel", "chanel.com": "Chanel", "guerlain.fr": "Guerlain",
+    "guerlain.com": "Guerlain", "bulgari.com": "Bvlgari", "prada.com": "Prada", "prada-beauty.com": "Prada",
+    "rabanne.com": "Rabanne", "hugoboss.com": "Hugo Boss", "gucci.com": "Gucci", "burberry.com": "Burberry",
+    "versace.com": "Versace", "givenchybeauty.com": "Givenchy", "mugler.com": "Mugler",
+    "carolinaherrera.com": "Carolina Herrera", "jeanpaulgaultier.com": "Jean Paul Gaultier",
+    "dolcegabbana.com": "Dolce&Gabbana", "narcisorodriguez.com": "Narciso Rodriguez", "valentino.com": "Valentino",
+    "valentino-beauty.com": "Valentino", "ysl.com": "Yves Saint Laurent", "yslbeauty.com": "Yves Saint Laurent",
+    "lancome.nl": "Lancôme", "lancome.de": "Lancôme", "lancome.fr": "Lancôme", "lancome.co.uk": "Lancôme",
+    "zara.com": "Zara", "goldfieldandbanks.com": "Goldfield & Banks", "etatlibredorange.com": "Etat Libre d'Orange",
+    "profumum.com": "Profumum Roma",
+}
+
+
+# Note words that are also everyday words in a brand's story ("the" = French thé, "room" = Dutch cream): not taken
+# from "mentioned" (the same list as PROSE_NOISE in content.js).
+PROSE_NOISE = {"the", "te", "tee", "den", "pin", "room", "drop", "peer", "rook", "sale", "sal", "sel", "vin", "zee", "zon",
+               "sea", "meer", "lis", "lys", "heu", "eik", "mos", "hars", "gras", "erba", "fico", "foin", "humo", "fumo", "lima",
+               "mora", "pera", "mela", "kers", "spar", "loto", "creme", "cream", "solar", "sonne", "marin", "resin"}
+
+
+def is_official(shop, brand):
+    """True when this shop is the brand's own website."""
+    house = OFFICIAL_SITES.get(shop)
+    return bool(house) and brand_key(house) == brand_key(brand)
+
+
 def merge_notes(rows):
     """The notes of one perfume from its fact rows: {tier: [note, …]}. Each note once, however the shops write it:
     - a general note merges into the one more precise form of it ("Peper" + "Roze peper" = pink pepper, confirmed
       by both shops); with two precise forms (pink and black pepper) the general one stays;
     - a note goes in the tier most shops give; an even split goes to where it usually sits;
-    - it is confirmed once CONFIRM_SHOPS different shops name it, in whichever tier."""
+    - it is confirmed once CONFIRM_SHOPS different shops name it, in whichever tier, or at once when the brand's own
+      website names it (OFFICIAL_SITES); the official tier then wins, and a note the brand only mentions in its
+      text (no tier) goes where the shops put it, or else where it usually sits."""
+    official = {r["shop"] for r in rows if is_official(r["shop"], r.get("brand") or "")}
     entries = [(r["shop"], tier, note_key(n), n) for r in rows for tier in ("top", "heart", "base")
                for n in tier_notes(r["notes"].get(tier, []), tier)]
+    entries += [(r["shop"], None, note_key(n), n) for r in rows if r["shop"] in official
+                for n in r["notes"].get("mentioned", []) if plain(n) not in PROSE_NOISE]
     entries = [x for x in entries if x[2]]
     keys = {k for _, _, k, _ in entries}
     children = defaultdict(set)
@@ -530,17 +567,28 @@ def merge_notes(rows):
     for shop, tier, k, name in entries:
         final = into.get(k, k)
         shops[final].add(shop)
-        tiers[final].add((shop, tier))
-        spellings[final][name] += 1 if final == k else 0   # the precise note keeps its own spelling
+        if tier:
+            tiers[final].add((shop, tier))
+        # The precise note keeps its own spelling; a shop's spelling before a word from a brand's story.
+        spellings[final][name] += (1 if final == k else 0) + (1 if tier else 0)
     out = {"top": [], "heart": [], "base": []}
     for k, s in shops.items():
+        own = [t for sh, t in tiers[k] if sh in official]
         votes = Counter(t for _, t in tiers[k])
-        best = max(votes.values())
-        tied = [t for t in ("top", "heart", "base") if votes[t] == best]
-        tier = tied[0] if len(tied) == 1 else (usual_tier(k) if usual_tier(k) in tied else
-                                               "heart" if "heart" in tied else tied[0])
+        if own:                                   # the brand's own pyramid decides
+            tier = own[0]
+        elif not votes:                           # only mentioned by the brand: where it usually sits
+            tier = usual_tier(k)
+        else:
+            best = max(votes.values())
+            tied = [t for t in ("top", "heart", "base") if votes[t] == best]
+            tier = tied[0] if len(tied) == 1 else (usual_tier(k) if usual_tier(k) in tied else
+                                                   "heart" if "heart" in tied else tied[0])
         name = max(spellings[k].items(), key=lambda kv: (kv[1], -len(kv[0])))[0]
-        x = {"name": name, "key": k, "shops": len(s), "confirmed": len(s) >= CONFIRM_SHOPS}
+        by_brand = bool(s & official)
+        x = {"name": name, "key": k, "shops": len(s), "confirmed": len(s) >= CONFIRM_SHOPS or by_brand}
+        if by_brand:
+            x["official"] = sorted(s & official)[0]   # the brand's site, shown on the page
         if not x["confirmed"]:
             x["from"] = sorted(s)   # which shop named it, so a page can say where an unconfirmed note comes from
         if k in NOTE_EN:

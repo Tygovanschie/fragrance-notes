@@ -98,6 +98,23 @@ class PagesTest(unittest.TestCase):
         with app.db() as con:
             return con.execute("SELECT id FROM catalog WHERE name LIKE ?", (f"%{name}%",)).fetchone()[0]
 
+    def test_brand_site_confirms_notes(self):
+        # Guilty has 1 confirmed note (no page). Gucci's own site names three more in its text: now it has a page.
+        with app.db() as con:
+            con.execute("INSERT INTO facts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        ("i-gucci", "2026-11-25", "gucci.com", None, "Gucci", "Guilty", "edp", "f", "en", "[50]", "[]",
+                         json.dumps({"top": [], "heart": [], "base": [], "mentioned": ["Lilac", "Peach", "Patchouli"]}), "[]"))
+            catalog.build(con)
+            con.commit()
+        pages._cache["stamp"] = None
+        code, body, _ = get(f"/perfume/{self.pid('Guilty')}-gucci-guilty")
+        self.assertEqual(code, 200)
+        self.assertIn("✓ Confirmed by the brand's own website: gucci.com", body)
+        _, nl, _ = get(f"/nl/perfume/{self.pid('Guilty')}-gucci-guilty")
+        self.assertIn("Bevestigd door de eigen website van het merk: gucci.com", nl)
+        _, other, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        self.assertNotIn('class="official"', other)
+
     def test_only_perfumes_with_enough_confirmed_notes_get_a_page(self):
         pid = self.pid("Intensely")
         code, body, h = get(f"/perfume/{pid}-armani-stronger-with-you-intensely")

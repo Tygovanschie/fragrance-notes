@@ -19,10 +19,11 @@ def db():
 
 
 def add(con, shop, brand, name, conc="edp", gender=None, top=(), heart=(), base=(), gtins=(), sizes=(50, 100),
-        families=(), install="a", pid=None, day="2026-11-24", lang="nl"):
+        families=(), install="a", pid=None, day="2026-11-24", lang="nl", mentioned=()):
     con.execute("INSERT INTO facts VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (install, day, shop, pid, brand, name, conc, gender or '', lang, json.dumps(list(sizes)), json.dumps(list(gtins)),
-                 json.dumps({"top": list(top), "heart": list(heart), "base": list(base)}), json.dumps(list(families))))
+                 json.dumps({"top": list(top), "heart": list(heart), "base": list(base), **({"mentioned": list(mentioned)} if mentioned else {})}),
+                 json.dumps(list(families))))
 
 
 class Keys(unittest.TestCase):
@@ -343,6 +344,41 @@ class Build(unittest.TestCase):
         self.assertEqual(catalog.note_key("Bourbon Vanille"), "bourbon vanilla")
         self.assertEqual(catalog.note_key("Kastanje"), "chestnut")
         self.assertEqual(catalog.note_key("Frangipani"), "frangipani")
+
+    def test_brand_site_notes_are_official(self):
+        con = db()
+        # armani.com only tells its story: chestnut, vanilla, leather, no tiers. Douglas has a pyramid with one of them.
+        add(con, "armani.com", "Emporio Armani", "Stronger With You Intensely", mentioned=["The", "Chestnut", "Vanilla", "Leather", "Room"])
+        add(con, "douglas.nl", "Armani", "Stronger With You Intensely", top=["Roze peper"], base=["Vanille", "Iris"], install="b")
+        catalog.build(con)
+        p = catalog.perfume(con, catalog.search(con, "intensely")[0]["id"])
+        where = {n["key"]: (t, n["confirmed"], n.get("official")) for t in ("top", "heart", "base") for n in p["notes"][t]}
+        self.assertEqual(where["vanilla"], ("base", True, "armani.com"))       # Douglas's tier, confirmed by the brand
+        self.assertEqual(where["chestnut"], (catalog.usual_tier("chestnut"), True, "armani.com"))   # only mentioned: where it usually sits
+        self.assertTrue(where["leather"][1])
+        self.assertEqual(where["iris"], ("base", False, None))                 # one shop, not the brand: not confirmed
+        self.assertEqual(where["pink pepper"][1:], (False, None))
+        self.assertNotIn("tea", where)                                          # "The" in a story is not thé
+        self.assertNotIn("cream", where)
+        # The brand's own pyramid decides the tier, and its notes need no second shop.
+        con = db()
+        add(con, "jeanpaulgaultier.com", "Jean Paul Gaultier", "Le Male", "edt", top=["Lavande"], heart=["Menthe"], base=["Vanille"])
+        add(con, "douglas.nl", "Jean Paul Gaultier", "Le Male", "edt", top=["Munt"], install="b")
+        catalog.build(con)
+        p = catalog.perfume(con, catalog.search(con, "le male")[0]["id"])
+        where = {n["key"]: (t, n["confirmed"]) for t in ("top", "heart", "base") for n in p["notes"][t]}
+        self.assertEqual(where, {"lavender": ("top", True), "mint": ("heart", True), "vanilla": ("base", True)})
+        # Another house's site, or "mentioned" from a normal shop, confirms nothing.
+        con = db()
+        add(con, "armani.com", "Dior", "Sauvage", mentioned=["Bergamot", "Ambroxan"])
+        add(con, "douglas.nl", "Dior", "Sauvage", top=["Bergamot"], mentioned=["Pepper"], install="b")
+        catalog.build(con)
+        p = catalog.perfume(con, catalog.search(con, "sauvage")[0]["id"])
+        notes = {n["key"]: n["confirmed"] for t in ("top", "heart", "base") for n in p["notes"][t]}
+        self.assertEqual(notes, {"bergamot": False})
+        self.assertTrue(catalog.is_official("armani.com", "Giorgio Armani"))
+        self.assertFalse(catalog.is_official("armani.com", "Dior"))
+        self.assertFalse(catalog.is_official("douglas.nl", "Armani"))
 
     def test_parfumwebshop_notes(self):
         for raw, key in [("Kastanjeakkoord", "chestnut"), ("Vetiveressence", "vetiver"), ("Muntolie", "mint"),

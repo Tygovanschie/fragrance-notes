@@ -293,6 +293,29 @@
     const total = Object.values(found).reduce((s, l) => s + l.length, 0);
     return total >= 2 ? found : {};
   }
+  // On a brand's own website (FN.officialSite) the product text names the official notes, often without a pyramid
+  // ("the signature chestnut accord with a spicy and warm leathered vanilla", armani.com). Every known note word in
+  // the product text, in order, without a tier; the server counts them as confirmed for that brand's perfumes only.
+  // Ingredient lists ("Ingredients: alcohol, aqua, parfum, linalool…") and other products' tiles are skipped.
+  // Note words that are also everyday words in a running text ("the" is French thé, "room" Dutch cream, "drop"
+  // Dutch licorice, "peer" Dutch pear): fine in a shop's note list, not in a story. The server skips them too.
+  const PROSE_NOISE = new Set(['the', 'te', 'tee', 'den', 'pin', 'room', 'drop', 'peer', 'rook', 'sale', 'sal', 'sel', 'vin',
+    'zee', 'zon', 'sea', 'meer', 'lis', 'lys', 'heu', 'eik', 'mos', 'hars', 'gras', 'erba', 'fico', 'foin', 'humo', 'fumo',
+    'lima', 'mora', 'pera', 'mela', 'kers', 'spar', 'loto', 'creme', 'cream', 'solar', 'sonne', 'marin', 'resin']);
+  function mentionedNotes() {
+    if (!FN.officialSite(location.hostname)) return [];
+    const root = document.querySelector('main') || document.body;
+    const out = [];
+    for (const el of root.querySelectorAll('p, li, div, section, article, span, dd, td')) {
+      const n = (el.textContent || '').length;
+      if (n < 30 || n > 3000 || [...el.children].some(c => (c.textContent || '').length >= 30)) continue;
+      if (el.closest('[data-fn-host]') || el.closest(OTHER_PRODUCTS_SEL) || el.closest('[class*="review" i],[id*="review" i]')) continue;
+      const text = plainText(el.textContent);
+      if (/\b(ingredients?|ingredienten|ingrediënten|inhaltsstoffe|ingredientes|ingredienti|skladniki|inci|alcohol denat|linalool)\b/.test(text)) continue;
+      for (const w of knownIn(text)) if (!PROSE_NOISE.has(w.toLowerCase()) && !out.includes(w) && out.length < 20) out.push(w);
+    }
+    return out;
+  }
   // Barcodes (GTIN/EAN) from the shop's product data, only when the check digit is right.
   const validGtin = g => {
     if (!/^\d{8}$|^\d{12,14}$/.test(g)) return false;
@@ -342,7 +365,7 @@
       gender: genderOf(`${h1} ${cur.crumbs || ''} ${ldCrumbs()}`),
       sizes: [...new Set(prices.map(p => p.ml).filter(ml => ml > 0 && ml <= 1000))].slice(0, 8),
       gtins: readGtins(cur.product),
-      notes: { top: notes.top || [], heart: notes.heart || [], base: notes.base || [] },
+      notes: { top: notes.top || [], heart: notes.heart || [], base: notes.base || [], mentioned: mentionedNotes() },
       families: notes.family || [],
       lang: (document.documentElement.lang || '').slice(0, 5).toLowerCase()
     };

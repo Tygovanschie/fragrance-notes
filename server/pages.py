@@ -665,7 +665,8 @@ section.part.first{padding-top:44px}.parthead{display:flex;align-items:center;ju
 .how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
 .how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
 .how .steps h3{font-size:1rem}.how .steps p{font-size:.875rem}
-.astrip.mini{height:12px;border-radius:6px;gap:2px;margin:0 0 16px;clear:both}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
+.astrip.mini{height:12px;border-radius:6px;gap:2px;margin:0 0 16px;clear:both}
+.official{margin:-12px 0 18px;font-size:.875rem;font-weight:600;color:var(--plum)}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
 @media (max-width:900px){.dbhero{grid-template-columns:1fr;gap:12px}.astrip.big{height:90px}}
 """
 # The size picker of the price card (no script): the n-th radio shows the n-th panel and marks the n-th button.
@@ -952,6 +953,8 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
     single_html = (f'<details class="single"><summary>{t["singleH"].format(n=len(single))}</summary><p class="muted">{t["singleSub"]}</p><ul>'
                    + "".join(f'<li><span class="muted">{e(lab)}</span> {e(nm)}{f" <small>({e(src)})</small>" if src else ""}</li>'
                              for lab, nm, src in single) + "</ul></details>") if single else ""
+    sites = sorted({n["official"] for tr in p["notes"].values() for n in tr if n.get("official")})
+    official_html = (f'<p class="official">✓ {OFFICIAL[lang].format(site=e(", ".join(sites)))}</p>') if sites else ""
 
     price_html, offers = "", None
     st = prices(p["fragrantica"][0]) if prices and p.get("fragrantica") else None
@@ -1023,7 +1026,7 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
 <div class="grid"><div>
 {acc_html}
 <section class="card" aria-labelledby="notes-h"><h2 id="notes-h">{t["notes"]}</h2>
-<p class="sub">{t["notesSub"]}</p>
+<p class="sub">{t["notesSub"]}</p>{official_html}
 {"".join(tiers)}
 {single_html}
 </section>
@@ -1190,6 +1193,13 @@ def card(con, p, prices=None, lang="en"):
             f'<p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
             f'{accord_strip(acc, "mini") if acc else ""}'
             f'<ul>{"".join(f"<li>{e(c)}</li>" for c in conf[:8])}</ul>{tail}</a>')
+
+
+# Notes confirmed by the brand's own website (catalog.OFFICIAL_SITES): they don't need a second shop.
+OFFICIAL = {"en": "Confirmed by the brand's own website: {site}", "nl": "Bevestigd door de eigen website van het merk: {site}",
+            "de": "Bestätigt von der eigenen Website der Marke: {site}", "fr": "Confirmé par le site officiel de la marque : {site}",
+            "es": "Confirmado por la web oficial de la marca: {site}", "it": "Confermato dal sito ufficiale del marchio: {site}",
+            "pt": "Confirmado pelo site oficial da marca: {site}", "pl": "Potwierdzone przez oficjalną stronę marki: {site}"}
 
 
 SHOW_STEPS = (16, 32, 64, 128)
