@@ -32,6 +32,8 @@ import time
 
 import catalog
 import pages
+import notephotos
+import votes
 from collections import defaultdict, deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, urlsplit
@@ -45,6 +47,11 @@ ALLOWED_ORIGINS = {o.strip() for o in os.environ.get(
     "ALLOWED_ORIGINS", "chrome-extension://hhhiolpcmkdkegcmjmpglcnfolohldgc").split(",") if o.strip()}
 # Firefox gives every install its own random moz-extension:// UUID, so those can't be listed one by one.
 MOZ_ORIGIN_RE = re.compile(r"moz-extension://[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+
+
+# Votes come from the form on a perfume page (pages.py, through the site's Worker): only that origin.
+VOTE_ORIGINS = {o.strip() for o in os.environ.get("VOTE_ORIGINS", pages.BASE).split(",") if o.strip()}
+VOTE_PATH = re.compile(r"(/[a-z]{2})?/perfume/([0-9a-f]{12})/vote")
 
 
 def origin_ok(origin):
@@ -146,6 +153,8 @@ def init_db():
             domain TEXT NOT NULL, install TEXT NOT NULL, day TEXT NOT NULL, PRIMARY KEY (domain, install))""")
         catalog.init(con)
         pages.init(con)
+        votes.init(con)
+        notephotos.init(con)
         if new:   # one-time migration: start the history with the prices we have
             con.execute("""INSERT OR IGNORE INTO daily_lows (install, perfume_id, shop, ml, currency, day, price, t)
                 SELECT install, perfume_id, shop, ml, currency, date(t / 1000, 'unixepoch'), price, t FROM reports""")
@@ -162,6 +171,7 @@ def purge_old():
             WHERE day < ? AND install NOT LIKE 'old-%'""", (day_of(cutoff),))
         con.execute("""UPDATE shop_suggestions SET install = 'old-' || lower(hex(randomblob(12)))
             WHERE day < ? AND install NOT LIKE 'old-%'""", (day_of(cutoff),))
+        votes.purge(con)
 
 
 def day_of(ms):
@@ -615,7 +625,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, facts_stats(), [("Cache-Control", "public, max-age=60")])
         if u.path.startswith("/catalog/"):
             return self.catalog_get(u)
-        if u.path.split("/")[1] in ("database", "perfume", "note", "notes", "brand", "nl", "photo", "assets", "sitemap.xml"):
+        if u.path.split("/")[1] in ("database", "perfume", "note", "notes", "brand", "photo", "assets", "sitemap.xml") or u.path.split("/")[1] in pages.LANGS:
             return self.page_get(u)
         m = re.fullmatch(r"/prices/([0-9]+)", u.path)
         if not m or not ID_RE.match(m.group(1)):
@@ -651,17 +661,22 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/assets/pages.css":
             return self.send(200, pages.CSS, "text/css; charset=utf-8", "public, max-age=31536000, immutable")
         if path.startswith("/photo/"):
-            f = pages.image_file(path[7:])
+            f = notephotos.image_file(path[9:]) if path.startswith("/photo/n/") else pages.image_file(path[7:])
             if not f:
                 return self.send(404, "not found", "text/plain; charset=utf-8")
             return self.send(200, f[0], f[1], "public, max-age=2592000")
         with db() as con:
             if path == "/sitemap.xml":
                 return self.send(200, pages.sitemap(con), "application/xml; charset=utf-8", "public, max-age=3600")
-            code, body, location = pages.route(con, path, u.query, page_prices)
+            # Someone who voted before (fn_voter cookie) gets the page with their own vote filled in: never cached.
+            token = self.voter_token()
+            code, body, location = pages.route(con, path, u.query, page_prices,
+                                               votes.voter_hash(SALT, token) if token else None)
         if location:
             return self.send(301, "", html_t, headers=[("Location", location)])
         cache = "public, max-age=300" if code != 200 or path.endswith("/search") else "public, max-age=600"
+        if "vote=" in u.query or token:   # right after voting, or with the voter's own answers: never cached
+            cache = "private, no-store"
         return self.send(code, body, html_t, cache)
 
     def catalog_get(self, u):
@@ -689,6 +704,52 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, p, cache) if p else self.reply(404, {"error": "not found"})
         return self.reply(404, {"error": "not found"})
 
+    def voter_token(self):
+        """The fn_voter code from the Cookie header (only set by voting), or ''."""
+        for c in (self.headers.get("Cookie") or "").split(";"):
+            k, _, v = c.strip().partition("=")
+            if k == "fn_voter" and re.fullmatch(r"[0-9a-f]{32}", v):
+                return v
+        return ""
+
+    def vote_post(self, prefix, pid, raw):
+        """A vote from the form on a perfume page (no JavaScript): stored, then back to the page (303).
+        Only from the site itself (Origin), for any perfume in the catalog (back to its page, or to its rating page
+        when it has no page yet), and rate-limited per voter, per visitor address (kept in memory only, never
+        stored or logged) and overall."""
+        lang = prefix.strip("/") if prefix.strip("/") in pages.LANGS else "en"
+        if self.headers.get("Origin") not in VOTE_ORIGINS:
+            return self.send(403, "Votes can only be sent from the perfume page.", "text/plain; charset=utf-8", "no-store")
+        with db() as con:
+            target = pages.vote_target(con, pid)
+        if not target:
+            return self.send(404, pages.not_found(lang), "text/html; charset=utf-8", "no-store")
+        back = pages.P(lang, target)
+        token = self.voter_token()
+        new = not token
+        if new:
+            token = secrets.token_hex(16)
+        voter = votes.voter_hash(SALT, token)
+        addr = self.headers.get("X-Visitor-IP") or self.headers.get("CF-Connecting-IP") or ""
+        checks = [("v:" + voter, [(3600, 40)]), ("v:*", [(3600, 3000)])]
+        if addr:
+            checks.append(("va:" + hashlib.sha256(SALT + addr.encode()).hexdigest()[:24], [(3600, 120)]))
+        for k, lim in checks:
+            if LIMITER.allow(k, lim):
+                return self.send(303, "", "text/html; charset=utf-8", "no-store", [("Location", back + "?vote=busy#vote")])
+        try:
+            answers = votes.parse(parse_qs(raw.decode("utf-8", "replace"), keep_blank_values=True))
+        except votes.Invalid as e:
+            return self.send(303, "", "text/html; charset=utf-8", "no-store",
+                             [("Location", back + ("?vote=own" if str(e) == "owns" else "?vote=empty") + "#vote")])
+        with db() as con:
+            votes.add(con, pid, voter, answers)
+        headers = [("Location", back + "?vote=thanks#vote")]
+        if new:
+            headers.append(("Set-Cookie", f"fn_voter={token}; Path=/; Max-Age={votes.VOTE_KEEP_DAYS * 86400}; "
+                                          "HttpOnly; Secure; SameSite=Lax"))
+        return self.send(303, "", "text/html; charset=utf-8", "no-store", headers)
+
     def do_POST(self):
         self.close_connection = True   # never reuse a connection whose body we may not have read
         try:
@@ -701,6 +762,9 @@ class Handler(BaseHTTPRequestHandler):
         limit = MAX_FACTS_BODY if path == "/facts" else MAX_BODY
         if not (0 < length <= limit):
             return self.reply(413 if length > limit else 400, {"error": f"body must be 1-{limit} bytes"})
+        m = VOTE_PATH.fullmatch(path)
+        if m:
+            return self.vote_post(m.group(1) or "", m.group(2), raw)
         if path not in ("/prices", "/facts", "/shops/suggest"):
             return self.reply(404, {"error": "not found"})
         if self.headers.get("Origin") and not origin_ok(self.headers.get("Origin")):
@@ -791,6 +855,11 @@ def catalog_loop():
                     got = pages.refresh_images(con)
                 if got:
                     print(f"pages: {got} new bottle photos", flush=True)
+                # Note photos from Wikimedia Commons (free licences only, see notephotos.py).
+                with db() as con:
+                    got = notephotos.refresh(con, pages.index(con)["notes"])
+                if got:
+                    print(f"pages: {got} new note photos", flush=True)
         except Exception as e:  # keep serving even if a rebuild fails
             print("catalog rebuild failed:", e, flush=True)
         time.sleep(every)

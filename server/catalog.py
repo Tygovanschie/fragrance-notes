@@ -80,7 +80,28 @@ def strip_promo(name):
 # Product words that are no name on their own ("WhatsApp Perfume" stays, not "Perfume").
 PRODUCT_WORDS = {"perfume", "perfumes", "parfum", "parfume", "fragrance", "cologne", "kolonya", "deodorant", "deo",
                  "body", "mist", "spray", "eau", "edp", "edt", "edc"}
-NOTE_FILLER = {"accord", "accoord", "akkoord", "akkord", "accordo", "acorde", "note", "notes", "noot", "noten"}
+NOTE_FILLER = {"accord", "accoord", "akkoord", "akkord", "accordo", "acorde", "note", "notes", "noot", "noten",
+               "accords", "akkoorden", "geurnoot", "geurnoten", "notities", "nuances", "facetten", "touch", "vleugje"}
+# Words that describe a note without making it another note: "Transparant Frangipani Akkoord", "Indiase
+# Patchouli", "Italiaanse Bergamot", "Zachte Muskus" are frangipani, patchouli, bergamot and musk. (Words that do
+# make another note, like "roze" peper or "witte" musk, are in NOTE_WORDS as their own note.)
+NOTE_DESCRIPTORS = {
+    "transparant", "transparante", "transparent", "transparente", "zacht", "zachte", "soft", "fris", "frisse",
+    "licht", "lichte", "light", "donker", "donkere", "dark", "warm", "warme", "sensueel", "sensuele", "sensual",
+    "romig", "romige", "creamy", "rijk", "rijke", "rich", "edel", "edele", "kostbaar", "kostbare", "precious",
+    "natuurlijk", "natuurlijke", "natural", "verse", "vers", "zonnig", "zonnige", "sprankelend", "sprankelende",
+    "sparkling", "bruisend", "bruisende", "intens", "intense", "diep", "diepe", "deep", "levendig", "levendige",
+    "italiaans", "italiaanse", "italian", "calabrisch", "calabrische", "calabrian", "siciliaans", "siciliaanse",
+    "sicilian", "indiaas", "indiase", "indian", "indonesisch", "indonesische", "indonesian", "haitiaans",
+    "haitiaanse", "haitian", "bulgaars", "bulgaarse", "bulgarian", "turks", "turkse", "turkish", "egyptisch",
+    "egyptische", "egyptian", "marokkaans", "marokkaanse", "moroccan", "toscaans", "toscaanse", "tuscan",
+    "florentijns", "florentijnse", "madagaskar", "madagascar", "mexicaans", "mexicaanse", "mexican", "tahitiaans",
+    "tahitiaanse", "tahitian", "virginia", "atlas", "provencaals", "provencaalse", "frans", "franse", "french",
+    "absolue", "absolute", "essentie", "essence", "extract", "olie", "oil", "huile", "infusie", "infusion",
+    "bloem", "bloemen", "flower", "flowers", "blad", "bladeren", "leaf", "leaves",
+}
+# Things shops list as a note that aren't one ("Bovenlichaam" from a description, a lone "Noot").
+NOTE_JUNK = {"bovenlichaam", "lichaam", "huid", "skin", "body", "geur", "scent", "parfum", "perfume", "fragrance"}
 # Words in front of a note that don't change it: "compositie van zure kersen" (Notino) = "zure kersen".
 NOTE_PREFIX = re.compile(r"^(?:compositie|composition|combinatie|combination|melange|mix|blend|accord|akkoord|akkord)"
                          r"(?: (?:van|of|de|d|di|von|aus))? ")
@@ -91,11 +112,11 @@ NOTE_PREFIX = re.compile(r"^(?:compositie|composition|combinatie|combination|mel
 # Fragrance families use the same table (Douglas "Kruidig", Notino "specerijen").
 NOTE_WORDS = """
 vanilla: vanille | vanilla | vainilla | vaniglia | baunilha | wanilia
-tonka bean: tonkaboon | tonkabonen | tonka | tonkabohne | tonka bohne | feve tonka | feve de tonka | haba tonka | fava tonka | tonka bean | tonka beans
+tonka bean: tonkaboon | tonka boon | tonkabonen | tonka | tonkabohne | tonka bohne | feve tonka | feve de tonka | haba tonka | fava tonka | tonka bean | tonka beans
 chestnut: kastanje | kastanjes | chestnut | chestnuts | kastanie | kastanien | chataigne | marron | castana | castagna
 glazed chestnut: geglazuurde kastanje | geglazuurde kastanjes | glazed chestnut | glazed chestnuts | marron glace | marrons glaces | kandierte kastanie | castagna candita
 bourbon vanilla: bourbon vanille | bourbonvanille | bourbon vanilla | vanille bourbon | vanilla bourbon | vainilla bourbon
-frangipani: frangipani | frangipanier | plumeria
+frangipani: frangipani | frangipanier | plumeria | frangipane bloem
 lavender: lavendel | lavender | lavande | lavanda
 cinnamon: kaneel | cinnamon | zimt | cannelle | canela | cannella
 sage: salie | sage | salbei | sauge | salvia
@@ -122,7 +143,7 @@ coconut: kokos | kokosnoot | coconut | kokosnuss | noix de coco | coco | cocco
 passion fruit: passievrucht | maracuja | passion fruit | passionsfrucht | fruit de la passion | fruta de la pasion | frutto della passione
 rose: roos | rozen | rose | roses | rosa | rosen
 jasmine: jasmijn | jasmine | jasmin | jazmin | gelsomino
-orange blossom: oranjebloesem | orange blossom | orangenblute | orangenbluete | fleur d oranger | azahar | fiori d arancio | fiore d arancio
+orange blossom: oranjebloesem | oranje bloesem | oranjebloem | orange blossom | orangenblute | orangenbluete | fleur d oranger | azahar | fiori d arancio | fiore d arancio
 tuberose: tuberoos | tuberose | tuberosa | tubereuse
 violet: viooltje | viooltjes | violet | veilchen | violette | violeta | violetta
 lily of the valley: lelietje van dalen | lily of the valley | maiglockchen | muguet | lirio de los valles | mughetto
@@ -141,7 +162,7 @@ coffee: koffie | coffee | kaffee | cafe | caffe
 cocoa: cacao | cocoa | kakao
 chocolate: chocolade | chocolate | schokolade | chocolat | cioccolato
 almond: amandel | almond | mandel | amande | almendra | mandorla
-benzoin: benzoe | benzoin | benjoin | benjui | benzoino
+benzoin: benzoe | benzoine | benzoin | benjoin | benjui | benzoino
 incense: wierook | incense | weihrauch | encens | incienso | incenso
 myrrh: mirre | myrrh | myrrhe | mirra
 oakmoss: eikenmos | oakmoss | oak moss | eichenmoos | mousse de chene | musgo de roble | muschio di quercia
@@ -160,6 +181,110 @@ saffron: saffraan | saffron | safran | azafran | zafferano
 clove: kruidnagel | kruidnagels | clove | cloves | nelke | gewurznelke | clou de girofle | clavo | chiodi di garofano
 nutmeg: nootmuskaat | nutmeg | muskatnuss | noix de muscade | nuez moscada | noce moscata
 maple syrup: ahornsiroop | maple syrup | ahornsirup | sirop d erable | jarabe de arce | sciroppo d acero
+iris: iris | irissen | irisbloem | iriswortel | orris | orriswortel | orris root | iris pallida | racine d iris | iriswurzel | giaggiolo
+neroli: neroli | neroliolie | neroli oil | neroli bigarade
+petitgrain: petitgrain | petit grain
+ylang ylang: ylang ylang | ylang | ilang ilang | ylangylang
+magnolia: magnolia | magnolie
+peony: pioen | pioenroos | pioenrozen | peony | peonies | pfingstrose | pivoine | peonia
+freesia: fresia | freesia | freesie
+lily: lelie | lelies | lily | lilies | lilie | lis | lys | giglio
+water lily: waterlelie | water lily | nenuphar | seerose | ninfea
+lotus: lotus | lotusbloem | lotusblume | loto
+gardenia: gardenia | gardenie
+osmanthus: osmanthus | osmanthe | osmanto
+mimosa: mimosa | mimose
+lilac: sering | seringen | lilac | flieder | lilas | lila
+hyacinth: hyacint | hyacinth | hyazinthe | jacinthe | jacinto | giacinto
+narcissus: narcis | narcissen | narcissus | narzisse | narcisse | narciso
+orchid: orchidee | orchideeen | orchid | orchidee noire | orquidea | orchidea
+honeysuckle: kamperfoelie | honeysuckle | geissblatt | chevrefeuille | madreselva | caprifoglio
+heliotrope: heliotroop | heliotrope | heliotrop | heliotropo
+carnation: anjer | anjers | carnation | oeillet | clavel | garofano
+cyclamen: cyclaam | cyclamen | alpenveilchen
+champaca: champaca | champak
+ambrette: ambrette | ambrettezaad | muskuszaad | ambrette seed | graine d ambrette
+lime: limoen | limoenen | lime | limette | citron vert | lima | limetta
+yuzu: yuzu
+bitter orange: bittere sinaasappel | bitter orange | bigarade | bitterorange | orange amere | naranja amarga | arancia amara
+blood orange: bloedsinaasappel | blood orange | blutorange | orange sanguine | naranja sanguina | arancia rossa
+blood mandarin: bloed mandarijn | bloedmandarijn | blood mandarin | mandarine sanguine
+clementine: clementine | clementina
+lemon verbena: citroenverbena | verbena | lemon verbena | verveine | zitronenverbene | verbena de limon
+lemongrass: citroengras | lemongrass | zitronengras | citronnelle | hierba limon
+fig: vijg | vijgen | vijgenblad | fig | fig leaf | feige | figue | higo | fico
+banana: banaan | banana | banane
+mango: mango | mangue
+lychee: lychee | litchi | lychees
+blackberry: braam | bramen | blackberry | brombeere | mure | mora
+strawberry: aardbei | aardbeien | strawberry | erdbeere | fraise | fresa | fragola
+apricot: abrikoos | abrikozen | apricot | aprikose | abricot | albaricoque | albicocca
+plum: pruim | pruimen | plum | plums | pflaume | prune | ciruela | prugna
+quince: kwee | kweepeer | quince | quitte | membrillo | mela cotogna
+rhubarb: rabarber | rhubarb | rhabarber | rhubarbe | ruibarbo | rabarbaro
+red berries: rode bessen | rode vruchten | red berries | red fruits | rote beeren | fruits rouges | frutos rojos | frutti rossi
+nectarine: nectarine | nektarine | nectarina
+pomegranate: granaatappel | pomegranate | granatapfel | grenade | granada | melograno
+cucumber: komkommer | cucumber | gurke | concombre | pepino | cetriolo
+pistachio: pistache | pistachenoot | pistachio | pistazie | pistacho | pistacchio
+hazelnut: hazelnoot | hazelnoten | hazelnut | haselnuss | noisette | avellana | nocciola
+praline: praline | pralines | pralinee
+marshmallow: marshmallow | spekje | spekjes | guimauve
+sugar: suiker | sugar | zucker | azucar | zucchero
+milk: melk | milk | milch | lait | leche | latte
+cream: room | slagroom | cream | sahne | creme | crema | panna
+licorice: drop | zoethout | licorice | liquorice | lakritz | reglisse | regaliz | liquirizia
+rum: rum | rhum | ron
+cognac: cognac | brandy
+whiskey: whisky | whiskey
+wine: wijn | wine | wein | vin | vino
+champagne: champagne
+anise: anijs | anise | anis | anice
+star anise: steranijs | star anise | sternanis | badiane | anis estrellado | anice stellato
+coriander: koriander | coriander | coriandre | cilantro | coriandolo
+cumin: komijn | cumin | kreuzkummel | comino
+caraway: karwij | karwijzaad | caraway | kummel | carvi | alcaravea
+tarragon: dragon | tarragon | estragon | artemisia dracunculus | dragoncello
+thyme: tijm | thyme | thymian | thym | tomillo | timo
+bay leaf: laurier | laurierblad | bay leaf | laurel | lorbeer | alloro
+clary sage: scharlei | muskaatsalie | clary sage | sauge sclaree | muskatellersalbei | salvia sclarea
+davana: davana
+wormwood: alsem | absint | wormwood | absinthe | wermut | ajenjo | assenzio
+elemi: elemi
+galbanum: galbanum
+frankincense: olibanum | frankincense | weihrauchharz | encens oliban
+labdanum: labdanum | ladanum | cistus labdanum | cistus | ciste | cistrose
+resin: hars | harsen | resin | resins | harz | resine | resina
+ambergris: ambergris | grijze amber | ambre gris | amber gris | ambra grigia | ambar gris
+ambroxan: ambroxan | ambrox | ambroxide | ambrofix
+cashmeran: cashmeran | kasjmierhout | cashmere wood | bois de cachemire | kaschmirholz
+iso e super: iso e super
+hedione: hedione
+aldehydes: aldehyden | aldehyde | aldehydes | aldeidi
+white musk: witte musk | witte muskus | white musk | weisser moschus | musc blanc | almizcle blanco | muschio bianco
+civet: civet | civette | zibet | zibetone
+castoreum: castoreum | bevergeil
+birch: berk | berkenhout | berkenteer | birch | birch tar | birke | bouleau | abedul | betulla
+cypress: cipres | cypress | zypresse | cypres | cipresso
+pine: den | dennen | dennennaald | dennennaalden | pine | pine needles | kiefer | pin | pino
+fir: spar | sparrenhout | fir | balsam fir | tanne | sapin | abeto | abete
+oak: eik | eikenhout | oak | oakwood | eiche | chene | roble | quercia
+mahogany: mahonie | mahoniehout | mahogany | mahagoni | acajou | caoba | mogano
+rosewood: palissander | rozenhout | rosewood | rosenholz | bois de rose | palisandro
+ebony: ebbenhout | ebbehout | ebony | ebenholz | ebene | ebano
+olive tree: olijfboom | olijf | olijfhout | olive | olive tree | olivenbaum | olivier | olivo
+papyrus: papyrus | papiro
+moss: mos | moss | moos | mousse | musgo
+hay: hooi | hay | heu | foin | heno | fieno
+grass: gras | grass | herbe | hierba | erba
+smoke: rook | rokerig | smoke | rauch | fumee | humo | fumo
+salt: zout | zeezout | salt | sea salt | salz | sel | sal | sale
+mineral: mineraal | minerale | mineral | mineralisch | mineraux
+ozonic: ozonisch | ozonische | ozon | ozonic | ozone | ozono
+marine: zee | zeegeur | mariene | sea | sea notes | maritime | meer | marin | marino
+solar notes: zonnenoten | zonnige noten | zon | solar notes | solar | sonne | solaire
+caviar: kaviaar | caviar | kaviar
+monoi: monoi | monoi olie | monoi oil | tiare
 spicy: specerijen | spices | spicy | kruidig | kruidige | kruiden | gewurze | wurzig | epices | epice | especias | especiado | spezie | speziato
 oriental: oriental | orientaal | orientaals | orientaalse | orientalisch | orientale | oosters | oosterse
 woody: houtachtig | houtachtige | woody | holzig | boise | boisee | amaderado | amaderada | legnoso | legnosa | hout | wood | woods
@@ -170,10 +295,10 @@ sweet: zoet | zoete | sweet | suss | sucre | dulce | dolce
 powdery: poederachtig | poederig | powdery | pudrig | poudre | atalcado | cipriato
 fresh: fris | frisse | fresh | frisch | frais | fresco | fresca
 citrus: citrus | citrusachtig | zitrus | zitrisch | agrumes | hesperide | citrico | agrumato
-aquatic: aquatisch | aquatic | aquatique | acuatico | acquatico | marine | marien
+aquatic: aquatisch | aquatic | aquatique | acuatico | acquatico | marien | waterig
 green: groen | groene | green | grun | vert | verde
 gourmand: gourmand
-chypre: chypre | chypre
+chypre: chypre
 fougere: fougere | fougeres | fern | varen | farn
 musky: muskusachtig | musky | moschusartig | musque | almizclado | muschiato
 """
@@ -255,10 +380,98 @@ def strip_brand(name, brand):
 
 
 def note_key(note):
-    """The note as one key across shops and languages: "Rum Akkoord" = "rum", "Kastanjes" = "Chestnut"."""
-    p = NOTE_PREFIX.sub("", plain(note))
-    key = " ".join(w for w in p.split() if w not in NOTE_FILLER) or p
-    return NOTE_CANON.get(key, key)
+    """The note as one key across shops and languages: "Rum Akkoord" = "rum", "Kastanjes" = "chestnut",
+    "Tuberoos (Nachthyacint)" = "tuberose", "Indiase Patchouli" = "patchouli". "" for things that aren't a note
+    ("Bovenlichaam", a lone "Noot")."""
+    p = NOTE_PREFIX.sub("", plain(re.sub(r"\([^)]*\)", " ", str(note or ""))))
+    key = " ".join(w for w in p.split() if w not in NOTE_FILLER)
+    if not key or key in NOTE_JUNK:
+        return ""
+    if key in NOTE_CANON:            # the whole name first: "violet leaf" and "orange blossom" are notes of their own
+        return NOTE_CANON[key]
+    core = " ".join(w for w in key.split() if w not in NOTE_DESCRIPTORS)
+    if core and core != key:
+        return NOTE_CANON.get(core, core)
+    return key
+
+
+# A more precise note and the general one it belongs to. When one shop says "Peper" and another "Roze peper" for the
+# same perfume, they mean the same note (see merge_notes). Notes ending in another note ("bitter orange",
+# "white musk") count too, without being listed here.
+NOTE_PARENTS = {
+    "pink pepper": "pepper", "black pepper": "pepper", "glazed chestnut": "chestnut", "bourbon vanilla": "vanilla",
+    "blood mandarin": "mandarin", "blood orange": "orange", "bitter orange": "orange", "white musk": "musk",
+    "clary sage": "sage", "star anise": "anise", "frankincense": "incense", "ambergris": "amber",
+}
+
+
+def parent_of(key, keys):
+    """The general note in `keys` that this note is a more precise form of, or None."""
+    p = NOTE_PARENTS.get(key)
+    if p in keys:
+        return p
+    words = key.split()
+    for i in range(1, len(words)):
+        tail = " ".join(words[i:])
+        if tail in keys and tail in NOTE_EN:
+            return tail
+    return None
+
+
+# Where a note usually sits, for when shops disagree evenly (one says top, another base): from its main accord.
+TOP_ACCORDS = {"citrus", "fresh", "fresh spicy", "aromatic", "fruity", "green", "aquatic"}
+BASE_ACCORDS = {"woody", "amber", "vanilla", "musky", "balsamic", "leather", "gourmand", "sweet", "earthy", "smoky",
+                "nutty", "powdery"}
+
+
+def usual_tier(key):
+    import accords   # here: accords is only needed for this tie-break
+    m = accords.NOTES.get(key)
+    if not m:
+        return "heart"
+    main = max(m, key=m.get)
+    return "top" if main in TOP_ACCORDS else "base" if main in BASE_ACCORDS else "heart"
+
+
+def merge_notes(rows):
+    """The notes of one perfume from its fact rows: {tier: [note, …]}. Each note once, however the shops write it:
+    - a general note merges into the one more precise form of it ("Peper" + "Roze peper" = pink pepper, confirmed
+      by both shops); with two precise forms (pink and black pepper) the general one stays;
+    - a note goes in the tier most shops give; an even split goes to where it usually sits;
+    - it is confirmed once CONFIRM_SHOPS different shops name it, in whichever tier."""
+    entries = [(r["shop"], tier, note_key(n), n) for r in rows for tier in ("top", "heart", "base")
+               for n in r["notes"].get(tier, [])]
+    entries = [x for x in entries if x[2]]
+    keys = {k for _, _, k, _ in entries}
+    children = defaultdict(set)
+    for k in keys:
+        p = parent_of(k, keys)
+        if p:
+            children[p].add(k)
+    into = {p: next(iter(c)) for p, c in children.items() if len(c) == 1}
+    shops, spellings, tiers = defaultdict(set), defaultdict(Counter), defaultdict(set)
+    for shop, tier, k, name in entries:
+        final = into.get(k, k)
+        shops[final].add(shop)
+        tiers[final].add((shop, tier))
+        spellings[final][name] += 1 if final == k else 0   # the precise note keeps its own spelling
+    out = {"top": [], "heart": [], "base": []}
+    for k, s in shops.items():
+        votes = Counter(t for _, t in tiers[k])
+        best = max(votes.values())
+        tied = [t for t in ("top", "heart", "base") if votes[t] == best]
+        tier = tied[0] if len(tied) == 1 else (usual_tier(k) if usual_tier(k) in tied else
+                                               "heart" if "heart" in tied else tied[0])
+        name = max(spellings[k].items(), key=lambda kv: (kv[1], -len(kv[0])))[0]
+        x = {"name": name, "key": k, "shops": len(s), "confirmed": len(s) >= CONFIRM_SHOPS}
+        if not x["confirmed"]:
+            x["from"] = sorted(s)   # which shop named it, so a page can say where an unconfirmed note comes from
+        if k in NOTE_EN:
+            x["en"] = k
+        out[tier].append(x)
+    for tier in out:
+        out[tier].sort(key=lambda x: (-x["shops"], x["name"].lower()))
+    return out
 
 
 # Gender words that shops add behind the name ("Stronger With You Mannen", "… voor Vrouwen"); unlike
@@ -387,17 +600,15 @@ def combine(rows, ids=None, brands=None):
     # Shops write the retail name ("Boss Bottled"); Open Beauty Facts often has the brand glued on, which
     # strip_brand removes too eagerly ("Hugo Boss Bottled" -> "Bottled"). So shop spellings win when there are any.
     named = [r for r in rows if r["shop"] != obf.SOURCE] or rows
-    names = Counter(display_name(r["name"], r.get("_bk", "")) for r in named)
+    names = Counter(n for _, n in {(r["shop"], display_name(r["name"], r.get("_bk", ""))) for r in named})   # one vote per shop
     top = names.most_common(1)[0][1]
-    name = min((n for n, c in names.items() if c >= max(1, top // 2)), key=lambda n: (shouting(n), len(n)))
+    # The spelling most shops use (each shop counts once); on a tie the one not in capitals, then the shortest ("Boss Bottled" from two
+    # shops beats "Bottled" and "BOTTLED" from one each).
+    name = min((n for n, c in names.items() if c == top), key=lambda n: (shouting(n), len(n)))
     conc = Counter(r.get("_conc", r["conc"]) for r in rows).most_common(1)[0][0]
 
     gender = counted((r["shop"], r["gender"], r["gender"]) for r in rows if r["gender"])
-    notes = {}
-    for tier in ("top", "heart", "base"):
-        c = counted((r["shop"], note_key(n), n) for r in rows for n in r["notes"].get(tier, []))
-        notes[tier] = sorted(({**x, "en": x["key"]} if x["key"] in NOTE_EN else x for x in c.values()),
-                             key=lambda x: (-x["shops"], x["name"].lower()))
+    notes = merge_notes(rows)
     families = sorted(counted((r["shop"], note_key(f), f) for r in rows for f in r["families"]).values(),
                       key=lambda x: (-x["shops"], x["name"].lower()))
     sizes = Counter()

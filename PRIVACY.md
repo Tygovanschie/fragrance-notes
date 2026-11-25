@@ -45,6 +45,15 @@ While **Help other perfume lovers** is on, on a perfume product page of a *built
 - **Connection:** the same as for price sharing (through Cloudflare, see above).
 - **Turning the setting off** stops this too (see above).
 
+## Voting on fragrancenotes.app (website only)
+
+The perfume pages on fragrancenotes.app let you rate a perfume (stars, longevity, sillage, value for money and who it is for). Voting is optional and needs no account.
+
+- **What is sent:** your answers, and that you ticked "I own this perfume or have worn it".
+- **Cookie:** when you vote, the site stores one cookie, `fn_voter`, with a random code, so you have one vote per perfume and can change it. It is set only when you vote, contains nothing about you, and expires after a year. Without it you can still read everything.
+- **On the server:** your answers per perfume and a salted hash of the code, never the code itself. After a year the hash is replaced by a random value. Your IP address is used only in memory to limit how many votes can be sent at once, and is not stored or logged.
+- **What is shown:** only totals (averages and how many people chose each answer), and only once at least 3 people voted on that perfume.
+
 ## What is stored
 
 In your own browser:

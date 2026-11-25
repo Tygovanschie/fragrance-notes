@@ -173,6 +173,8 @@
     .ask-no { background:none; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft); }
     .teaser { display:block; margin-top:6px; font-size:11.5px; }
     .own { margin-top:6px; font-size:11px; color:var(--muted); }
+    .rate { display:inline-flex; align-items:center; gap:5px; margin-top:8px; padding:5px 11px; border-radius:999px; font-size:12px; font-weight:600; text-decoration:none; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft, currentColor); }
+    .rate:hover { background:var(--card); }
     .chip .ok { font-style:normal; font-weight:700; color:var(--good); margin-inline-start:4px; }
     .sz-card { background:var(--card); border-radius:12px; padding:8px 10px; font-size:12px; }
     .sz-top { display:grid; grid-template-columns:auto auto 1fr; gap:12px; align-items:baseline; }
@@ -595,7 +597,10 @@
     // Notes the Fragrance Notes database confirmed (2+ shops agree) get a ✓ (opts.own, see content.js), with a
     // line under the pyramid saying what it means. Without confirmed notes the panel looks as before.
     const multi = (d.notes || []).length > 1;
-    const ownLine = opts.own ? `<div class="own">✓ ${esc(FN.t(S.lang, 'ownNotes'))} · ODbL</div>` : '';
+    // "Own it? Rate it": opens the perfume's rating page on fragrancenotes.app (only when the database knows it).
+    const rateBtn = opts.rate && /^https:\/\/fragrancenotes\.app\//.test(opts.rate)
+      ? `<a class="rate" href="${esc(opts.rate)}" target="_blank" rel="noopener">★ ${esc(FN.t(S.lang, 'rateIt'))}</a>` : '';
+    const ownLine = (opts.own ? `<div class="own">✓ ${esc(FN.t(S.lang, 'ownNotes'))} · ODbL</div>` : '') + rateBtn;
     const notesHtml = !on.notes ? '' : `<h3>${esc(FN.t(S.lang, 'notes'))}</h3>${d.notes?.length
       ? `<div class="pyr${multi ? '' : ' flat'}">${d.notes.map((t, i) =>
           `<div class="tier lv${i}">${multi && t.label ? `<div class="tl"><span>${esc(t.label)}</span></div>` : ''}<div class="chips">${t.names.map(noteChip).join('')}</div></div>`).join('')}</div>${ownLine}`

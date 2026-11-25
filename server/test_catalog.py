@@ -143,7 +143,7 @@ class Build(unittest.TestCase):
             base=["Geglazuurde kastanje", "Vanille"], install="b")
         self.assertEqual(catalog.build(con), 1)
         p = catalog.search(con, "stronger with you")[0]
-        self.assertEqual((p["gender"], p["shops"], p["confirmedNotes"]), ("m", 2, 1))   # Vanille, from 2 shops
+        self.assertEqual((p["gender"], p["shops"], p["confirmedNotes"]), ("m", 2, 2))   # Vanille, and Kastanjes + Geglazuurde kastanje = glazed chestnut
         # A gender word in the name also gives the gender when the shop doesn't.
         con.execute("DELETE FROM facts")
         add(con, "douglas.nl", "Gucci", "Guilty Pour Homme", "edp", None)
@@ -273,6 +273,62 @@ class Build(unittest.TestCase):
                                    ("Emporio Armani", "armani", "Emporio Armani"),
                                    ("Aventus", "creed", "Aventus")]:
             self.assertEqual(catalog.display_name(name, brand), shown, name)
+
+    def test_note_dictionary_is_unambiguous(self):
+        seen = {}
+        for line in catalog.NOTE_WORDS.strip().splitlines():
+            canon, variants = line.split(":", 1)
+            for v in (x.strip() for x in variants.split("|")):
+                if v:
+                    self.assertEqual(seen.get(v, canon), canon, f"{v!r} is in both {seen.get(v)!r} and {canon!r}")
+                    seen[v] = canon
+        self.assertEqual(set(catalog.NOTE_PARENTS) - catalog.NOTE_EN, set())
+        self.assertEqual(set(catalog.NOTE_PARENTS.values()) - catalog.NOTE_EN, set())
+
+    def test_note_names_shops_use(self):
+        for raw, key in [("Tuberoos (Nachthyacint)", "tuberose"), ("Indiase Patchouli", "patchouli"),
+                         ("Transparant Frangipani Akkoord", "frangipani"), ("Tonka Boon", "tonka bean"),
+                         ("Oranje Bloesem", "orange blossom"), ("Mariene Notities", "marine"), ("Benzoine", "benzoin"),
+                         ("Bloed mandarijn", "blood mandarin"), ("Italiaanse Bergamot", "bergamot"),
+                         ("Vioolblaadjes", "violet leaf"), ("Zachte Muskus", "musk"), ("Witte Musk", "white musk"),
+                         ("Monoi-olie", "monoi"), ("Iris", "iris"), ("Pruim", "plum"), ("Anjer", "carnation"),
+                         ("Ambroxan", "ambroxan"), ("Ozonische Noten", "ozonic"), ("Kruidige geurnoten", "spicy")]:
+            self.assertEqual(catalog.note_key(raw), key, raw)
+        for junk in ("Bovenlichaam", "Noot", "Geurnoten", ""):
+            self.assertEqual(catalog.note_key(junk), "", junk)
+
+    def test_each_note_once(self):
+        con = db()
+        add(con, "douglas.nl", "Dior", "Sauvage", "edp", top=["Bergamot", "Peper"], heart=["Vanille", "Lavendel"],
+            base=["Ambroxan"])
+        add(con, "notino.nl", "Dior", "Sauvage", "edp", top=["Roze Peper"], heart=["Lavendel"], base=["Bergamot", "Vanille"],
+            install="b")
+        add(con, "deloox.nl", "Dior", "Sauvage", "edp", base=["Vanille", "Ambroxan (Ambrox)"], install="c")
+        catalog.build(con)
+        p = catalog.perfume(con, catalog.search(con, "sauvage")[0]["id"])
+        where = {n["key"]: (t, n["shops"], n["confirmed"]) for t in ("top", "heart", "base") for n in p["notes"][t]}
+        self.assertEqual(len(where), sum(len(p["notes"][t]) for t in ("top", "heart", "base")))   # no note twice
+        self.assertEqual(where["pink pepper"], ("top", 2, True))       # "Peper" + "Roze Peper": one note, both shops
+        self.assertNotIn("pepper", where)
+        self.assertEqual(where["vanilla"], ("base", 3, True))          # 2 shops say base, 1 heart
+        self.assertEqual(where["bergamot"], ("top", 2, True))          # 1 top, 1 base: where it usually sits
+        self.assertEqual(where["ambroxan"], ("base", 2, True))
+        # Two precise forms: the general one stays on its own.
+        con = db()
+        add(con, "douglas.nl", "X", "Y", top=["Peper", "Roze peper"])
+        add(con, "notino.nl", "X", "Y", top=["Zwarte peper"], install="b")
+        catalog.build(con)
+        p = catalog.perfume(con, catalog.search(con, "y")[0]["id"])
+        self.assertEqual(sorted(n["key"] for n in p["notes"]["top"]), ["black pepper", "pepper", "pink pepper"])
+
+    def test_name_most_shops_use(self):
+        con = db()
+        for i, (shop, brand, name) in enumerate([("deloox.nl", "Hugo Boss", "Boss Bottled"), ("douglas.nl", "Hugo Boss", "Boss Bottled"),
+                                                 ("douglas.nl", "Hugo Boss", "Boss Bottled"), ("iciparisxl.nl", "HUGO BOSS", "BOTTLED"),
+                                                 ("kruidvat.nl", "Hugo Boss", "Bottled")]):
+            add(con, shop, brand, name, "edt", install=str(i))
+        catalog.build(con)
+        self.assertEqual(catalog.search(con, "bottled")[0]["name"], "Boss Bottled")
 
     def test_deodorant_is_not_the_perfume(self):
         con = db()

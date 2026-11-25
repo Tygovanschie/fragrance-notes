@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Nightly proposals from the local LLM (Ollama on 127.0.0.1, see ~/ollama). Runs on the host (cron), like backup.py.
 
-Five jobs, each writing a list to review/ for a person to check; the job itself never changes the database or
+Six jobs, each writing a list to review/ for a person to check; the job itself never changes the database or
 the code, because the model makes mistakes (it guessed "almond wood" for "Belambra Hout"):
 
 1. notes-DATE.md  Note names in the catalog that catalog.NOTE_WORDS doesn't know: an English name, and whether it
@@ -18,6 +18,9 @@ the code, because the model makes mistakes (it guessed "almond wood" for "Belamb
 5. shops-DATE.md   Shops users added themselves (domain only, opt-in), with how many installs: candidates for
                   the built-in list. No model involved.
 
+6. photos-DATE.md  Free bottle photos on Wikimedia Commons for published perfumes without one; good ones go into
+                  server/perfume_photos.json by hand. No model involved.
+
 What was asked before is remembered in review/seen.json, so each list only has new items.
 Prints one line per job; under cron through `systemd-cat -t fragrance-llm` (journalctl -t fragrance-llm).
 """
@@ -26,6 +29,7 @@ import json
 import os
 import sqlite3
 import sys
+import time
 import re
 import urllib.parse
 import urllib.request
@@ -325,6 +329,55 @@ def job_texts(con, seen):
     return f"texts: {len(drafts)} drafts, {len(rows) - len(drafts)} without a source -> {path}", asked
 
 
+# ---------- 6. bottle photos from Wikimedia Commons ----------
+def job_photos(con, seen):
+    """No model needed: for published perfumes without a bottle photo, free photos on Wikimedia Commons that match
+    the brand and name. Only a list: a person checks it's the right perfume and bottle (not an older version or
+    another concentration) and adds the good ones to server/perfume_photos.json."""
+    import notephotos
+    try:
+        with open(os.path.join(BASE, "perfume_photos.json"), encoding="utf-8") as f:
+            done = set(json.load(f))
+    except FileNotFoundError:
+        done = set()
+    have = {r[0] for r in con.execute("SELECT gtin FROM page_images WHERE file IS NOT NULL")} if \
+        con.execute("SELECT 1 FROM sqlite_master WHERE name='page_images'").fetchone() else set()
+    todo = []
+    for pid, brand, name, data in con.execute("SELECT id, brand, name, data FROM catalog WHERE confirmed >= ?", (PAGE_MIN_CONFIRMED,)):
+        gtins = json.loads(data).get("gtins", [])
+        if pid in done or pid in seen or "c-" + pid in have or any(g in have for g in gtins):
+            continue
+        todo.append((pid, brand, name))
+    rows, asked = [], []
+    for pid, brand, name in todo[:20]:
+        asked.append(pid)
+        q = urllib.parse.urlencode({"action": "query", "list": "search", "srnamespace": 6, "srlimit": 8, "format": "json",
+                                    "srsearch": f'"{name}" {brand} perfume'})
+        req = urllib.request.Request(f"https://commons.wikimedia.org/w/api.php?{q}", headers={"User-Agent": notephotos.USER_AGENT})
+        time.sleep(1)   # be gentle with the Commons API
+        with urllib.request.urlopen(req, timeout=30) as r:
+            answer = json.loads(r.read())
+        if "query" not in answer:   # an error or a "slow down" answer: try this perfume again next night
+            asked.pop()
+            rows.append([f"{brand} {name}", "—", "—", "search failed: " + str(answer.get("error", {}).get("code", "?")), ""])
+            continue
+        hits = [h["title"].removeprefix("File:") for h in answer["query"]["search"]]
+        hits = [h for h in hits if re.search(r"\.(jpe?g|png|webp|tiff?)$", h, re.I)]
+        free = notephotos.commons_info(hits) if hits else {}
+        if not free:
+            rows.append([f"{brand} {name}", "—", "—", "no free photo found", ""])
+        for file, info in list(free.items())[:3]:
+            rows.append([f"{brand} {name}", f"[{file}]({info['page']})", info["license"], info["artist"][:40],
+                         f'"{pid}": "{file}"'])
+    if not rows:
+        return "photos: nothing new", []
+    path = write_list("photos", "Bottle photos to review (Wikimedia Commons)",
+                      "Free licences only. Open each link and check it is this perfume (same version and bottle).\n"
+                      "Good ones: copy the last column into server/perfume_photos.json and deploy.",
+                      ["Perfume", "Commons file", "Licence", "Maker", "Line for perfume_photos.json"], rows)
+    return f"photos: {len(asked)} perfumes checked -> {path}", asked
+
+
 # ---------- 5. shops people added themselves ----------
 def job_shops(con, seen):
     """No model needed: the domains users added as their own shop (opt-in, see app.add_suggestions), with how
@@ -354,7 +407,7 @@ def main():
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     failed = []
     try:
-        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts), ("shops", job_shops)):
+        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts), ("shops", job_shops), ("photos", job_photos)):
             try:
                 line, asked = job(con, set(seen.get(name, [])))
             except Exception as e:   # one job failing doesn't stop the others

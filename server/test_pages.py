@@ -9,11 +9,13 @@ import threading
 import time
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 
 TMP = tempfile.mkdtemp()
 os.environ["DB_PATH"] = os.path.join(TMP, "pages.db")
 os.environ["IMG_DIR"] = os.path.join(TMP, "img")
+os.environ["NOTE_IMG_DIR"] = os.path.join(TMP, "notes")
 import app  # noqa: E402
 import catalog  # noqa: E402
 import pages  # noqa: E402
@@ -74,7 +76,7 @@ class PagesTest(unittest.TestCase):
 
     def setUp(self):
         with app.db() as con:
-            for t in ("facts", "reports", "daily_lows", "page_images", "catalog", "catalog_keys", "catalog_gtins"):
+            for t in ("facts", "reports", "daily_lows", "page_images", "catalog", "catalog_keys", "catalog_gtins", "votes", "note_images"):
                 con.execute(f"DELETE FROM {t}")
             # Published: 4 notes confirmed by two shops.
             for shop in ("douglas.nl", "notino.nl"):
@@ -103,7 +105,9 @@ class PagesTest(unittest.TestCase):
         self.assertIn("Stronger With You Intensely", body)
         self.assertIn('class="note ok"', body)
         self.assertIn("Vanilla", body)        # one shop only: shown, not confirmed
-        self.assertIn("1 shop", body)
+        self.assertIn("Also named by one shop (1)", body)   # not in the pyramid, in the list underneath
+        self.assertIn("Vanilla <small>(douglas.nl)</small>", body)
+        self.assertNotIn('class="note one"', body)
         self.assertIn('rel="canonical"', body)
         self.assertIn("default-src 'none'", h["Content-Security-Policy"])
         self.assertEqual(re.findall(r'<script(?! type="application/ld\+json")', body), [])   # only the JSON-LD data block
@@ -240,6 +244,17 @@ class PagesTest(unittest.TestCase):
         self.assertIn("Terug naar de database", get("/nl/notes")[1])
         self.assertEqual(get("/nl")[0], 301)
         self.assertEqual(get("/nl/nothing")[0], 404)
+        # The other languages, and the language menu on every page.
+        for lang, word in (("de", "Duftnoten"), ("fr", "Notes"), ("es", "Notas"), ("it", "Note"), ("pt", "Notas"), ("pl", "Nuty")):
+            code, body, _ = get(f"/{lang}/perfume/{pid}-armani-stronger-with-you-intensely")
+            self.assertEqual(code, 200, lang)
+            self.assertIn(f'<html lang="{lang}">', body)
+            self.assertIn(f">{word}<", body)
+            self.assertIn(f'href="/{lang}/perfume/{pid}-armani-stronger-with-you-intensely" hreflang="{lang}" lang="{lang}" aria-current="true"', body)
+        _, body, _ = get("/database")
+        for lang in ("nl", "de", "fr", "es", "it", "pt", "pl"):
+            self.assertIn(f'href="/{lang}/database"', body)
+        self.assertIn("€1.234,50", pages.money(1234.5, "EUR", "de"))
 
     def test_brand_and_notes_pages(self):
         code, body, _ = get("/brand/armani")
@@ -274,6 +289,188 @@ class PagesTest(unittest.TestCase):
         self.assertIn('"lowPrice": "68.95"', body)
         _, body, _ = get(f"/nl/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
         self.assertIn("van €68,95 tot €79,00", body)
+
+    def vote(self, pid, form, cookie=None, origin="https://fragrancenotes.app", lang=""):
+        data = urllib.parse.urlencode(form).encode()
+        h = {"Content-Type": "application/x-www-form-urlencoded"}
+        if origin:
+            h["Origin"] = origin
+        if cookie:
+            h["Cookie"] = cookie
+        req = urllib.request.Request(f"{BASE}{lang}/perfume/{pid}/vote", data=data, method="POST", headers=h)
+        try:
+            with OPEN.open(req, timeout=5) as r:
+                return r.status, r.headers
+        except urllib.error.HTTPError as err:
+            return err.code, err.headers
+
+    def test_voting(self):
+        pid = self.pid("Intensely")
+        page = f"/perfume/{pid}-armani-stronger-with-you-intensely"
+        _, body, _ = get(page)
+        self.assertIn(f'action="/perfume/{pid}/vote"', body)
+        self.assertIn("No votes yet", body)
+        # The "owns" box is required, and at least one answer.
+        code, h = self.vote(pid, {"rating": "5"})
+        self.assertEqual((code, h["Location"]), (303, page + "?vote=own#vote"))
+        self.assertEqual(self.vote(pid, {"owns": "1"})[1]["Location"], page + "?vote=empty#vote")
+        self.assertEqual(self.vote(pid, {"owns": "1", "sillage": "9"})[1]["Location"], page + "?vote=empty#vote")
+        # A first vote sets the cookie; voting again with it changes the vote instead of adding one.
+        code, h = self.vote(pid, {"owns": "1", "rating": "4", "longevity": "3", "gender": "5"})
+        self.assertEqual((code, h["Location"]), (303, page + "?vote=thanks#vote"))
+        cookie = h["Set-Cookie"].split(";")[0]
+        self.assertRegex(cookie, r"^fn_voter=[0-9a-f]{32}$")
+        self.assertIn("HttpOnly", h["Set-Cookie"])
+        code, h = self.vote(pid, {"owns": "1", "rating": "5"}, cookie=cookie)
+        self.assertEqual(code, 303)
+        self.assertIsNone(h["Set-Cookie"])
+        with app.db() as con:
+            rows = con.execute("SELECT voter, rating, longevity FROM votes").fetchall()
+        self.assertEqual([(r[1], r[2]) for r in rows], [(5, 3)])           # rating changed, longevity kept
+        self.assertNotIn(cookie.split("=")[1], rows[0][0])                # only the hash is stored
+        code, body, h = get(page + "?vote=thanks")
+        self.assertIn("Thanks! Your vote is in", body)
+        self.assertEqual(h["Cache-Control"], "private, no-store")
+        self.assertIn("from 1 vote", body)                               # results from the first vote
+        self.assertIn('<span class="big">5.0</span>', body)
+        self.assertNotIn('"aggregateRating"', body)                       # for search engines only from 3
+        # With the cookie: the own answers filled in, a "saved" note, and never cached.
+        req = urllib.request.Request(BASE + page, headers={"Cookie": cookie})
+        with OPEN.open(req, timeout=5) as r:
+            mine, hdr = r.read().decode(), r.headers
+        self.assertIn("Your vote is saved", mine)
+        self.assertIn('id="r5" value="5" checked', mine)
+        self.assertIn('id="longevity3" value="3" checked', mine)
+        self.assertIn("Update my vote", mine)
+        self.assertEqual(hdr["Cache-Control"], "private, no-store")
+        # The Google rating appears from 3 voters.
+        for r in ("3", "4"):
+            self.vote(pid, {"owns": "1", "rating": r, "sillage": "2"})
+        _, body, _ = get(page)
+        self.assertIn('<span class="big">4.0</span>', body)
+        self.assertIn('<label for="sillage2">Moderate</label>', body)          # one word per sillage step
+        self.assertIn('<span class="l" title="Moderate">Moderate</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="n">2</span>', body)
+        self.assertIn('class="vgrid"', body)
+        self.assertIn("<h3>Sillage</h3>", body)
+        self.assertIn('"aggregateRating"', body)
+        # Dutch page, other origin, unknown perfume.
+        _, body, _ = get("/nl" + page)
+        self.assertIn("Jouw stem", body)
+        self.assertEqual(self.vote(pid, {"owns": "1", "rating": "5"}, lang="/nl")[1]["Location"], "/nl" + page + "?vote=thanks#vote")
+        self.assertEqual(self.vote(pid, {"owns": "1", "rating": "1"}, origin="https://evil.example")[0], 403)
+        self.assertEqual(self.vote(pid, {"owns": "1", "rating": "1"}, origin=None)[0], 403)
+        # A perfume without a page yet: its rating page (not indexed) takes votes too.
+        gid = self.pid("Guilty")
+        code, body, _ = get(f"/perfume/{gid}/rate")
+        self.assertEqual(code, 200)
+        self.assertIn("noindex", body)
+        self.assertIn(f'action="/perfume/{gid}/vote"', body)
+        self.assertEqual(self.vote(gid, {"owns": "1", "rating": "2"})[1]["Location"], f"/perfume/{gid}/rate?vote=thanks#vote")
+        code, _, h = get(f"/perfume/{pid}/rate")
+        self.assertEqual((code, h["Location"]), (301, page + "#vote"))
+        self.assertEqual(get("/perfume/000000000000/rate")[0], 404)
+        self.assertEqual(self.vote("000000000000", {"owns": "1", "rating": "1"})[0], 404)
+
+    def test_main_accords(self):
+        import accords
+        p = {"notes": {"top": [{"en": "pink pepper", "confirmed": True}, {"en": "juniper", "confirmed": True}],
+                       "heart": [{"en": "cinnamon", "confirmed": True}],
+                       "base": [{"en": "tonka bean", "confirmed": True}, {"en": "vanilla", "confirmed": False}]},
+             "families": [{"key": "spicy", "confirmed": True}]}
+        acc = accords.main_accords(p)
+        self.assertEqual(acc[0][1], 100)
+        self.assertIn("warm spicy", dict(acc))
+        self.assertTrue(all(v >= accords.MIN_SHOWN for _, v in acc))
+        self.assertEqual(accords.main_accords({"notes": {"top": [{"en": "vanilla", "confirmed": True}]}}), [])   # too few notes
+        self.assertTrue(set(accords.NOTES) <= set(catalog.NOTE_EN))      # only notes the dictionary has
+        for m in list(accords.NOTES.values()) + list(accords.FAMILIES.values()):
+            self.assertTrue(set(m) <= set(accords.COLOURS))
+        for lang in pages.LANGS:
+            self.assertEqual(set(accords.NAMES[lang]), set(accords.COLOURS), lang)
+        _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        self.assertIn("Main accords", body)
+        self.assertIn('class="accbands"', body)
+        self.assertRegex(body, r'<div class="acclabels"><span style="--w:100">[^<]+<small>100%</small>')
+        _, body, _ = get(f"/nl/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        self.assertIn("Hoofdaccoorden", body)
+
+    def test_photos_from_other_sources(self):
+        pid = self.pid("Intensely")
+
+        def sites(req, timeout=None):
+            u = req.full_url
+            if "openbeautyfacts.org/api" in u:
+                raise urllib.error.HTTPError(u, 404, "Not Found", {}, io.BytesIO(b"{}"))
+            if "openproductsfacts.org/api" in u:   # only the sister project has it, in another language
+                return io.BytesIO(json.dumps({"status": 1, "product": {"selected_images": {"front": {"display": {
+                    "fr": "https://images.openproductsfacts.org/x/front_fr.400.jpg"}}}}}).encode())
+            if "openfoodfacts.org/api" in u:
+                raise urllib.error.HTTPError(u, 404, "Not Found", {}, io.BytesIO(b"{}"))
+            return io.BytesIO(JPEG)
+
+        with app.db() as con:
+            self.assertEqual(pages.refresh_images(con, opener=sites, approved={}), 1)
+        _, body, _ = get(f"/perfume/{pid}-armani-stronger-with-you-intensely")
+        self.assertIn('href="https://world.openproductsfacts.org/product/3614272225695">Open Products Facts</a>, CC BY-SA', body)
+
+        # No Open Facts photo at all: the Commons photo approved in perfume_photos.json, with its credit.
+        def commons(req, timeout=None):
+            u = req.full_url
+            if "/api/v2/product/" in u:
+                raise urllib.error.HTTPError(u, 404, "Not Found", {}, io.BytesIO(b"{}"))
+            if "commons.wikimedia.org" in u:
+                return io.BytesIO(json.dumps({"query": {"pages": {"-1": {"imageinfo": [{
+                    "thumburl": "https://upload.wikimedia.org/x/400px-Bottle.jpg", "url": "https://upload.wikimedia.org/x/Bottle.jpg",
+                    "descriptionurl": "https://commons.wikimedia.org/wiki/File:Bottle.jpg", "mime": "image/jpeg",
+                    "extmetadata": {"LicenseShortName": {"value": "CC BY 4.0"}, "Artist": {"value": "Sam Photo"},
+                                    "LicenseUrl": {"value": "https://creativecommons.org/licenses/by/4.0"}}}]}}}}).encode())
+            return io.BytesIO(JPEG)
+
+        with app.db() as con:
+            con.execute("DELETE FROM page_images")
+            self.assertEqual(pages.refresh_images(con, opener=commons, approved={pid: "Bottle.jpg"}), 1)
+        _, body, _ = get(f"/perfume/{pid}-armani-stronger-with-you-intensely")
+        self.assertIn(f'src="/photo/c-{pid}.jpg"', body)
+        self.assertIn("Sam Photo", body)
+        self.assertIn('Wikimedia Commons</a>', body)
+        with urllib.request.urlopen(f"{BASE}/photo/c-{pid}.jpg", timeout=5) as r:
+            self.assertEqual(r.read(), JPEG)
+
+    def test_note_photos(self):
+        import notephotos
+
+        def commons(license):
+            def opener(req, timeout=None):
+                u = req.full_url
+                if "en.wikipedia.org" in u:
+                    return io.BytesIO(json.dumps({"query": {"pages": {"1": {"pageimage": "Tonka.jpg"}}}}).encode())
+                if "commons.wikimedia.org" in u:
+                    return io.BytesIO(json.dumps({"query": {"pages": {"-1": {"imageinfo": [{
+                        "thumburl": "https://upload.wikimedia.org/x/400px-Tonka.jpg", "url": "https://upload.wikimedia.org/x/Tonka.jpg",
+                        "descriptionurl": "https://commons.wikimedia.org/wiki/File:Tonka.jpg", "mime": "image/jpeg",
+                        "extmetadata": {"LicenseShortName": {"value": license}, "Artist": {"value": "<a href='x'>Jane Doe</a>"},
+                                        "LicenseUrl": {"value": "https://creativecommons.org/licenses/by-sa/4.0"}}}]}}}}).encode())
+                return io.BytesIO(JPEG)
+            return opener
+
+        with app.db() as con:
+            self.assertEqual(notephotos.refresh(con, ["tonka bean", "musk"], opener=commons("CC BY-NC-SA 2.0")), 0)   # not free
+            con.execute("DELETE FROM note_images")
+            self.assertEqual(notephotos.refresh(con, ["tonka bean", "musk"], opener=commons("CC BY-SA 4.0")), 1)
+            self.assertIsNone(con.execute("SELECT 1 FROM note_images WHERE key='musk'").fetchone())   # animal note: skipped
+            ph = notephotos.get(con, "tonka bean")
+        self.assertEqual((ph["file"], ph["artist"], ph["license"]), ("tonka-bean.jpg", "Jane Doe", "CC BY-SA 4.0"))
+        _, body, _ = get("/note/tonka-bean")
+        self.assertIn('src="/photo/n/tonka-bean.jpg"', body)
+        self.assertIn("Jane Doe", body)
+        self.assertIn("Wikimedia Commons</a>", body)
+        self.assertNotIn('class="swatch"', body)
+        _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        self.assertIn('class="nthumb" src="/photo/n/tonka-bean.jpg"', body)
+        self.assertIn("Note photos: Wikimedia Commons", body)
+        with urllib.request.urlopen(BASE + "/photo/n/tonka-bean.jpg", timeout=5) as r:
+            self.assertEqual(r.read(), JPEG)
+        self.assertEqual(get("/photo/n/..%2F..%2Fpages.db")[0], 404)
 
     def test_api_still_answers_json(self):
         with urllib.request.urlopen(BASE + "/catalog/stats", timeout=5) as r:

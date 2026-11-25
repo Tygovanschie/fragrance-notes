@@ -31,6 +31,9 @@ from datetime import date
 
 import catalog
 import obf
+import accords
+import notephotos
+import votes
 
 PAGE_MIN_CONFIRMED = int(os.environ.get("PAGE_MIN_CONFIRMED", "3"))
 BASE = os.environ.get("PAGES_BASE", "https://fragrancenotes.app").rstrip("/")
@@ -45,7 +48,7 @@ CONC = {"edt": "Eau de Toilette", "edp": "Eau de Parfum", "edc": "Eau de Cologne
         "extrait": "Extrait de Parfum"}
 CURRENCY = {"EUR": "€", "GBP": "£", "USD": "$", "CHF": "CHF ", "PLN": "zł ", "SEK": "kr ", "DKK": "kr "}
 TIER_KEYS = ("top", "heart", "base")
-LANGS = ("en", "nl")
+LANGS = ("en", "nl", "de", "fr", "es", "it", "pt", "pl")   # English without a prefix, the others under /<code>
 
 
 def _n(one, many):
@@ -55,6 +58,8 @@ def _n(one, many):
 T = {
     "en": {
         "langName": "English", "getExt": "Get the extension", "back": "← Back to the database",
+        "notePhotos": "Note photos: Wikimedia Commons",
+        "accordsH": "Main accords", "accordsSub": "Worked out from the notes and fragrance families the shops give, not voted.",
         "theDb": "The database", "allNotes": "All notes", "privacy": "Privacy", "source": "Source",
         "footData": 'From the open Fragrance Notes perfume database: what perfume shops show on their own pages, shared '
                     'anonymously by users, and <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Available under the '
@@ -68,7 +73,7 @@ T = {
         "by": "{name} by {brand}", "bottleOf": "Bottle of {name} by {brand}", "photo": "Photo",
         "trustShops": _n("<b>{n} source</b> describes it", "<b>{n} sources</b> describe it"),
         "trustNotes": _n("<b>{n} note</b> confirmed", "<b>{n} notes</b> confirmed"), "lastSeen": "Last seen",
-        "notes": "Notes", "notesSub": "As the shops describe it. A note gets a ✓ once two different shops list it.",
+        "notes": "Notes", "notesSub": "The notes at least two different shops agree on.", "singleH": "Also named by one shop ({n})", "singleSub": "Not confirmed yet. Shops sometimes use their own, different note list, so these can differ from the official one.",
         "legendOk": "Confirmed by 2 or more shops", "legendOne": "Named by one shop so far",
         "prices": "Prices", "pricesSub": "Lowest price per size in the last {days} days at {shops}, shared anonymously by Fragrance Notes users.",
         "size": "Size", "lowest": "Lowest", "at": "At", "perMl": "Per ml", "range": "Range", "oneShop": "1 shop",
@@ -117,10 +122,28 @@ T = {
         "moreMatch": _n("{n} more perfume in the database matches, but doesn't have enough confirmed notes for a page yet.",
                         "{n} more perfumes in the database match, but don't have enough confirmed notes for a page yet."),
         "nfH": "Not here (yet)",
+        "voteH": "What do people think?", "yourVoteH": "Your vote",
+        "voteIntro": "Own it or have you worn it? Share how it performs for you. No account needed.",
+        "owns": "I own this perfume or have worn it", "send": "Send my vote",
+        "voteNote": 'One vote per browser; vote again to change it. We keep a random code in a cookie and nothing about you (<a href="https://fragrancenotes.app/privacy">privacy</a>).',
+        "q": {"rating": "Overall", "longevity": "How long does it last?", "sillage": "Sillage: how far can others smell it?",
+              "value": "Value for money", "gender": "Who is it for?"},
+        "r": {"longevity": "Longevity", "sillage": "Sillage", "value": "Value for money", "gender": "Gender"},
+        "star": _n("{n} star", "{n} stars"),
+        "voteMsg": {"thanks": "Thanks! Your vote is in. The results on this page update within about 10 minutes.",
+                    "own": "Tick “I own this perfume or have worn it” to vote.", "empty": "Choose at least one answer.",
+                    "busy": "Too many votes at once. Please try again later."},
+        "votesSoFar": _n("{n} person voted so far. Results appear from 3 votes.", "{n} people voted so far. Results appear from 3 votes."),
+        "votesNone": "No votes yet. Be the first.", "votedBy": _n("from {n} vote", "from {n} votes"),
+        "voteSaved": "Your vote is saved.", "voteChange": "These are your answers. Change any of them and update your vote.",
+        "update": "Update my vote", "rateTitle": "Rate {full} | Fragrance Notes",
+        "rateLead": "Not enough shops confirm the notes of this perfume yet for a full page, but you can already rate it.",
         "nfD": "This perfume or note has no page yet. A perfume gets one once at least {n} of its notes are confirmed by two different shops.",
     },
     "nl": {
         "langName": "Nederlands", "getExt": "Installeer de extensie", "back": "← Terug naar de database",
+        "notePhotos": "Foto’s van noten: Wikimedia Commons",
+        "accordsH": "Hoofdaccoorden", "accordsSub": "Afgeleid uit de geurnoten en geurfamilies die de winkels noemen, niet gestemd.",
         "theDb": "De database", "allNotes": "Alle geurnoten", "privacy": "Privacy", "source": "Broncode",
         "footData": 'Uit de open parfumdatabase van Fragrance Notes: wat parfumwinkels op hun eigen pagina\'s laten zien, anoniem '
                     'gedeeld door gebruikers, en <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Beschikbaar onder de '
@@ -134,7 +157,7 @@ T = {
         "by": "{name} van {brand}", "bottleOf": "Fles {name} van {brand}", "photo": "Foto",
         "trustShops": _n("<b>{n} bron</b> beschrijft het", "<b>{n} bronnen</b> beschrijven het"),
         "trustNotes": _n("<b>{n} noot</b> bevestigd", "<b>{n} noten</b> bevestigd"), "lastSeen": "Laatst gezien",
-        "notes": "Geurnoten", "notesSub": "Zoals de winkels het beschrijven. Een noot krijgt een ✓ zodra twee verschillende winkels hem noemen.",
+        "notes": "Geurnoten", "notesSub": "De geurnoten waar minstens twee verschillende winkels het over eens zijn.", "singleH": "Ook genoemd door één winkel ({n})", "singleSub": "Nog niet bevestigd. Winkels gebruiken soms hun eigen, afwijkende notenlijst, dus deze kunnen verschillen van de officiële.",
         "legendOk": "Bevestigd door 2 of meer winkels", "legendOne": "Tot nu toe door één winkel genoemd",
         "prices": "Prijzen", "pricesSub": "Laagste prijs per inhoud in de afgelopen {days} dagen bij {shops}, anoniem gedeeld door gebruikers van Fragrance Notes.",
         "size": "Inhoud", "lowest": "Laagste", "at": "Bij", "perMl": "Per ml", "range": "Van – tot", "oneShop": "1 winkel",
@@ -183,9 +206,35 @@ T = {
         "moreMatch": _n("Er past nog {n} parfum in de database, maar die heeft te weinig bevestigde noten voor een pagina.",
                         "Er passen nog {n} parfums in de database, maar die hebben te weinig bevestigde noten voor een pagina."),
         "nfH": "(Nog) niet hier",
+        "voteH": "Wat vinden mensen ervan?", "yourVoteH": "Jouw stem",
+        "voteIntro": "Heb je hem, of heb je hem gedragen? Deel hoe hij bij jou presteert. Geen account nodig.",
+        "owns": "Ik heb dit parfum of heb het gedragen", "send": "Stem versturen",
+        "voteNote": 'Eén stem per browser; stem opnieuw om hem te wijzigen. We bewaren een willekeurige code in een cookie en verder niets over jou (<a href="https://fragrancenotes.app/privacy">privacy</a>).',
+        "r": {"longevity": "Hoe lang hij blijft", "sillage": "Sillage", "value": "Prijs-kwaliteit", "gender": "Voor wie"},
+        "q": {"rating": "Totaal", "longevity": "Hoe lang blijft hij?", "sillage": "Sillage: hoe ver ruiken anderen hem?",
+              "value": "Prijs-kwaliteit", "gender": "Voor wie?"},
+        "star": _n("{n} ster", "{n} sterren"),
+        "voteMsg": {"thanks": "Bedankt! Je stem is binnen. De uitslag op deze pagina wordt binnen zo'n 10 minuten bijgewerkt.",
+                    "own": "Vink “Ik heb dit parfum of heb het gedragen” aan om te stemmen.", "empty": "Kies minstens één antwoord.",
+                    "busy": "Te veel stemmen tegelijk. Probeer het later nog eens."},
+        "votesSoFar": _n("{n} persoon heeft gestemd. De uitslag verschijnt vanaf 3 stemmen.", "{n} mensen hebben gestemd. De uitslag verschijnt vanaf 3 stemmen."),
+        "votesNone": "Nog geen stemmen. Wees de eerste.", "votedBy": _n("uit {n} stem", "uit {n} stemmen"),
+        "voteSaved": "Je stem is opgeslagen.", "voteChange": "Dit zijn je antwoorden. Pas er een aan en werk je stem bij.",
+        "update": "Stem bijwerken", "rateTitle": "{full} beoordelen | Fragrance Notes",
+        "rateLead": "Nog niet genoeg winkels bevestigen de geurnoten van dit parfum voor een volledige pagina, maar je kunt het al wel beoordelen.",
         "nfD": "Dit parfum of deze noot heeft nog geen pagina. Een parfum krijgt er een zodra minstens {n} van zijn noten door twee verschillende winkels bevestigd zijn.",
     },
 }
+
+# German, French, Spanish, Italian, Portuguese and Polish (pages_i18n.py); missing texts fall back to English.
+from pages_i18n import EXTRA, SCALES as SCALE_TEXT  # noqa: E402
+for _l, _d in EXTRA.items():
+    T[_l] = {**T["en"], **_d}
+# The answers of the voting questions, for every language (one list in pages_i18n.SCALES).
+for _l, _s in SCALE_TEXT.items():
+    T[_l]["scale"] = _s
+T["en"]["r"] = {"longevity": "Longevity", "sillage": "Sillage", "value": "Value for Money", "gender": "Gender"}
+T["nl"]["r"] = {**T["nl"]["r"], "longevity": "Houdbaarheid"}
 
 # The Dutch name of a note: the first spelling of its line in catalog.NOTE_WORDS (written Dutch first).
 NOTE_NL = {line.split(":", 1)[0].strip(): line.split(":", 1)[1].split("|")[0].strip()
@@ -242,14 +291,14 @@ def day(s, lang="en"):
 def money(v, cur, lang="en", decimals=2):
     sym = CURRENCY.get(cur, (cur or "") + " ")
     s = f"{v:,.{decimals}f}"
-    if lang == "nl":   # 1.234,56
+    if lang != "en":   # 1.234,56
         s = s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
     return f"{sym}{s}"
 
 
 def num(n, lang="en"):
     s = f"{n:,}"
-    return s.replace(",", ".") if lang == "nl" else s
+    return s.replace(",", ".") if lang != "en" else s
 
 
 def ml(v):
@@ -301,22 +350,45 @@ def index(con):
 def init(con):
     con.execute("""CREATE TABLE IF NOT EXISTS page_images (
         gtin TEXT PRIMARY KEY, file TEXT, product TEXT, checked INTEGER NOT NULL)""")
+    # Where a photo comes from (one of OPEN_FACTS, or "commons") and, for Commons, its credit (JSON).
+    for col in ("source TEXT", "credit TEXT"):
+        try:
+            con.execute(f"ALTER TABLE page_images ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass   # already there
+
+
+# The Open Facts projects share barcodes and all publish their photos under CC BY-SA. A perfume's barcode is
+# sometimes only in Open Products Facts or Open Food Facts ("product found with a different product type").
+OPEN_FACTS = [("openbeautyfacts.org", "Open Beauty Facts"), ("openproductsfacts.org", "Open Products Facts"),
+              ("openfoodfacts.org", "Open Food Facts")]
+PHOTOS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "perfume_photos.json")
+
+
+def open_facts_image(gtin, opener=urllib.request.urlopen):
+    """(photo URL, site) of the front photo any Open Facts project has for this barcode (any language), or None."""
+    for site, _ in OPEN_FACTS:
+        url = f"https://world.{site}/api/v2/product/{gtin}.json?fields=code,image_front_url,selected_images"
+        req = urllib.request.Request(url, headers={"User-Agent": obf.USER_AGENT})
+        try:
+            with opener(req, timeout=20) as r:
+                d = json.loads(r.read(400_000))
+        except urllib.error.HTTPError as err:
+            if err.code == 404:   # not in this project (or another product type): try the next one
+                continue
+            raise
+        prod = d.get("product") or {} if d.get("status") == 1 else {}
+        front = (prod.get("selected_images") or {}).get("front", {}).get("display", {})
+        for u in [prod.get("image_front_url")] + list(front.values()):
+            if u and re.match(r"https://images\.open(beauty|products|food)facts\.org/", u):
+                return u, site
+    return None
 
 
 def obf_image_url(gtin, opener=urllib.request.urlopen):
-    """The front photo URL Open Beauty Facts has for this barcode, or None."""
-    url = (f"https://world.openbeautyfacts.org/api/v2/product/{gtin}.json"
-           "?fields=code,image_front_url,product_type")
-    req = urllib.request.Request(url, headers={"User-Agent": obf.USER_AGENT})
-    try:
-        with opener(req, timeout=20) as r:
-            d = json.loads(r.read(200_000))
-    except urllib.error.HTTPError as err:
-        if err.code == 404:   # how Open Beauty Facts says "not found" (or "not a beauty product"): no photo
-            return None
-        raise
-    u = (d.get("product") or {}).get("image_front_url") if d.get("status") == 1 else None
-    return u if u and u.startswith("https://images.openbeautyfacts.org/") else None
+    """Kept for older callers: the front photo URL of this barcode in any Open Facts project, or None."""
+    found = open_facts_image(gtin, opener)
+    return found[0] if found else None
 
 
 def fetch_image(url, opener=urllib.request.urlopen):
@@ -328,12 +400,31 @@ def fetch_image(url, opener=urllib.request.urlopen):
     return data
 
 
-def refresh_images(con, opener=urllib.request.urlopen, now=None, limit=40):
-    """Look up a bottle photo for each published perfume that has none yet (one barcode at a time, at most
-    `limit` lookups per run, each barcode again only after IMG_RECHECK). Returns the number of new photos."""
+def approved_photos(path=PHOTOS_FILE):
+    """{perfume id: Commons file name} checked by hand (from the review list of llm_review.job_photos)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return {k: v for k, v in json.load(f).items() if not k.startswith("_") and re.fullmatch(r"[0-9a-f]{12}", k)}
+    except FileNotFoundError:
+        return {}
+
+
+def _save(con, key, data, product, source, credit, now):
+    file = f"{key}.jpg" if data[:2] == b"\xff\xd8" else f"{key}.png"
+    with open(os.path.join(IMG_DIR, file), "wb") as f:
+        f.write(data)
+    con.execute("INSERT OR REPLACE INTO page_images (gtin, file, product, checked, source, credit) VALUES (?,?,?,?,?,?)",
+                (key, file, product, now, source, json.dumps(credit) if credit else None))
+
+
+def refresh_images(con, opener=urllib.request.urlopen, now=None, limit=40, approved=None):
+    """A bottle photo for each published perfume that has none yet: first from the Open Facts projects (every
+    barcode, front photo in any language; each barcode again only after IMG_RECHECK), else the Commons photo
+    approved for it in perfume_photos.json. At most `limit` lookups per run. Returns the number of new photos."""
     init(con)
     now = int(now or time.time())
     os.makedirs(IMG_DIR, exist_ok=True)
+    approved = approved_photos() if approved is None else approved
     done = 0
     for p in index(con)["perfumes"]:
         if limit <= 0:
@@ -345,42 +436,67 @@ def refresh_images(con, opener=urllib.request.urlopen, now=None, limit=40):
             if r and now - r[0] < IMG_RECHECK:
                 continue
             limit -= 1
-            file = None
             try:
-                url = obf_image_url(g, opener)
-                data = fetch_image(url, opener) if url else None
-                if data:
-                    file = f"{g}.jpg" if data[:2] == b"\xff\xd8" else f"{g}.png"
-                    with open(os.path.join(IMG_DIR, file), "wb") as f:
-                        f.write(data)
-                    done += 1
+                found = open_facts_image(g, opener)
+                data = fetch_image(found[0], opener) if found else None
             except Exception as err:   # network trouble: try this barcode again next time
                 print("photo lookup failed:", g, type(err).__name__, flush=True)
                 continue
-            con.execute("INSERT OR REPLACE INTO page_images (gtin, file, product, checked) VALUES (?,?,?,?)",
-                        (g, file, g if file else None, now))
-            if file or limit <= 0:
+            if data:
+                _save(con, g, data, g, found[1], None, now)
+                done += 1
                 break
+            con.execute("INSERT OR REPLACE INTO page_images (gtin, file, product, checked) VALUES (?,?,?,?)",
+                        (g, None, None, now))
+            if limit <= 0:
+                break
+        name = approved.get(p["id"])
+        if name and not photo(con, p) and limit > 0:
+            limit -= 1
+            try:
+                found = notephotos.commons_file(name, opener)
+            except Exception as err:
+                print("commons photo failed:", p["id"], type(err).__name__, flush=True)
+                found = None
+            if found:
+                data, info = found
+                _save(con, "c-" + p["id"], data, info["page"], "commons",
+                      {"artist": info["artist"], "license": info["license"], "license_url": info["license_url"]}, now)
+                done += 1
     con.commit()
     return done
 
 
 def photo(con, p):
-    """(file, barcode) of the perfume's cached photo, or None."""
-    gt = p.get("gtins") or []
-    if not gt:
-        return None
+    """(file, product, source, credit) of the perfume's stored photo, or None. product is the barcode (Open Facts)
+    or the Commons file page; credit is a dict for Commons photos."""
+    keys = list(p.get("gtins") or []) + ["c-" + p["id"]]
     try:
-        r = con.execute(f"SELECT file, gtin FROM page_images WHERE file IS NOT NULL AND gtin IN ({','.join('?' * len(gt))})"
-                        " ORDER BY gtin LIMIT 1", gt).fetchone()
+        rows = con.execute(f"SELECT file, product, source, credit, gtin FROM page_images WHERE file IS NOT NULL "
+                           f"AND gtin IN ({','.join('?' * len(keys))})", keys).fetchall()
     except sqlite3.OperationalError:   # table not made yet
         return None
-    return (r[0], r[1]) if r and os.path.exists(os.path.join(IMG_DIR, r[0])) else None
+    rows = sorted(rows, key=lambda r: (r[4].startswith("c-"), r[4]))   # an Open Facts photo before a Commons one
+    for file, product, source, credit, _ in rows:
+        if os.path.exists(os.path.join(IMG_DIR, file)):
+            return file, product, source or "openbeautyfacts.org", json.loads(credit) if credit else None
+    return None
+
+
+def photo_credit(ph, t):
+    """The caption under a bottle photo, linking to where it comes from."""
+    file, product, source, credit = ph
+    if source == "commons" and credit:
+        lic = (f'<a href="{e(credit["license_url"])}" rel="nofollow">{e(credit["license"])}</a>'
+               if str(credit.get("license_url", "")).startswith("https://") else e(credit["license"]))
+        return f'{t["photo"]}: {e(credit["artist"])}, {lic}, <a href="{e(product)}" rel="nofollow">Wikimedia Commons</a>'
+    name = dict(OPEN_FACTS).get(source, "Open Beauty Facts")
+    return f'{t["photo"]}: <a href="https://world.{e(source)}/product/{e(product)}">{name}</a>, CC BY-SA'
 
 
 def image_file(name):
     """(bytes, content type) of a cached photo, for GET /photo/<file>, or None."""
-    if not re.fullmatch(r"\d{8,14}\.(jpg|png)", name):
+    if not re.fullmatch(r"(\d{8,14}|c-[0-9a-f]{12})\.(jpg|png)", name):   # barcode (Open Facts) or c-<id> (Commons)
         return None
     path = os.path.join(IMG_DIR, name)
     if not os.path.exists(path):
@@ -422,7 +538,7 @@ h2{margin:0 0 6px;font:750 1.6rem/1.1 var(--display);letter-spacing:-.02em}
 .notes{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
 .note{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;font:500 .9688rem/1.2 var(--text);text-decoration:none}
 a.note:hover{box-shadow:0 0 0 2px var(--plum)}
-.note.ok{background:var(--ok-bg);color:#173f28}.note.ok::before{content:"\\2713";font-weight:700;color:var(--ok)}
+.note.ok{background:var(--white);color:var(--ink);border:1px solid var(--line)}a.note.ok:hover{border-color:var(--mauve);box-shadow:none}
 .note.one{background:var(--paper);color:var(--ink-soft);border:1px dashed var(--mauve)}.note small{font-size:.75rem;opacity:.75}
 .legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin:18px 0 0;font-size:.875rem;color:var(--ink-soft)}
 .legend span{display:inline-flex;align-items:center;gap:7px}.legend i{width:14px;height:14px;border-radius:50%;display:inline-block}
@@ -492,6 +608,13 @@ footer{padding:36px 0 56px;color:var(--ink-soft);font-size:.875rem;border-top:1p
 .hide-sm{display:none}.stats{grid-template-columns:1fr 1fr}.stats div:nth-child(3){border-left:0}.stats div:nth-child(n+3){border-top:1px solid var(--line)}
 .stats div{padding:20px 18px}.open{padding:34px 22px;gap:24px}section.part{padding-top:60px}.search{flex-direction:column}.swatch{height:90px}}
 .top nav{display:flex;align-items:center;gap:14px}.lang{font:600 .9375rem/1 var(--text);text-decoration:none;color:var(--ink-soft)}
+.langsel{position:relative}.langsel summary{list-style:none;display:inline-flex;align-items:center;gap:7px;cursor:pointer;padding:9px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--white);font:600 .9375rem/1 var(--text);color:var(--ink)}
+.langsel summary::-webkit-details-marker{display:none}.langsel summary::after{content:"";width:7px;height:7px;border:solid var(--ink-soft);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-2px,-2px);margin-left:2px}
+.langsel[open] summary{border-color:var(--mauve)}
+.langsel ul{position:absolute;right:0;top:calc(100% + 6px);z-index:10;margin:0;padding:6px;list-style:none;background:var(--white);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 40px -18px rgba(74,26,59,.45);min-width:170px}
+.langsel li a{display:block;padding:9px 12px;border-radius:10px;color:var(--ink);text-decoration:none;font-size:.9688rem}
+.langsel li a:hover{background:var(--paper)}.langsel li a[aria-current]{font-weight:700;color:var(--plum)}
+@media (max-width:560px){.top .btn.small{display:none}}
 .lang:hover{color:var(--plum)}
 .chart{margin:26px 0 0}.chart h3{margin:0 0 8px;font:700 1rem/1.2 var(--display)}.chart svg{width:100%;height:auto;display:block}
 .chart .axis{display:flex;justify-content:space-between;font-size:.8125rem;color:var(--ink-soft);margin-top:4px}
@@ -499,6 +622,39 @@ footer{padding:36px 0 56px;color:var(--ink-soft);font-size:.875rem;border-top:1p
 .chips a{display:inline-block;padding:8px 14px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:.9688rem}
 .chips a:hover{box-shadow:0 0 0 2px var(--plum)}.chips small{color:var(--ink-soft);margin-left:4px}
 .letter{font:750 1.25rem/1 var(--display);margin:26px 0 10px;color:var(--plum)}
+.sr{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}.sr-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.score{display:flex;align-items:baseline;gap:10px;margin:4px 0 6px}.score .big{font:800 2.4rem/1 var(--display)}.score .st{color:var(--plum);font-size:1.3rem;letter-spacing:2px}
+form.vote{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}form.vote h3{margin:0 0 2px;font:700 1.05rem/1.2 var(--display)}form.vote .sub{margin:0 0 12px;font-size:.875rem}
+form.vote fieldset{border:0;padding:0;margin:12px 0 0;min-width:0}form.vote legend{font:600 .875rem/1.3 var(--text);margin-bottom:6px;padding:0}.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+.own{display:flex;gap:10px;align-items:center;padding:9px 12px;background:var(--paper);border-radius:12px;font-weight:600;font-size:.9375rem;cursor:pointer}
+.own input{width:20px;height:20px;accent-color:var(--plum)}
+.stars .opts{display:inline-flex;flex-direction:row-reverse;gap:2px}
+.stars label{cursor:pointer;font-size:1.6rem;line-height:1;color:var(--line);padding:0 2px}.stars label::before{content:"\\2605"}
+.stars label:hover,.stars label:hover~label,.stars input:checked~label{color:var(--plum)}
+.scale .opts{display:flex;flex-wrap:wrap;gap:6px}
+.scale label{padding:5px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--white);cursor:pointer;font-size:.8438rem}
+.scale label:hover{border-color:var(--mauve)}.scale input:checked+label{background:var(--plum);border-color:var(--plum);color:var(--white)}
+form.vote input:focus-visible+label{outline:3px solid var(--plum);outline-offset:2px}
+form.vote .btn{margin-top:16px;padding:11px 20px;font-size:.9375rem}form.vote .muted{margin-top:10px;font-size:.8125rem}form.vote .vmsg{margin:4px 0 12px;padding:9px 14px;font-size:.9375rem}
+.vmsg{padding:12px 16px;border-radius:14px;background:#fdf0e6;color:#6b3a12;margin:0 0 14px}.vmsg.ok{background:var(--ok-bg);color:#173f28}
+.nthumb{width:22px;height:22px;border-radius:50%;object-fit:cover;margin:-2px 0 -2px -6px;box-shadow:0 0 0 2px var(--white)}
+.note.ok:has(.nthumb)::before{display:none}.credit{margin:10px 0 0;font-size:.8125rem}
+.notephoto{margin:0}.notephoto img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:22px;display:block;background:var(--paper)}
+.notephoto figcaption{margin-top:6px;font-size:.75rem;color:var(--ink-soft)}.notephoto figcaption a{color:var(--ink-soft)}
+details.single{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}details.single summary{cursor:pointer;font-weight:600;font-size:.9375rem;color:var(--ink-soft)}
+details.single summary:hover{color:var(--plum)}details.single p{margin:8px 0 6px}details.single ul{margin:0;padding:0;list-style:none;columns:2;column-gap:24px}
+details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.single li .muted{display:inline-block;min-width:3.6em}
+@media (max-width:560px){details.single ul{columns:1}}
+.accbands{display:flex;height:64px;border-radius:14px;overflow:hidden;margin-top:4px}.accbands span{flex:var(--w) 1 0;background:var(--c)}
+.acclabels{display:flex;margin-top:10px}.acclabels span{flex:var(--w) 1 0;min-width:0;padding-right:6px;font:600 .875rem/1.2 var(--text);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acclabels small{display:block;font-weight:400;color:var(--ink-soft);font-size:.75rem;margin-top:2px}
+@media (prefers-reduced-motion:no-preference){.accbands span{animation:grow .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 70ms + 150ms);transform-origin:left}@keyframes grow{from{transform:scaleX(0)}}}
+.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;margin:14px 0 4px}.vgrid h3{margin:0 0 6px;font:700 .9375rem/1.2 var(--display)}
+.vbar{display:grid;grid-template-columns:8.5em minmax(48px,1fr) 1.6em;gap:10px;align-items:center;font-size:.8125rem;line-height:1.5;color:var(--ink-soft)}
+.vbar .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vbar .track{height:8px}.vbar .n{text-align:right;font-variant-numeric:tabular-nums}
+.vbar.best{color:var(--ink)}.vbar.best .fill{background:var(--plum)}.vbar.best .n{font-weight:700}
+.score{margin:2px 0 4px}.score .big{font-size:2rem}
+@media (max-width:560px){.vgrid,.qgrid{grid-template-columns:1fr}.accbands{height:44px}.acclabels span:nth-child(n+5),.accbands span:nth-child(n+5){display:none}}
 """
 
 
@@ -509,14 +665,20 @@ def ld_json(obj):
     return s.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
 
 
-def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None):
+def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None, foot=""):
     """A whole page. `path` is the page's path without the language prefix (the same in every language)."""
     t = T[lang]
     alt = "".join(f'<link rel="alternate" hreflang="{l}" href="{e(BASE + P(l, path))}">' for l in LANGS)
     head = ('<meta name="robots" content="noindex">' if noindex else
             f'<link rel="canonical" href="{e(BASE + P(lang, path))}">{alt}<link rel="alternate" hreflang="x-default" href="{e(BASE + path)}">')
     ld = f'<script type="application/ld+json">{ld_json(jsonld)}</script>' if jsonld else ""
-    other = "nl" if lang == "en" else "en"
+    # Language menu: a <details> list (no script), every language's version of this same page.
+    langs = "".join(f'<li><a href="{e(P(l, path))}" hreflang="{l}" lang="{l}"{" aria-current=" + chr(34) + "true" + chr(34) if l == lang else ""}>'
+                    f'{T[l]["langName"]}</a></li>' for l in LANGS)
+    menu = (f'<details class="langsel"><summary aria-label="Language">'
+            f'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">'
+            f'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>'
+            f'{t["langName"]}</summary><ul>{langs}</ul></details>')
     return f"""<!doctype html>
 <html lang="{lang}">
 <head>
@@ -540,7 +702,7 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None)
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{SITE}"><img src="{SITE}img/icon.png" alt="">Fragrance Notes</a>
-<nav><a class="lang" href="{e(P(other, path))}" hreflang="{other}" lang="{other}">{T[other]["langName"]}</a>
+<nav>{menu}
 <a class="btn small" href="{STORE}">{t["getExt"]}</a></nav>
 </div></header>
 <main class="wrap">
@@ -549,6 +711,7 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None)
 <footer><div class="wrap">
 <p>{t["footData"]}</p>
 <p>{t["footNot"]}</p>
+{foot}
 <p><a href="{P(lang, '/database')}">{t["theDb"]}</a> · <a href="{P(lang, '/notes')}">{t["allNotes"]}</a> · <a href="{SITE}privacy.html">{t["privacy"]}</a> · <a href="https://github.com/Tygovanschie/fragrance-notes">{t["source"]}</a></p>
 </div></footer>
 </body>
@@ -600,13 +763,108 @@ def chart(points, cur, lang):
             f'<div class="axis"><span>{e(day(points[0][0], lang))}</span><span>{e(label)}</span><span>{e(day(points[-1][0], lang))}</span></div>')
 
 
+# ---------- votes (votes.py) ----------
+
+def vote_results(s, t):
+    """The result bars per question; only from votes.MIN_VOTERS voters."""
+    if s["voters"] < votes.MIN_VOTERS:
+        return f'<p class="sub">{t["votesSoFar"](s["voters"]) if s["voters"] else t["votesNone"]}</p>'
+    out = []
+    r = s["rating"]
+    # One line with the stars and how many votes in total; then the four questions in a compact 2 x 2 grid, each
+    # answer with its number of votes.
+    if r["n"]:
+        full = round(r["avg"])
+        stars = "★" * full + "☆" * (5 - full)
+        out.append(f'<p class="score"><span class="big">{r["avg"]:.1f}</span> <span class="st" aria-hidden="true">{stars}</span>'
+                   f' <span class="muted">{t["votedBy"](s["voters"])}</span></p>')
+    else:
+        out.append(f'<p class="score"><span class="muted">{t["votedBy"](s["voters"])}</span></p>')
+    blocks = []
+    for f, labels in t["scale"].items():
+        x = s[f]
+        if not x["n"]:
+            continue
+        top = max(x["dist"]) or 1
+        rows = "".join(
+            f'<div class="vbar{" best" if c == top else ""}"><span class="l" title="{e(lab)}">{e(lab.split(" (")[0])}</span><span class="track"><span class="fill" style="width:{c / top * 100:.0f}%"></span></span>'
+            f'<span class="n">{c}</span></div>' for lab, c in zip(labels, x["dist"]))
+        blocks.append(f'<div><h3>{t["r"][f]}</h3>{rows}</div>')
+    if blocks:
+        out.append(f'<div class="vgrid">{"".join(blocks)}</div>')
+    return "".join(out)
+
+
+def vote_section(con, p, lang, state=None, voter=None):
+    """Results plus the form. Someone who voted before (voter = hash of their cookie code) sees their answers
+    filled in and a "saved" note; the page is then never cached (app.page_get)."""
+    t = T[lang]
+    s = votes.summary(con, p["id"])
+    my = votes.mine(con, p["id"], voter) or {}
+    msg = t["voteMsg"].get(state or "")
+    note = f'<p class="vmsg{" ok" if state == "thanks" else ""}" role="status">{e(msg)}</p>' if msg and not (my and state == "thanks") else ""
+    if my:
+        note = f'<p class="vmsg ok" role="status">✓ {e(t["voteSaved"])}</p>' + note
+    on = lambda f, i: " checked" if my.get(f) == i else ""
+    stars = "".join(f'<input class="sr" type="radio" name="rating" id="r{i}" value="{i}"{on("rating", i)}><label for="r{i}" title="{e(t["star"](i))}">'
+                    f'<span class="sr-t">{e(t["star"](i))}</span></label>' for i in range(5, 0, -1))
+    scales = "".join(
+        f'<fieldset class="scale"><legend>{t["r"][f]}</legend><div class="opts">'
+        + "".join(f'<input class="sr" type="radio" name="{f}" id="{f}{i}" value="{i}"{on(f, i)}><label for="{f}{i}">{e(lab)}</label>'
+                  for i, lab in enumerate(labels, 1))
+        + "</div></fieldset>" for f, labels in t["scale"].items())
+    form = f"""<form class="vote{' voted' if my else ''}" method="post" action="{P(lang, f'/perfume/{p["id"]}/vote')}">
+<h3>{t["yourVoteH"]}</h3>{note}<p class="sub">{t["voteChange"] if my else t["voteIntro"]}</p>
+<label class="own"><input type="checkbox" name="owns" value="1" required{" checked" if my else ""}> {t["owns"]}</label>
+<fieldset class="stars"><legend>{t["q"]["rating"]}</legend><div class="opts">{stars}</div></fieldset>
+<div class="qgrid">{scales}</div>
+<button class="btn" type="submit">{t["update"] if my else t["send"]}</button>
+<p class="muted">{t["voteNote"]}</p></form>"""
+    return f'<section class="card" id="vote" aria-labelledby="vote-h"><h2 id="vote-h">{t["voteH"]}</h2>{vote_results(s, t)}{form}</section>', s
+
+
+def vote_target(con, pid):
+    """Where a vote on this perfume goes back to: its page, or its rating page when it has no page yet; None if
+    it isn't in the catalog."""
+    p = index(con)["byId"].get(pid)
+    if p:
+        return perfume_path(p)
+    con.row_factory = sqlite3.Row
+    return f"/perfume/{pid}/rate" if con.execute("SELECT 1 FROM catalog WHERE id=?", (pid,)).fetchone() else None
+
+
+def rate_page(con, pid, lang="en", state=None, voter=None):
+    """/perfume/<id>/rate: just the voting block, for any perfume in the catalog (the extension's "Own it? Rate
+    it" button opens it). Perfumes with a full page redirect there; this page itself is not indexed."""
+    t = T[lang]
+    idx = index(con)
+    if pid in idx["byId"]:
+        return perfume_path(idx["byId"][pid]) + "#vote", None
+    p = catalog.perfume(con, pid)
+    if not p:
+        return None
+    vote_html, _ = vote_section(con, p, lang, state, voter)
+    ph = photo(con, p)
+    photo_html = (f'<figure class="photo"><img src="/photo/{e(ph[0])}" alt="" width="400" height="400">'
+                  f'<figcaption>{photo_credit(ph, t)}</figcaption></figure>') if ph else ""
+    tags = [conc_name(p), t["gender"].get(p.get("gender") or "", "")]
+    body = f"""{back(lang)}
+<section class="head{'' if ph else ' nophoto'}">{photo_html}<div>
+<p class="house">{e(p["brand"])}</p><h1>{e(p["name"])}</h1>
+<ul class="tags">{"".join(f"<li>{e(x)}</li>" for x in tags if x)}</ul>
+<p class="trust">{t["rateLead"]}</p></div></section>
+<div class="grid"><div>{vote_html}</div></div>"""
+    return None, frame(lang, t["rateTitle"].format(full=t["by"].format(name=p["name"], brand=p["brand"])),
+                       t["voteIntro"], f"/perfume/{pid}/rate", body, noindex=True)
+
+
 # ---------- /perfume/<id>-<slug> ----------
 
 def conc_name(p):
     return CONC.get(p.get("conc") or "", "")
 
 
-def perfume_page(con, pid, prices=None, lang="en"):
+def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
     """(path, html) for a published perfume, path without language prefix; None if it has no page."""
     t = T[lang]
     idx = index(con)
@@ -622,22 +880,38 @@ def perfume_page(con, pid, prices=None, lang="en"):
         tags.append(ml(sizes[0]) if len(sizes) == 1 else f"{sizes[0]:g} – {sizes[-1]:g} ml")
     ph = photo(con, p)
     photo_html = (f'<figure class="photo"><img src="/photo/{e(ph[0])}" alt="{e(t["bottleOf"].format(name=p["name"], brand=p["brand"]))}" width="400" height="400">'
-                  f'<figcaption>{t["photo"]}: <a href="https://world.openbeautyfacts.org/product/{e(ph[1])}">Open Beauty Facts</a>, CC BY-SA</figcaption></figure>') if ph else ""
+                  f'<figcaption>{photo_credit(ph, t)}</figcaption></figure>') if ph else ""
     full = t["by"].format(name=p["name"], brand=p["brand"])
 
-    tiers = []
+    # The pyramid shows the confirmed notes only (2+ shops agree). Notes a single shop names often come from that
+    # shop's own, different note list (Douglas: Iris and Amberwood on Stronger With You Intensely), so they go in a
+    # closed list underneath, with the shop that named them.
+    shown = []
+
+    def thumb(n):   # a small round photo from Wikimedia Commons in the chip, when the note has one
+        ph = notephotos.get(con, n.get("en") or "")
+        if ph:
+            shown.append(1)
+            return f'<img class="nthumb" src="/photo/n/{e(ph["file"])}" alt="" width="22" height="22" loading="lazy">'
+        return ""
+
+    tiers, single = [], []
     for tier, label, hint in t["tiers"]:
         chips = []
         for n in p["notes"][tier]:
             name = note_name(n["en"], lang) if n.get("en") else n["name"]
-            cls = "note ok" if n["confirmed"] else "note one"
-            extra = "" if n["confirmed"] else f' <small>{t["shops"](n["shops"])}</small>'
+            if not n["confirmed"]:
+                single.append((label, name, ", ".join(n.get("from") or [])))
+                continue
             if n.get("en") in linkable:
-                chips.append(f'<li><a class="{cls}" href="{P(lang, note_path(n["en"]))}">{e(name)}{extra}</a></li>')
+                chips.append(f'<li><a class="note ok" href="{P(lang, note_path(n["en"]))}">{thumb(n)}{e(name)}</a></li>')
             else:
-                chips.append(f'<li><span class="{cls}">{e(name)}{extra}</span></li>')
+                chips.append(f'<li><span class="note ok">{thumb(n)}{e(name)}</span></li>')
         if chips:
             tiers.append(f'<div class="tier"><h3>{label}<small>{hint}</small></h3><ul class="notes">{"".join(chips)}</ul></div>')
+    single_html = (f'<details class="single"><summary>{t["singleH"].format(n=len(single))}</summary><p class="muted">{t["singleSub"]}</p><ul>'
+                   + "".join(f'<li><span class="muted">{e(lab)}</span> {e(nm)}{f" <small>({e(src)})</small>" if src else ""}</li>'
+                             for lab, nm, src in single) + "</ul></details>") if single else ""
 
     price_html, offers = "", None
     st = prices(p["fragrantica"][0]) if prices and p.get("fragrantica") else None
@@ -680,6 +954,12 @@ def perfume_page(con, pid, prices=None, lang="en"):
     q = urllib.parse.quote(f"{p['brand']} {p['name']}")
     facts.append((t["more"], t["moreFrag"].format(link=f'<a href="https://www.fragrantica.com/search/?query={q}" rel="nofollow">Fragrantica ↗</a>')))
     facts_html = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in facts)
+    vote_html, vs = vote_section(con, p, lang, vote, voter)
+    acc = accords.main_accords(p)
+    acc_html = (f'<section class="card" aria-labelledby="acc-h"><h2 id="acc-h">{t["accordsH"]}</h2><p class="sub">{t["accordsSub"]}</p>'
+                + '<div class="accbands" aria-hidden="true">' + "".join(f'<span style="--w:{v};--c:{accords.COLOURS[a][0]};--i:{i}"></span>' for i, (a, v) in enumerate(acc)) + "</div>"
+                + '<div class="acclabels">' + "".join(f'<span style="--w:{v}">{e(accords.name(a, lang))}<small>{v}%</small></span>' for a, v in acc) + "</div>"
+                + "</section>") if acc else ""
 
     body = f"""{back(lang)}
 <section class="head{'' if ph else ' nophoto'}">{photo_html}<div>
@@ -689,11 +969,13 @@ def perfume_page(con, pid, prices=None, lang="en"):
 <p class="trust"><span>{t["trustShops"](p["shops"])}</span><span>{t["trustNotes"](conf)}</span><span>{t["lastSeen"]} <b>{e(day(p.get("lastSeen"), lang))}</b></span></p>
 </div></section>
 <div class="grid"><div>
+{acc_html}
 <section class="card" aria-labelledby="notes-h"><h2 id="notes-h">{t["notes"]}</h2>
 <p class="sub">{t["notesSub"]}</p>
 {"".join(tiers)}
-<div class="legend"><span><i class="k-ok"></i>{t["legendOk"]}</span><span><i class="k-one"></i>{t["legendOne"]}</span></div>
+{single_html}
 </section>
+{vote_html}
 {price_html}
 </div><aside>
 <section class="card" aria-label="{t["details"]}"><dl class="facts">{facts_html}</dl></section>
@@ -710,9 +992,13 @@ def perfume_page(con, pid, prices=None, lang="en"):
         ld["image"] = image
     if p.get("gtins"):
         ld["gtin13"] = p["gtins"][0]
+    if vs["rating"]["n"] >= votes.GOOGLE_MIN:
+        ld["aggregateRating"] = {"@type": "AggregateRating", "ratingValue": vs["rating"]["avg"],
+                                 "ratingCount": vs["rating"]["n"], "bestRating": 5, "worstRating": 1}
     if offers:
         ld["offers"] = offers
-    return path, frame(lang, t["perfumeTitle"].format(full=full), desc, path, body, image=image, jsonld=ld)
+    foot = f'<p class="credit"><a href="{P(lang, "/notes")}">{t["notePhotos"]}</a></p>' if shown else ""
+    return path, frame(lang, t["perfumeTitle"].format(full=full), desc, path, body, image=image, jsonld=ld, foot=foot)
 
 
 # ---------- /note/<slug> and /notes ----------
@@ -760,11 +1046,21 @@ def note_page(con, slug_, lang="en"):
     pairs = [k for k, _ in x["pairs"].most_common(8) if k in idx["notes"]]
     pairs_html = (f'<section class="card"><h2>{t["pairedWith"]}</h2><ul class="pairs">'
                   f'{"".join(f"<li><a href={chr(34)}{P(lang, note_path(k))}{chr(34)}>{e(note_name(k, lang))}</a></li>" for k in pairs)}</ul></section>') if pairs else ""
+    # A free photo from Wikimedia Commons with its credit (notephotos.py), or else the note's colour field.
+    ph = notephotos.get(con, key)
+    if ph:
+        lic = (f'<a href="{e(ph["license_url"])}" rel="nofollow">{e(ph["license"])}</a>' if ph["license_url"].startswith("https://")
+               else e(ph["license"]))
+        visual = (f'<figure class="notephoto"><img src="/photo/n/{e(ph["file"])}" alt="{e(name)}" width="400" height="300">'
+                  f'<figcaption>{t["photo"]}: {e(ph["artist"])}, {lic}, '
+                  f'<a href="{e(ph["page"])}" rel="nofollow">Wikimedia Commons</a></figcaption></figure>')
+    else:
+        visual = f'<div class="swatch" style="{swatch(key)}" aria-hidden="true"></div>'
     body = f"""{back(lang)}
 <section class="head" style="grid-template-columns:1fr 340px;align-items:end"><div>
 <p class="kind"><a href="{P(lang, '/notes')}" style="color:inherit;text-decoration:none">{t["perfumeNote"]}</a></p><h1>{e(name)}</h1>
 {f'<p class="muted" style="font-size:1rem">{t["alsoWrite"]}: {", ".join(f"<b>{e(a)}</b>" for a in aka)}</p>' if aka else ""}
-</div><div class="swatch" style="{swatch(key)}" aria-hidden="true"></div></section>
+</div>{visual}</section>
 <div class="grid"><div>
 {about}
 <section class="card"><h2>{t["perfumesWith"].format(note=e(name.lower()))}</h2><ul class="plist">{"".join(items)}</ul></section>
@@ -925,11 +1221,19 @@ def sitemap(con):
             'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + urls + "</urlset>\n")
 
 
-def route(con, path, query, prices):
+def route(con, path, query, prices, voter=None):
     """(status, html or None, redirect target or None) for a page path, in either language."""
     lang = "en"
-    if path == "/nl" or path.startswith("/nl/"):
-        lang, path = "nl", path[3:] or "/"
+    m = re.match(r"/([a-z]{2})(?=/|$)", path)
+    if m and m.group(1) in LANGS and m.group(1) != "en":
+        lang, path = m.group(1), path[3:] or "/"
+    state = (urllib.parse.parse_qs(query).get("vote") or [None])[0]
+    m = re.fullmatch(r"/perfume/([0-9a-f]{12})/rate", path)
+    if m:
+        r = rate_page(con, m.group(1), lang, state, voter)
+        if not r:
+            return 404, not_found(lang), None
+        return (301, None, P(lang, r[0])) if r[0] else (200, r[1], None)
     if path in ("/", ""):
         return 301, None, P(lang, "/database")
     if path in ("/database", "/database/"):
@@ -940,7 +1244,7 @@ def route(con, path, query, prices):
     if path in ("/notes", "/notes/"):
         return 200, notes_page(con, lang), None
     m = re.fullmatch(r"/perfume/([0-9a-f]{12})(?:-[a-z0-9-]*)?", path)
-    if m and (r := perfume_page(con, m.group(1), prices, lang)):
+    if m and (r := perfume_page(con, m.group(1), prices, lang, state, voter)):
         return (301, None, P(lang, r[0])) if path != r[0] else (200, r[1], None)
     m = re.fullmatch(r"/note/([a-z0-9-]{1,60})", path)
     if m and (r := note_page(con, m.group(1), lang)):

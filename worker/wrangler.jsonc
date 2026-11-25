@@ -8,7 +8,7 @@
     "directory": "../site",
     "binding": "ASSETS",
     // Only these paths run the Worker code (the database pages from the API); everything else is a site file.
-    "run_worker_first": ["/database", "/database/*", "/perfume/*", "/note/*", "/notes", "/brand/*", "/nl", "/nl/*", "/photo/*", "/assets/*", "/sitemap.xml"]
+    "run_worker_first": ["/database", "/database/*", "/perfume/*", "/note/*", "/notes", "/brand/*", "/nl", "/nl/*", "/de", "/de/*", "/fr", "/fr/*", "/es", "/es/*", "/it", "/it/*", "/pt", "/pt/*", "/pl", "/pl/*", "/photo/*", "/assets/*", "/sitemap.xml"]
   },
   "routes": [{ "pattern": "fragrancenotes.app", "custom_domain": true }],
   "workers_dev": true,

@@ -66,6 +66,7 @@
     {
       "matches": [
         "https://*.douglas.nl/*",
+        "https://*.parfumwebshop.nl/*",
         "https://*.douglas.be/*",
         "https://*.douglas.de/*",
         "https://*.douglas.at/*",
