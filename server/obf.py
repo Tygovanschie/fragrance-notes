@@ -56,7 +56,7 @@ NOT_PERFUME = re.compile(
     r"\b(?:body ?mist|bodymist|body spray|body splash|hair (?:&|and) body|hair perfume|hair mist|brume|brumisateur|"
     r"mgie[lł]ka|v[üu]cut|sa[çc] spreyi|(?:perfumed|refreshing|fragrance|deodorant) body|perfumed body|"
     r"d[ée]odorant|desodorante|deodorant|antitranspirant\w*|antiperspirant|aftershave|after shave|"
-    r"savon|soap|bath|room spray|bougie|encens|candle|[äa]therisches [öo]l|essential oil|suncare|"
+    r"savon|soap|bath|shower ?gel|douche ?gel|duschgel|gel douche|body ?lotion|room spray|bougie|encens|candle|[äa]therisches [öo]l|essential oil|suncare|"
     r"kolonyas[ıi]|limon kolonya|eau de senteur pour b[ée]b[ée])\b", re.I)
 
 

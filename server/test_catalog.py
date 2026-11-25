@@ -274,6 +274,14 @@ class Build(unittest.TestCase):
                                    ("Aventus", "creed", "Aventus")]:
             self.assertEqual(catalog.display_name(name, brand), shown, name)
 
+    def test_deodorant_is_not_the_perfume(self):
+        con = db()
+        add(con, "deloox.nl", "Hugo Boss", "Boss Bottled", "edt", top=["Appel"])
+        add(con, "deloox.nl", "Hugo Boss", "Boss Bottled Deodorant", "", install="b")
+        add(con, "douglas.nl", "Hugo Boss", "Boss Bottled Shower Gel", "", install="c")
+        catalog.build(con)
+        self.assertEqual([p["name"] for p in catalog.search(con, "bottled")], ["Boss Bottled"])
+
     def test_new_note_words(self):
         self.assertEqual(catalog.note_key("Geglazuurde kastanje"), "glazed chestnut")
         self.assertEqual(catalog.note_key("Bourbon Vanille"), "bourbon vanilla")

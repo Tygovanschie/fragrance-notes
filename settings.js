@@ -163,11 +163,14 @@
   // Gender words count too ("Sauvage Parfum Pour Homme", Sephora's "Parfum Barbati").
   const TRAIL = /^(parfum|perfume|edp|edt|edc|spray|vapo|vaporisateur|vaporizador|natural|sizetoken|pour|for|homme|femme|men|women|man|woman|him|her|herren|damen|uomo|donna|hombre|mujer|barbati|femei|unisex)$/;
   const SIZES = /\d+(?:[.,]\d+)?\s?(?:ml|oz)\b/gi;   // "100 ml" → one "sizetoken" (a bare "1" stays a name word)
-  const PHRASES = /\b(extrait de parfum|eau de parfum|eau de toilette|eau de cologne)\b/g;
+  // "Eau de Parfum Intense" (Jean Paul Gaultier, Deloox) is how some shops write the concentration, not part of
+  // the name: "Le Male Le Parfum Eau de Parfum Intense" is Le Male Le Parfum. ("Le Male Intense" keeps "Intense".)
+  const PHRASES = /\b(extrait de parfum|eau de (?:parfum|toilette) intense|eau de parfum|eau de toilette|eau de cologne)\b/g;
   // "Parfum" only means the concentration when nothing but trailing words follows it:
   // "The Most Wanted Parfum" → yes; "Fugazzi Parfum 1" or "Parfums de Marly" → no.
   const words = t => t.replace(PHRASES, ' edp ').split(/[^a-z0-9.,]+/).filter(Boolean);
-  const isTrailingParfum = (ws, i) => ws[i] === 'parfum' && ws.slice(i + 1).every(w => TRAIL.test(w));
+  // "Le Parfum" is a name ("Le Male Le Parfum", "Y Le Parfum", "Libre Le Parfum"), not the concentration.
+  const isTrailingParfum = (ws, i) => ws[i] === 'parfum' && ws[i - 1] !== 'le' && ws.slice(i + 1).every(w => TRAIL.test(w));
 
   function detectConc(text) {
     const t = ' ' + plainText(text).replace(SIZES, ' sizetoken ') + ' ';
@@ -181,11 +184,11 @@
     return '';
   }
   function stripConc(text) {
-    let s = String(text || '').replace(/\b(extrait de parfum|eau de parfum|eau de toilette|eau de cologne|extrait|edp|edt|edc|cologne)\b/gi, ' ');
+    let s = String(text || '').replace(/\b(extrait de parfum|eau de (?:parfum|toilette) intense|eau de parfum|eau de toilette|eau de cologne|extrait|edp|edt|edc|cologne)\b/gi, ' ');
     // Drop a trailing "Parfum" (the concentration) but keep it when it's part of the name ("Parfum 1").
     const parts = s.replace(SIZES, m => m.replace(/\s+/g, '')).split(/\s+/).filter(Boolean);
     const low = parts.map(p => (/^\d+(?:[.,]\d+)?(?:ml|oz)$/i.test(p) ? 'sizetoken' : plainText(p).replace(/[^a-z0-9.,]/g, '')));
-    s = parts.filter((p, i) => !(['parfum', 'perfume'].includes(low[i]) && low.slice(i + 1).every(w => !w || TRAIL.test(w)))).join(' ');
+    s = parts.filter((p, i) => !(['parfum', 'perfume'].includes(low[i]) && low[i - 1] !== 'le' && low.slice(i + 1).every(w => !w || TRAIL.test(w)))).join(' ');
     return s.replace(/\s+/g, ' ').trim();
   }
   const CONC_PHRASE = { extrait: 'Extrait de Parfum', parfum: 'Parfum', edp: 'Eau de Parfum', edt: 'Eau de Toilette', edc: 'Cologne' };

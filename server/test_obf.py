@@ -164,6 +164,14 @@ class InCatalog(unittest.TestCase):
         self.assertEqual((st["perfumes"], st["fromOpenBeautyFacts"]), (2, 2))
         self.assertIn("Open Beauty Facts", st["attribution"])
 
+    def test_shop_spelling_wins_over_obf(self):
+        con = db()
+        con.execute("INSERT INTO obf_products VALUES (?,?,?,?,?,?,?,?)",
+                    ("0737052074443", "Hugo Boss", "Bottled", "edt", "m", 100, "en", 0))
+        add(con, "douglas.nl", "Hugo Boss", "Boss Bottled", "edt", gtins=["0737052074443"])
+        catalog.build(con)
+        self.assertEqual(catalog.search(con, "bottled")[0]["name"], "Boss Bottled")
+
     def test_no_attribution_without_obf(self):
         con = db()
         add(con, "douglas.nl", "Creed", "Aventus")

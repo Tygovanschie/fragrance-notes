@@ -384,7 +384,10 @@ def combine(rows, ids=None, brands=None):
     # The shortest common spelling of the name is usually the clean one ("Stronger With You Absolutely"
     # rather than "Emporio Armani Stronger With You Absolutely"), but not one in ALL CAPS when a shop writes
     # it normally, and without the gender words shops add ("… Mannen").
-    names = Counter(display_name(r["name"], r.get("_bk", "")) for r in rows)
+    # Shops write the retail name ("Boss Bottled"); Open Beauty Facts often has the brand glued on, which
+    # strip_brand removes too eagerly ("Hugo Boss Bottled" -> "Bottled"). So shop spellings win when there are any.
+    named = [r for r in rows if r["shop"] != obf.SOURCE] or rows
+    names = Counter(display_name(r["name"], r.get("_bk", "")) for r in named)
     top = names.most_common(1)[0][1]
     name = min((n for n, c in names.items() if c >= max(1, top // 2)), key=lambda n: (shouting(n), len(n)))
     conc = Counter(r.get("_conc", r["conc"]) for r in rows).most_common(1)[0][0]
@@ -444,6 +447,9 @@ def build(con):
         sources.append(d)
     # Perfumes from Open Beauty Facts (see obf.py) count as one more source, like a shop.
     sources += obf.as_facts(con)
+    # Deodorants, shower gels, body mists … of a perfume line are not the perfume (shops and older extension
+    # versions sometimes sent them): left out, so "Boss Bottled Deodorant" never becomes a perfume of its own.
+    sources = [d for d in sources if not obf.not_perfume(d["brand"], d["name"])]
     for d in sources:
         bk = brand_key(d["brand"])
         nk = name_key(d["name"], bk)

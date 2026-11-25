@@ -78,6 +78,9 @@
     return [parts[0], ...parts.slice(1).filter(p => FN.detectConc(p) && !/[\p{L}]{3,}/u.test(FN.stripConc(p)) ? true : !DESC_RE.test(p))].join(' - ');
   }
 
+  // Products of a perfume line that aren't the perfume itself, in the shop languages.
+  const NOT_FRAG_RE = /\b(deodorant|deodorants|d[ée]odorant|desodorante|deodorante|dezodorant|deo ?(spray|stick|roller|roll ?on)|deostick|anti-?transpira\w*|antiperspirant|shower ?gel|douche ?gel|duschgel|gel douche|gel de ducha|body ?lotion|lotion pour le corps|k[öo]rperlotion|bodymilk|body ?mist|body ?spray|haarparfum|hair ?(mist|perfume)|after ?shave\w*|zeep|seife|savon|soap|bath ?(gel|oil)|badschuim|kaars|kerze|bougie|candle)\b/i;
+
   // Gift sets, in the shop languages ("Geschenkset", "cadeauset", "coffret", "gift box", Turkish "seti").
   const SET_RE = /\b(sets?|giftsets?|gift ?box|gift set|geschenk(set|box|packung)|cadeau(set|doos)|kerst(set|pakket)|coffrets?|kit|confezione regalo|estuche|zestaw|seti)\b/i;
   // Shop abbreviations in set contents ("EMPORIO STRONGER WYO EDP SPRAY").
@@ -162,7 +165,9 @@
     const blob = `${brand} ${candidates.join(' ')} ${p?.category || ''} ${offerNames} ${crumbs} ${path} ${document.title}`;
     // Only real product pages count (not the homepage or category pages).
     const isProduct = !!p || !!document.querySelector('meta[property="og:type"][content*="product" i]');
-    const isFragrance = !!name && !!cleaned && FRAG_RE.test(blob);
+    // Other products of a perfume line ("Boss Bottled Deodorant Spray", "Sauvage Shower Gel") are not the perfume:
+    // no panel, and nothing is shared from them (their price is not the perfume's price).
+    const isFragrance = !!name && !!cleaned && FRAG_RE.test(blob) && !NOT_FRAG_RE.test(`${name} ${h1Text} ${document.title}`);
     // Keep "Pour Homme" / "Pour Femme" from the name: cleanName drops them, but they tell versions apart
     // (Gucci Guilty Pour Homme vs the women's Gucci Guilty). Only the explicit phrase, not descriptions.
     const gText = ` ${name} ${h1Text} `.toLowerCase();
