@@ -716,7 +716,11 @@ def brand_spellings(rows):
     for d in rows:
         by_key[d["_bk"]][d["brand"].strip()] += 1
     out = {}
+    canon = {brand_key(h): h for h in OFFICIAL_SITES.values()}   # the houses with their own website: their own name
     for bk, spellings in by_key.items():
+        if bk in canon:                  # "Tom Ford", not the brand site's "TOM FORD BEAUTY" or a shop's "TOM FORD"
+            out[bk] = canon[bk]
+            continue
         groups = defaultdict(Counter)
         for s, n in spellings.items():
             groups[s.casefold()][s] = n
