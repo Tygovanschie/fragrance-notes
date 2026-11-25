@@ -79,7 +79,7 @@
   }
 
   // Products of a perfume line that aren't the perfume itself, in the shop languages.
-  const NOT_FRAG_RE = /\b(deodorant|deodorants|d[ée]odorant|desodorante|deodorante|dezodorant|deo ?(spray|stick|roller|roll ?on)|deostick|anti-?transpira\w*|antiperspirant|shower ?gel|douche ?gel|duschgel|gel douche|gel de ducha|body ?lotion|lotion pour le corps|k[öo]rperlotion|bodymilk|body ?mist|body ?spray|haarparfum|hair ?(mist|perfume)|after ?shave\w*|zeep|seife|savon|soap|bath ?(gel|oil)|badschuim|kaars|kerze|bougie|candle)\b/i;
+  const NOT_FRAG_RE = /\b(deodorant|deodorants|d[ée]odorant|desodorante|deodorante|dezodorant|deo ?(spray|stick|roller|roll ?on)|deostick|anti-?transpira\w*|antiperspirant|shower ?(gel|cream|foam|oil)|douche ?(gel|cr[eè]me|schuim)|hair ?(&|and|en|und|et) ?body|body ?(wash|cream|butter|scrub|oil)|bodywash|bodycr[eè]me|shampoo|hand ?cr[eè]me|handcr[eè]me|hand ?cream|beard ?oil|duschgel|gel douche|gel de ducha|body ?lotion|lotion pour le corps|k[öo]rperlotion|bodymilk|body ?mist|body ?spray|haarparfum|hair ?(mist|perfume)|after ?shave\w*|zeep|seife|savon|soap|bath ?(gel|oil)|badschuim|kaars|kerze|bougie|candle)\b/i;
 
   // Gift sets, in the shop languages ("Geschenkset", "cadeauset", "coffret", "gift box", Turkish "seti").
   const SET_RE = /\b(sets?|giftsets?|gift ?box|gift set|geschenk(set|box|packung)|cadeau(set|doos)|kerst(set|pakket)|coffrets?|kit|confezione regalo|estuche|zestaw|seti)\b/i;
@@ -102,6 +102,9 @@
     n = FN.stripConc(n)
       .replace(/(?:\b\d+(?:[.,]\d+)?|[.,]\d+)\s?(?:fl\.?\s?)?(ml|oz|g)\b\.?/gi, ' ')
       .replace(/\b(spray|vapo|vaporisateur|vaporizador|vaporizzatore|zerst[aä]uber|natural spray|navulling|refill|nachf[uü]llung|tester|refillable|rechargeable|recargable|ricaricabile|nachf[uü]llbar|navulbaar|coffret|gift set|geschenkset|for (wo)?men|(wo)?men'?s|pour (homme|femme)|unisex|limited edition)\b/gi, ' ')
+      // What's left of "(Refillable)" or "(100 ml)", and shop words ("Acqua di Gio - Eau de Toilette kopen").
+      .replace(/\(\s*\)|\[\s*\]/g, ' ')
+      .replace(/\s(kopen|bestellen|kaufen|acheter|comprar|acquista)\s*$/i, ' ')
       .replace(/[|•–—,-]+\s*$/, ' ')
       .replace(/^\s*[|•–—,-]+/, ' ');
     return n.replace(/\s+/g, ' ').trim();
@@ -131,7 +134,12 @@
     // Concentration: from the chosen name first, then the other sources (and the product's offers).
     const concSources = [name, ...candidates, ...((p?.offers && [].concat(p.offers).map(o => o?.name)) || [])];
     let conc = '';
-    for (const s of concSources) { conc = FN.detectConc(withoutBrand(trimDescription(s || ''), brand)); if (conc) break; }
+    let intense = false;   // "Eau de Toilette Intense": sometimes its own version (Gucci Guilty), see score()
+    for (const s of concSources) {
+      const t = withoutBrand(trimDescription(s || ''), brand);
+      conc = FN.detectConc(t);
+      if (conc) { intense = /\beau de (parfum|toilette) intense\b/i.test(t); break; }
+    }
 
     // Gift sets ("Stronger With You Geschenkset"): the set's own name often says little ("Armani Set"), so the
     // perfume is taken from the list of what's in it ("EMPORIO STRONGER WYO EDP SPRAY (50.0 ml)"), skipping the
@@ -174,7 +182,8 @@
     const gender = /\b(pour homme|for men|for him)\b/.test(gText) ? 'Pour Homme'
       : /\b(pour femme|for women|for her)\b/.test(gText) ? 'Pour Femme' : '';
     return {
-      query: [brand, cleaned, gender, FN.CONC_PHRASE[conc] || ''].filter(Boolean).join(' ').trim(),
+      query: [brand, cleaned, gender, FN.CONC_PHRASE[conc] || '', intense && (conc === 'edp' || conc === 'edt') ? 'Intense' : '']
+        .filter(Boolean).join(' ').trim(),
       brand, name: cleaned, product: p, crumbs,
       conc,
       isSet,

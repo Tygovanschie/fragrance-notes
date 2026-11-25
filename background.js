@@ -65,9 +65,14 @@ const GENDER_WORDS = new Set(['pour', 'for', 'homme', 'femme', 'him', 'her', 'me
 // probably shop noise ("Refill", "Coffret", a slogan) and is then ignored instead of costing points.
 function score(url, query, vocab = null) {
   const [, designer, name] = url.match(PERFUME_URL);
-  const nameText = decodeURIComponent(name).replace(/-/g, ' ');
+  let nameText = decodeURIComponent(name).replace(/-/g, ' ');
   const qConc = FN.detectConc(query);
-  const cConc = FN.detectConc(nameText);
+  // A shop's "MYSLF Parfum" is Fragrantica's "MYSLF Le Parfum": when the query is the Parfum version and doesn't
+  // say "Le Parfum" itself, a candidate's "Le Parfum" is its concentration, not two extra name words. (When the
+  // query has "Le Parfum", as in "Le Male Le Parfum", it stays part of the name.)
+  const leParfum = qConc === 'parfum' && !/\ble parfum\b/i.test(query) && /\ble parfum\b/i.test(nameText);
+  if (leParfum) nameText = nameText.replace(/\ble parfum\b/i, ' ');
+  const cConc = leParfum ? 'parfum' : FN.detectConc(nameText);
   const qGender = genderOf(query), cGender = genderOf(nameText);
   const words = s => tokens(FN.stripConc(s)).filter(t => !GENDER_WORDS.has(t));
   const designerT = new Set(tokens(decodeURIComponent(designer).replace(/-/g, ' ')));
@@ -94,6 +99,16 @@ function score(url, query, vocab = null) {
   if (qGender && cGender) s += cGender === qGender ? 0.15 : -0.6;
   else if (!qGender && cGender) s -= 0.05;
   if (!brandHit) s -= 0.35;
+  // "Eau de Toilette/Parfum Intense" in the query: often just how a shop writes the concentration (Le Male Le
+  // Parfum), sometimes its own version (Gucci Guilty Eau de Toilette Intense Pour Homme). So a candidate with
+  // "Intense" wins, but one without it isn't punished.
+  const qIntense = /\bintense\b/i.test(query), cIntensePhrase = /\beau de (parfum|toilette) intense\b/i.test(nameText);
+  if (/\beau de (parfum|toilette) intense\b/i.test(query) && /\bintense\b/i.test(nameText)) {
+    s += 0.3;
+    if (!cIntensePhrase) s += 0.15;   // undo the extra-word cost
+  } else if (cIntensePhrase && !qIntense) {
+    s -= 0.3;   // stripConc hides "Intense" in the candidate, so a plain EDT page would otherwise pick it
+  }
   return s;
 }
 

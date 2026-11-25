@@ -103,7 +103,7 @@ class PagesTest(unittest.TestCase):
         code, body, h = get(f"/perfume/{pid}-armani-stronger-with-you-intensely")
         self.assertEqual(code, 200, body[:300])
         self.assertIn("Stronger With You Intensely", body)
-        self.assertIn('class="note ok"', body)
+        self.assertIn('class="tile"', body)
         self.assertIn("Vanilla", body)        # one shop only: shown, not confirmed
         self.assertIn("Also named by one shop (1)", body)   # not in the pyramid, in the list underneath
         self.assertIn("Vanilla <small>(douglas.nl)</small>", body)
@@ -389,8 +389,13 @@ class PagesTest(unittest.TestCase):
             self.assertEqual(set(accords.NAMES[lang]), set(accords.COLOURS), lang)
         _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
         self.assertIn("Main accords", body)
-        self.assertIn('class="accbands"', body)
-        self.assertRegex(body, r'<div class="acclabels"><span style="--w:100">[^<]+<small>100%</small>')
+        self.assertIn('class="astrip"', body)
+        pct = [int(x) for x in re.findall(r'<li><i style="--c:#[0-9a-f]{6}"></i>[^<]+<small>(\d+)%</small></li>', body)]
+        self.assertGreater(len(pct), 1)
+        self.assertEqual(sum(pct), 100)                                    # shares, not "strength of the top one"
+        self.assertEqual(pct, sorted(pct, reverse=True))
+        self.assertEqual(pages.shares([("a", 100), ("b", 100), ("c", 100)]), [("a", 34), ("b", 33), ("c", 33)])
+        self.assertEqual(pages.shares([]), [])
         _, body, _ = get(f"/nl/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
         self.assertIn("Hoofdaccoorden", body)
 
@@ -466,10 +471,24 @@ class PagesTest(unittest.TestCase):
         self.assertIn("Wikimedia Commons</a>", body)
         self.assertNotIn('class="swatch"', body)
         _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
-        self.assertIn('class="nthumb" src="/photo/n/tonka-bean.jpg"', body)
+        self.assertIn('<span class="nimg"><img src="/photo/n/tonka-bean.jpg"', body)
         self.assertIn("Note photos: Wikimedia Commons", body)
         with urllib.request.urlopen(BASE + "/photo/n/tonka-bean.jpg", timeout=5) as r:
             self.assertEqual(r.read(), JPEG)
+        # A file picked by hand in FILES replaces the stored photo right away (no 30-day wait), and when that file
+        # isn't free the photo we have stays.
+        old = dict(notephotos.FILES)
+        try:
+            notephotos.FILES["tonka bean"] = "Tonka beans.jpg"
+            with app.db() as con:
+                self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC BY-NC 2.0")), 0)
+                self.assertIsNotNone(notephotos.get(con, "tonka bean"))
+                self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC0")), 1)
+                self.assertEqual(con.execute("SELECT title FROM note_images WHERE key='tonka bean'").fetchone()[0], "Tonka beans.jpg")
+                self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC0")), 0)   # done: not again
+        finally:
+            notephotos.FILES.clear()
+            notephotos.FILES.update(old)
         self.assertEqual(get("/photo/n/..%2F..%2Fpages.db")[0], 404)
 
     def test_api_still_answers_json(self):

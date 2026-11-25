@@ -631,24 +631,29 @@ form.vote fieldset{border:0;padding:0;margin:12px 0 0;min-width:0}form.vote lege
 form.vote input:focus-visible+label{outline:3px solid var(--plum);outline-offset:2px}
 form.vote .btn{margin-top:16px;padding:11px 20px;font-size:.9375rem}form.vote .muted{margin-top:10px;font-size:.8125rem}form.vote .vmsg{margin:4px 0 12px;padding:9px 14px;font-size:.9375rem}
 .vmsg{padding:12px 16px;border-radius:14px;background:#fdf0e6;color:#6b3a12;margin:0 0 14px}.vmsg.ok{background:var(--ok-bg);color:#173f28}
-.nthumb{width:22px;height:22px;border-radius:50%;object-fit:cover;margin:-2px 0 -2px -6px;box-shadow:0 0 0 2px var(--white)}
-.note.ok:has(.nthumb)::before{display:none}.credit{margin:10px 0 0;font-size:.8125rem}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:14px 10px;margin:0;padding:0;list-style:none}
+.tile{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font:500 .875rem/1.25 var(--text);color:var(--ink);text-decoration:none}
+.nimg{width:72px;height:72px;border-radius:18px;overflow:hidden;display:grid;place-items:center;background:var(--c,var(--paper));color:var(--f,var(--ink-soft));font:700 1.625rem/1 var(--display);box-shadow:0 0 0 1px var(--line)}
+.nimg img{width:100%;height:100%;object-fit:cover;display:block}a.tile:hover .nimg{box-shadow:0 0 0 2px var(--mauve)}a.tile:hover{color:var(--plum)}
+.credit{margin:10px 0 0;font-size:.8125rem}
 .notephoto{margin:0}.notephoto img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:22px;display:block;background:var(--paper)}
 .notephoto figcaption{margin-top:6px;font-size:.75rem;color:var(--ink-soft)}.notephoto figcaption a{color:var(--ink-soft)}
 details.single{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}details.single summary{cursor:pointer;font-weight:600;font-size:.9375rem;color:var(--ink-soft)}
 details.single summary:hover{color:var(--plum)}details.single p{margin:8px 0 6px}details.single ul{margin:0;padding:0;list-style:none;columns:2;column-gap:24px}
 details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.single li .muted{display:inline-block;min-width:3.6em}
 @media (max-width:560px){details.single ul{columns:1}}
-.accbands{display:flex;height:64px;border-radius:14px;overflow:hidden;margin-top:4px}.accbands span{flex:var(--w) 1 0;background:var(--c)}
-.acclabels{display:flex;margin-top:10px}.acclabels span{flex:var(--w) 1 0;min-width:0;padding-right:6px;font:600 .875rem/1.2 var(--text);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.acclabels small{display:block;font-weight:400;color:var(--ink-soft);font-size:.75rem;margin-top:2px}
-@media (prefers-reduced-motion:no-preference){.accbands span{animation:grow .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 70ms + 150ms);transform-origin:left}@keyframes grow{from{transform:scaleX(0)}}}
+.astrip{display:flex;gap:3px;height:16px;border-radius:8px;overflow:hidden;margin-top:6px}.astrip i{flex:var(--w) 1 0;min-width:8px;background:var(--c)}
+.achips{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;padding:0;list-style:none}
+.achips li{display:inline-flex;align-items:center;gap:7px;font:500 .9375rem/1.2 var(--text);color:var(--ink)}
+.achips li i{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.achips small{color:var(--ink-soft);font-size:.8125rem;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){.astrip i{animation:grow .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 70ms + 150ms);transform-origin:left}@keyframes grow{from{transform:scaleX(0)}}}
 .vgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;margin:14px 0 4px}.vgrid h3{margin:0 0 6px;font:700 .9375rem/1.2 var(--display)}
 .vbar{display:grid;grid-template-columns:8.5em minmax(48px,1fr) 1.6em;gap:10px;align-items:center;font-size:.8125rem;line-height:1.5;color:var(--ink-soft)}
 .vbar .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vbar .track{height:8px}.vbar .n{text-align:right;font-variant-numeric:tabular-nums}
 .vbar.best{color:var(--ink)}.vbar.best .fill{background:var(--plum)}.vbar.best .n{font-weight:700}
 .score{margin:2px 0 4px}.score .big{font-size:2rem}
-@media (max-width:560px){.vgrid,.qgrid{grid-template-columns:1fr}.accbands{height:44px}.acclabels span:nth-child(n+5),.accbands span:nth-child(n+5){display:none}}
+@media (max-width:560px){.vgrid,.qgrid{grid-template-columns:1fr}}
 """
 
 
@@ -854,6 +859,18 @@ def rate_page(con, pid, lang="en", state=None, voter=None):
 
 # ---------- /perfume/<id>-<slug> ----------
 
+def shares(acc):
+    """[(accord, strength 0–100)] → [(accord, whole percent)] that add up to exactly 100 (largest remainder)."""
+    total = sum(v for _, v in acc)
+    if not total:
+        return []
+    raw = [(a, v * 100 / total) for a, v in acc]
+    out = [[a, int(x)] for a, x in raw]
+    for i in sorted(range(len(raw)), key=lambda i: raw[i][1] - int(raw[i][1]), reverse=True)[:100 - sum(v for _, v in out)]:
+        out[i][1] += 1
+    return [(a, v) for a, v in out]
+
+
 def conc_name(p):
     return CONC.get(p.get("conc") or "", "")
 
@@ -882,12 +899,15 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
     # closed list underneath, with the shop that named them.
     shown = []
 
-    def thumb(n):   # a small round photo from Wikimedia Commons in the chip, when the note has one
+    def thumb(n, name):   # the note's photo from Wikimedia Commons, else a square in its main accord's colour
         ph = notephotos.get(con, n.get("en") or "")
         if ph:
             shown.append(1)
-            return f'<img class="nthumb" src="/photo/n/{e(ph["file"])}" alt="" width="22" height="22" loading="lazy">'
-        return ""
+            return (f'<span class="nimg"><img src="/photo/n/{e(ph["file"])}" alt="" width="72" height="72" '
+                    f'loading="lazy"></span>')
+        acc = accords.NOTES.get(n.get("en") or "")
+        bg, fg = accords.COLOURS[max(acc, key=acc.get)] if acc else ("var(--paper)", "var(--ink-soft)")
+        return f'<span class="nimg" style="--c:{bg};--f:{fg}" aria-hidden="true">{e(name[:1].upper())}</span>'
 
     tiers, single = [], []
     for tier, label, hint in t["tiers"]:
@@ -898,11 +918,11 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
                 single.append((label, name, ", ".join(n.get("from") or [])))
                 continue
             if n.get("en") in linkable:
-                chips.append(f'<li><a class="note ok" href="{P(lang, note_path(n["en"]))}">{thumb(n)}{e(name)}</a></li>')
+                chips.append(f'<li><a class="tile" href="{P(lang, note_path(n["en"]))}">{thumb(n, name)}<span>{e(name)}</span></a></li>')
             else:
-                chips.append(f'<li><span class="note ok">{thumb(n)}{e(name)}</span></li>')
+                chips.append(f'<li><span class="tile">{thumb(n, name)}<span>{e(name)}</span></span></li>')
         if chips:
-            tiers.append(f'<div class="tier"><h3>{label}<small>{hint}</small></h3><ul class="notes">{"".join(chips)}</ul></div>')
+            tiers.append(f'<div class="tier"><h3>{label}<small>{hint}</small></h3><ul class="tiles">{"".join(chips)}</ul></div>')
     single_html = (f'<details class="single"><summary>{t["singleH"].format(n=len(single))}</summary><p class="muted">{t["singleSub"]}</p><ul>'
                    + "".join(f'<li><span class="muted">{e(lab)}</span> {e(nm)}{f" <small>({e(src)})</small>" if src else ""}</li>'
                              for lab, nm, src in single) + "</ul></details>") if single else ""
@@ -949,10 +969,10 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
     facts.append((t["more"], t["moreFrag"].format(link=f'<a href="https://www.fragrantica.com/search/?query={q}" rel="nofollow">Fragrantica ↗</a>')))
     facts_html = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in facts)
     vote_html, vs = vote_section(con, p, lang, vote, voter)
-    acc = accords.main_accords(p)
+    acc = shares(accords.main_accords(p))
     acc_html = (f'<section class="card" aria-labelledby="acc-h"><h2 id="acc-h">{t["accordsH"]}</h2><p class="sub">{t["accordsSub"]}</p>'
-                + '<div class="accbands" aria-hidden="true">' + "".join(f'<span style="--w:{v};--c:{accords.COLOURS[a][0]};--i:{i}"></span>' for i, (a, v) in enumerate(acc)) + "</div>"
-                + '<div class="acclabels">' + "".join(f'<span style="--w:{v}">{e(accords.name(a, lang))}<small>{v}%</small></span>' for a, v in acc) + "</div>"
+                + '<div class="astrip" aria-hidden="true">' + "".join(f'<i style="--w:{v};--c:{accords.COLOURS[a][0]};--i:{i}"></i>' for i, (a, v) in enumerate(acc)) + "</div>"
+                + '<ul class="achips">' + "".join(f'<li><i style="--c:{accords.COLOURS[a][0]}"></i>{e(accords.name(a, lang))}<small>{v}%</small></li>' for a, v in acc) + "</ul>"
                 + "</section>") if acc else ""
 
     body = f"""{back(lang)}

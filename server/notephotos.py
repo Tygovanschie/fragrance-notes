@@ -42,6 +42,11 @@ TITLES = {
     "cream": "Cream", "rum": "Rum", "wine": "Wine", "hay": "Hay", "grass": "Poaceae", "praline": "Praline (nut confection)",
     "caviar": "Caviar", "monoi": "Monoi oil", "davana": "Artemisia pallens", "labdanum": "Labdanum",
 }
+# A Commons file chosen by hand, when the article's main image doesn't work as a small square (an old botanical
+# drawing, a landscape). Changing an entry here replaces the stored photo on the next refresh.
+FILES = {
+    "lavender": "Lavandula angustifolia in Sedovo 1.jpg",
+}
 # No photo: abstract accords, synthetics, animal materials and descriptions.
 SKIP = {"amber", "ambergris", "ambroxan", "iso e super", "hedione", "cashmeran", "aldehydes", "musk", "white musk",
         "civet", "castoreum", "ozonic", "marine", "solar notes", "mineral", "smoke", "resin", "toffee", "caramel",
@@ -72,6 +77,8 @@ def plain_text(s, n=120):
 
 def lookup(key, opener=urllib.request.urlopen):
     """(image bytes, info dict) for a note, or None when there's no free photo."""
+    if key in FILES:
+        return commons_file(FILES[key], opener)
     title = TITLES.get(key, key[:1].upper() + key[1:])
     q = urllib.parse.urlencode({"action": "query", "prop": "pageimages", "piprop": "name", "redirects": 1,
                                 "format": "json", "titles": title})
@@ -134,8 +141,10 @@ def refresh(con, keys, opener=urllib.request.urlopen, now=None, limit=20):
             break
         if key in SKIP:
             continue
-        r = con.execute("SELECT file, checked FROM note_images WHERE key=?", (key,)).fetchone()
-        if r and (r[0] or now - r[1] < RECHECK):
+        r = con.execute("SELECT file, checked, title FROM note_images WHERE key=?", (key,)).fetchone()
+        chosen = FILES.get(key)
+        stale = bool(chosen and r and r[2] != chosen)   # a photo picked in FILES that isn't the stored one yet
+        if r and not stale and (r[0] or now - r[1] < RECHECK):
             continue
         limit -= 1
         try:
@@ -144,6 +153,8 @@ def refresh(con, keys, opener=urllib.request.urlopen, now=None, limit=20):
             print("note photo lookup failed:", key, type(err).__name__, flush=True)
             continue
         file, info = None, {}
+        if not found and stale and r[0]:   # the chosen file isn't free or gone: keep the photo we have
+            continue
         if found:
             data, info = found
             file = slug(key) + (".jpg" if data[:2] == b"\xff\xd8" else ".png")

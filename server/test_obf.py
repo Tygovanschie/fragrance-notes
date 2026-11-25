@@ -84,7 +84,9 @@ class Import(unittest.TestCase):
         for brand, name in [("Victoria's Secret", "Romantic Body Mist"), ("Rexona", "Desodorante Antitranspirante Aerosol"),
                             ("touareg", "Touareg déodorant"), ("Ucla", "Champion Glow Parfümlü Vücut ve Saç Spreyi"),
                             ("Revlon", "Charlie Blue Perfumed Body"), ("Clean", "Pure Soap"), ("Yves Rocher", "Brume Parfumée"),
-                            ("AXE", "Aftershave Black"), ("Zwitsal", "Original Bodymist"), ("Sezgin Sayar", "Limon Kolonyası")]:
+                            ("AXE", "Aftershave Black"), ("Zwitsal", "Original Bodymist"), ("Sezgin Sayar", "Limon Kolonyası"),
+                            ("Van Gils", "Strictly For Men - Hair & Body Wash"), ("Nivea", "Douchecrème"),
+                            ("Rituals", "Body Cream"), ("Kérastase", "Shampoo")]:
             self.assertTrue(obf.not_perfume(brand, name), name)
         for brand, name in [("Burberry", "Body"), ("Armani", "Stronger With You"), ("Dior", "Sauvage"),
                             ("Chanel", "Coco Mademoiselle"), ("Lancôme", "La Vie est Belle")]:
