@@ -709,6 +709,7 @@ section.part.first .parthead{margin-bottom:22px}.showsel ul,.regsel ul{min-width
 .nomatch{margin:8px 0 0;color:var(--ink-soft)}.listsearch input::-webkit-search-cancel-button,.hsearch input::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none}
 .pcard{transition:opacity .22s ease,transform .22s ease}.pcard.out{opacity:0;transform:scale(.96)}
 .pcard.in{animation:cardin .28s ease both}@keyframes cardin{from{opacity:0;transform:translateY(6px)}}
+#results.live .astrip i{animation:none}
 .langsel summary{height:40px;padding:0 14px}.top .btn.small{height:40px;padding:0 18px}
 .how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
 .how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
@@ -829,6 +830,7 @@ LIVE_JS = r"""(() => {
     if (!next || q !== input.value.trim()) return;
     const cards = box.querySelector('.cards'), nextCards = next.querySelector('.cards');
     const keep = new Set([...nextCards.children].map(key));
+    box.classList.add('live');   // from now on the strips stay filled (no grow animation when cards move)
     const gone = [...cards.children].filter(a => !keep.has(key(a)));
     gone.forEach(a => a.classList.add('out'));
     if (gone.length && !still) await new Promise(r => setTimeout(r, 230));
