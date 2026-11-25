@@ -514,6 +514,7 @@ a{color:var(--plum);text-underline-offset:3px}a:hover{color:var(--plum-deep)}
 .brand img{width:30px;height:30px}
 .btn{display:inline-flex;align-items:center;gap:10px;padding:13px 22px;border-radius:999px;background:var(--plum);color:var(--white);font:600 1rem/1 var(--text);text-decoration:none;border:0;cursor:pointer}
 .btn:hover{background:var(--plum-deep);color:var(--white)}.btn.small{padding:10px 18px;font-size:.9375rem}
+.btn.quiet{background:transparent;color:var(--plum);box-shadow:inset 0 0 0 1.5px var(--mauve)}.btn.quiet:hover{background:var(--white);color:var(--plum-deep)}
 .back{display:inline-flex;gap:6px;margin:8px 0 18px;font:600 .9375rem/1 var(--text);text-decoration:none}.back:hover{text-decoration:underline}
 h1{margin:0 0 18px;font:800 clamp(2.3rem,5.6vw,4rem)/1 var(--display);letter-spacing:-.035em}
 h2{margin:0 0 6px;font:750 1.6rem/1.1 var(--display);letter-spacing:-.02em}
@@ -573,7 +574,7 @@ section.part{padding:80px 0 0}section.part h2{font-size:clamp(1.8rem,3.4vw,2.5re
 .pcard:hover{color:var(--ink);box-shadow:0 18px 40px -22px rgba(74,26,59,.45)}
 .pcard .img{width:84px;height:84px;object-fit:contain;background:var(--paper);border-radius:14px;padding:6px;float:right;margin:0 0 8px 12px}
 .pcard .h{font:600 .9375rem/1 var(--display);color:var(--plum);margin:0 0 8px}.pcard .n{font:750 1.375rem/1.15 var(--display);margin:0 0 4px}
-.pcard .c{color:var(--ink-soft);font-size:.9375rem;margin:0 0 16px}
+.pcard .c{color:var(--ink-soft);font-size:.9375rem;margin:0 0 14px}
 .pcard ul{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;padding:0;list-style:none}
 .pcard li{padding:4px 10px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);font-size:.8438rem}
 .pcard .p{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;font-size:.9375rem;color:var(--ink-soft);clear:both}
@@ -664,7 +665,7 @@ section.part.first{padding-top:44px}.parthead{display:flex;align-items:center;ju
 .how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
 .how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
 .how .steps h3{font-size:1rem}.how .steps p{font-size:.875rem}
-.astrip.mini{height:10px;border-radius:5px;gap:2px;margin:-6px 0 16px}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
+.astrip.mini{height:12px;border-radius:6px;gap:2px;margin:0 0 16px;clear:both}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
 @media (max-width:900px){.dbhero{grid-template-columns:1fr;gap:12px}.astrip.big{height:90px}}
 """
 # The size picker of the price card (no script): the n-th radio shows the n-th panel and marks the n-th button.
@@ -1184,9 +1185,10 @@ def card(con, p, prices=None, lang="en"):
         tail = f'<p class="p"><span>{t["from"].format(size=ml(m))}</span><b>{e(money(low, st.get("currency"), lang))}</b></p>'
     bits = [conc_name(p), (t["gender"].get(p.get("gender") or "", "") or "").lower(), t["sources"](p["shops"])]
     acc = shares(accords.main_accords(p))
-    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}">{accord_strip(acc, "mini") if acc else ""}'
+    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}">'
             f'{img_tag(con, p, "img", 84)}<p class="h">{e(p["brand"])}</p>'
             f'<p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
+            f'{accord_strip(acc, "mini") if acc else ""}'
             f'<ul>{"".join(f"<li>{e(c)}</li>" for c in conf[:8])}</ul>{tail}</a>')
 
 

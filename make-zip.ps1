@@ -9,7 +9,7 @@ $version = (Get-Content (Join-Path $root 'manifest.json') -Raw | ConvertFrom-Jso
 $out = Join-Path (Split-Path $root -Parent) "fragrance-notes-$version.zip"
 
 # Everything the extension needs, and nothing else.
-$include = @('manifest.json', 'LICENSE', 'fonts.css', '*.js', '*.html', 'icons', 'fonts')
+$include = @('manifest.json', 'LICENSE', 'fonts.css', 'base.css', '*.js', '*.html', 'icons', 'fonts')
 
 $files = foreach ($pattern in $include) {
   foreach ($item in Get-Item (Join-Path $root $pattern)) {

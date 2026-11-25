@@ -5,30 +5,12 @@
 <title>Fragrance Notes</title>
 <link rel="icon" href="icons/32.png">
 <link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="base.css">
 <style>
   /* Same look as fragrancenotes.app: plum on lilac paper, Bricolage Grotesque headings, Figtree text.
      The fonts ship with the extension (fonts/, SIL Open Font License), so this page loads nothing from the web. */
 
-  :root { --bg:#f4eef3; --card:#fff; --fg:#2b1426; --muted:#6b5766; --line:#e3d6e0; --accent:#7e2f63; --accent-deep:#4a1a3b; --soft:#c58bb0; --chip:#f4eef3;
-    --display:'Bricolage Grotesque', system-ui, sans-serif; --text:'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 var(--text); }
-  a { color:var(--accent); }
-  :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
-  .wrap { max-width:1120px; margin:0 auto; padding:0 28px; }
-
-  /* ---------- header ---------- */
-  header.top { padding:22px 0 0; }
-  header .bar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-  .brand { display:flex; align-items:center; gap:10px; font:700 17px/1 var(--display); color:var(--fg); text-decoration:none; }
-  .brand img { width:30px; height:30px; }
-  .site { font-size:14px; font-weight:600; text-decoration:none; padding:8px 16px; border-radius:999px; box-shadow:inset 0 0 0 1.5px var(--soft); }
-  .site:hover { background:#fff; color:var(--accent-deep); }
-  header h1 { margin:34px 0 8px; font:800 clamp(34px, 4.6vw, 52px)/1 var(--display); letter-spacing:-0.035em; }
-  header p { margin:0 0 28px; color:var(--muted); font-size:16px; max-width:40em; }
-  /* The extension's own accord strip, as on the website. */
-  .strip { display:flex; height:8px; }
-  .strip i { flex:var(--w) 1 0; background:var(--c); }
+  /* Header, buttons, switch and colours: base.css (shared with the welcome and favourites pages). */
 
   .layout { display:grid; grid-template-columns:minmax(0, 1fr) 360px; gap:32px; padding:32px 0 64px; align-items:start; }
   .preview { position:sticky; top:24px; }
@@ -44,14 +26,6 @@
   .row .l { min-width:0; }
   .row .l b { display:block; font-weight:600; }
   .row .l span { color:var(--muted); font-size:13.5px; }
-
-  .sw { position:relative; width:44px; height:24px; flex:none; }
-  .sw input { opacity:0; width:0; height:0; }
-  .sw i { position:absolute; inset:0; background:#dccdd8; border-radius:999px; transition:background .15s; cursor:pointer; }
-  .sw i::before { content:''; position:absolute; width:18px; height:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:transform .15s; box-shadow:0 1px 2px rgba(43,20,38,.25); }
-  .sw input:checked + i { background:var(--accent); }
-  .sw input:checked + i::before { transform:translateX(20px); }
-  .sw input:focus-visible + i { outline:3px solid var(--accent); outline-offset:2px; }
 
   .seg { display:inline-flex; background:var(--chip); border-radius:999px; padding:4px; flex:none; }
   .seg label { cursor:pointer; }

@@ -26,7 +26,7 @@ a { color: var(--plum); text-underline-offset: 3px; }
 a:hover { color: var(--plum-deep); }
 :focus-visible { outline: 3px solid var(--plum); outline-offset: 3px; border-radius: 4px; }
 
-.wrap { width: min(var(--wrap), 100% - 48px); margin-inline: auto; }
+.wrap { width: min(var(--wrap), 100% - 32px); margin-inline: auto; }   /* 16px at the sides on a phone, as on the database pages */
 
 /* ---------- top bar ---------- */
 .top { padding: 22px 0; }
@@ -116,7 +116,7 @@ h2 {
 .privacy a { color: var(--white); }
 
 /* ---------- footer ---------- */
-footer { padding: 48px 0 56px; color: var(--ink-soft); font-size: .9375rem; }
+footer { padding: 36px 0 56px; color: var(--ink-soft); font-size: .875rem; border-top: 1px solid var(--line); margin-top: 40px; }   /* as on the database pages */
 footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 18px; }
 footer nav { display: flex; gap: 22px; flex-wrap: wrap; }
 

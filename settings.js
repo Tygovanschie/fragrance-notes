@@ -38,9 +38,9 @@
   // Each theme sets the panel's CSS variables. Every colour has a light and a dark version.
   const THEMES = {
     plum: {
-      name: 'Plum', bg: '#fffdfb', fg: '#231a22', muted: '#8a7a85', label: '#8a6b80',
-      head: '#2b1d2e', headFg: '#f6e9f2', accent: '#8a3f6f', soft: '#c58bb0',
-      chip: '#f4e9f0', card: '#faf4f8', border: '#eee3ea', input: '#ffffff', inputBorder: '#d9c9d4'
+      name: 'Plum', bg: '#fffdfb', fg: '#2b1426', muted: '#5e4a59', label: '#8a6b80',
+      head: '#2b1d2e', headFg: '#f6e9f2', accent: '#7e2f63', soft: '#c58bb0',
+      chip: '#f4eef3', card: '#f8f1f6', border: '#e3d6e0', input: '#ffffff', inputBorder: '#dccdd8'
     },
     iris: {
       name: 'Iris', bg: '#fcfcfe', fg: '#1f1d29', muted: '#7d7a8c', label: '#6c6890',
