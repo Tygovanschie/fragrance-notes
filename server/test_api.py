@@ -401,6 +401,36 @@ class ApiTest(unittest.TestCase):
         for secret in ("3614273642454", "Stronger", "Creed", "Aventus", "?"):
             self.assertNotIn(secret, out.getvalue())
 
+    def test_my_contribution(self):
+        me, other = str(uuid.uuid4()), str(uuid.uuid4())
+        fact(install=me)    # douglas.nl: Rum, Bergamot / Ceder, Davana / Lavendel, Cederhout
+        fact(install=other, shop="notino.nl", notes={"top": ["Rum"], "heart": ["Davana"], "base": []})
+        with app.db() as con:
+            app.catalog.build(con)
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code, body, _ = call("GET", "/facts/mine", install=me)
+        self.assertEqual(code, 200)
+        self.assertEqual((body["shared"], body["perfumes"], body["notesConfirmed"]), (1, 1, 2))   # rum + davana
+        self.assertNotIn(me, out.getvalue())
+        self.assertEqual(call("GET", "/facts/mine", install=str(uuid.uuid4()))[1]["shared"], 0)
+        self.assertEqual(call("GET", "/facts/mine")[0], 400)
+
+    def test_shop_suggestions(self):
+        me, other = str(uuid.uuid4()), str(uuid.uuid4())
+        with app.db() as con:
+            con.execute("DELETE FROM shop_suggestions")
+        code, body, _ = call("POST", "/shops/suggest", {"domains": ["www.parfum-shop.example", "douglas.nl", "nl.douglas.nl"]}, me)
+        self.assertEqual((code, body["new"]), (201, 1))                     # built-in shops are ignored
+        self.assertEqual(call("POST", "/shops/suggest", {"domains": ["parfum-shop.example"]}, me)[1]["new"], 0)
+        call("POST", "/shops/suggest", {"domains": ["parfum-shop.example", "other.example"]}, other)
+        self.assertEqual(app.shop_suggestions(), [("parfum-shop.example", 2), ("other.example", 1)])
+        for bad in ({"domains": []}, {"domains": ["https://x.example/page"]}, {"domains": "x.example"}, {"domains": ["a"] * 21}):
+            self.assertEqual(call("POST", "/shops/suggest", bad, me)[0], 422, bad)
+        self.assertEqual(call("POST", "/shops/suggest", {"domains": ["x.example"]})[0], 400)   # no install id
+        with app.db() as con:
+            self.assertNotIn(me, [r[0] for r in con.execute("SELECT install FROM shop_suggestions")])
+
     def test_no_install_id_stored(self):
         me = str(uuid.uuid4())
         report(install=me)

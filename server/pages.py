@@ -1,16 +1,20 @@
-"""Public web pages for the open perfume database: /database, /perfume/<id>-<slug>, /note/<slug>.
+"""Public web pages for the open perfume database, in English and Dutch (/nl/…):
+/database, /database/search, /perfume/<id>-<slug>, /note/<slug>, /notes, /brand/<slug>.
 
 Only perfumes that are worth a page get one: at least PAGE_MIN_CONFIRMED notes confirmed by two or more
 shops (catalog.CONFIRM_SHOPS). Everything else answers 404, so search engines never see near-empty pages.
-A note gets a page once it is confirmed in at least one published perfume and has an English name.
+A note gets a page once it is confirmed in at least one published perfume and has an English name; a brand
+once it has a published perfume.
 
 What a page shows comes only from our own data: the catalog (shop facts + Open Beauty Facts), the
-anonymous price reports (app.stats), reviewed note descriptions (note_texts.json, written by the local
-model from a cited source and checked by hand, see llm_review.py) and bottle photos from Open Beauty Facts
-(CC BY-SA, cached under IMG_DIR, see refresh_images). Nothing from Fragrantica, which is only linked to.
+anonymous price reports (app.stats and the daily lows), reviewed note descriptions (note_texts.json, written
+by the local model from a cited source and checked by hand, see llm_review.py) and bottle photos from Open
+Beauty Facts (CC BY-SA, cached under IMG_DIR, see refresh_images). Nothing from Fragrantica, which is only
+linked to.
 
 All values are escaped with html.escape. Links are root-relative, so the pages work on any host that
-forwards these paths to the API; <link rel="canonical"> uses PAGES_BASE.
+forwards these paths to the API; <link rel="canonical"> and the hreflang links use PAGES_BASE. The pages run
+no scripts (the JSON-LD block is data).
 """
 import hashlib
 import html
@@ -39,10 +43,153 @@ TEXTS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "note_text
 
 CONC = {"edt": "Eau de Toilette", "edp": "Eau de Parfum", "edc": "Eau de Cologne", "parfum": "Parfum",
         "extrait": "Extrait de Parfum"}
-GENDER = {"m": "For men", "f": "For women", "u": "Unisex"}
 CURRENCY = {"EUR": "€", "GBP": "£", "USD": "$", "CHF": "CHF ", "PLN": "zł ", "SEK": "kr ", "DKK": "kr "}
-TIERS = (("top", "Top", "first minutes"), ("heart", "Heart", "first hours"), ("base", "Base", "the dry-down"))
-MONTHS = "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split()
+TIER_KEYS = ("top", "heart", "base")
+LANGS = ("en", "nl")
+
+
+def _n(one, many):
+    return lambda n: (one if n == 1 else many).format(n=n)
+
+
+T = {
+    "en": {
+        "langName": "English", "getExt": "Get the extension", "back": "← Back to the database",
+        "theDb": "The database", "allNotes": "All notes", "privacy": "Privacy", "source": "Source",
+        "footData": 'From the open Fragrance Notes perfume database: what perfume shops show on their own pages, shared '
+                    'anonymously by users, and <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Available under the '
+                    '<a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Photos from Open Beauty Facts (CC BY-SA).',
+        "footNot": "Not affiliated with the brands or shops named. Prices change; check the shop.",
+        "months": "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split(),
+        "gender": {"m": "For men", "f": "For women", "u": "Unisex"},
+        "tiers": (("top", "Top", "first minutes"), ("heart", "Heart", "first hours"), ("base", "Base", "the dry-down")),
+        "shops": _n("{n} shop", "{n} shops"), "sources": _n("{n} source", "{n} sources"),
+        "perfumes": _n("{n} perfume", "{n} perfumes"), "perfume": "perfume",
+        "by": "{name} by {brand}", "bottleOf": "Bottle of {name} by {brand}", "photo": "Photo",
+        "trustShops": _n("<b>{n} source</b> describes it", "<b>{n} sources</b> describe it"),
+        "trustNotes": _n("<b>{n} note</b> confirmed", "<b>{n} notes</b> confirmed"), "lastSeen": "Last seen",
+        "notes": "Notes", "notesSub": "As the shops describe it. A note gets a ✓ once two different shops list it.",
+        "legendOk": "Confirmed by 2 or more shops", "legendOne": "Named by one shop so far",
+        "prices": "Prices", "pricesSub": "Lowest price per size in the last {days} days at {shops}, shared anonymously by Fragrance Notes users.",
+        "size": "Size", "lowest": "Lowest", "at": "At", "perMl": "Per ml", "range": "Range", "oneShop": "1 shop",
+        "atEachShop": "{size} at each shop", "chartTitle": "Lowest price for {size}, day by day",
+        "chartLabel": "from {low} to {high}",
+        "family": "Fragrance family", "sizes": "Sizes", "describedBy": "Described by", "barcodes": "Barcodes (EAN)",
+        "more": "More about it", "moreFrag": "Accords, reviews and votes on {link}", "details": "Details",
+        "helpT": "See this on every shop page",
+        "helpD": "The free Fragrance Notes extension shows the notes, accords and prices right on the product page. Turn on “Help other perfume lovers” and the shops you visit help confirm these notes.",
+        "getFN": "Get Fragrance Notes",
+        "perfumeDesc": "Notes of {full} ({conc}), confirmed by several shops: {notes}.",
+        "perfumeTitle": "{full} – notes and prices | Fragrance Notes",
+        "smellsLike": "What it smells like", "comesFrom": "Where it comes from",
+        "aiNote": "Written by our own AI model from the source text, checked by hand before it went online.",
+        "sourceWord": "Source", "confirmedBy": "confirmed by {n} shops", "perfumeNote": "Perfume note",
+        "alsoWrite": "Shops also write", "perfumesWith": "Perfumes with {note}", "whereSits": "Where it sits",
+        "pairedWith": "Often paired with", "noteDesc": "Perfumes with a confirmed {note} note in the open Fragrance Notes database.",
+        "noteTitle": "{name} – what it smells like, perfumes with this note | Fragrance Notes",
+        "notesLead": "Every note that is confirmed in at least one perfume, with the number of perfumes.",
+        "notesTitle": "All perfume notes | Fragrance Notes", "nothingYet": "Nothing here yet.",
+        "brandKind": "Perfume house", "brandLead": "{n} by {brand} with notes confirmed by several shops.",
+        "brandMore": "{n} more perfumes by {brand} are in the database, but don't have enough confirmed notes for a page yet.",
+        "brandTitle": "{brand} perfumes – notes and prices | Fragrance Notes",
+        "from": "{size} from",
+        "dbH1": "An open perfume database, built while you shop",
+        "dbLead": "Every perfume shop describes its perfumes a little differently. When people who use Fragrance Notes visit a shop page, it can share what that shop says. Where shops agree, a note gets confirmed. Everything is free to use.",
+        "searchPh": "Search a perfume, brand or note", "search": "Search",
+        "statPerfumes": "perfumes", "statBrands": "brands", "statConfirmed": "with confirmed notes", "statShops": "shops with prices",
+        "counted": "Counted {day}. It grows with every shop page people visit.",
+        "howH": "How a note gets confirmed",
+        "howIntro": "Nothing here is copied from other sites. It's only what perfume shops show on their own product pages, collected by people who turned sharing on.",
+        "step1T": "You visit a perfume page", "step1D": "On any of 300+ supported shops, as you normally would. Sharing is off until you turn on “Help other perfume lovers”.",
+        "step2T": "The shop's facts are shared", "step2D": "The notes, family, sizes, barcode and price that the shop itself shows. Never who you are or what you buy.",
+        "step3T": "Shops agree, it's confirmed", "step3D": 'Once two different shops list the same note, it gets <span class="chip">confirmed</span> and shows up in the extension and on this site.',
+        "withConfirmed": "Perfumes with confirmed notes", "pageRule": "A perfume gets its own page once at least {n} of its notes are confirmed.",
+        "nextT": "Yours could be next", "nextD": "Visit a perfume at two shops with sharing on.",
+        "brandsH": "Brands", "notesH": "Most confirmed notes",
+        "openH": "Open data",
+        "openD1": 'The database is published under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Use it in your own app, research or site, as long as you name the source and share improvements under the same licence.',
+        "openD2": 'It also includes perfume data from <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>.',
+        "apiSearch": "Search", "apiOne": "One perfume", "apiStats": "Totals", "growBtn": "Help it grow: get the extension",
+        "dsName": "Fragrance Notes open perfume database",
+        "dbTitle": "The open perfume database | Fragrance Notes",
+        "dbDesc": "An open perfume database built by shoppers: notes confirmed by several shops, sizes, barcodes and anonymous prices. Free under the Open Database License.",
+        "noMatch": "No perfume page matches that yet.",
+        "moreMatch": _n("{n} more perfume in the database matches, but doesn't have enough confirmed notes for a page yet.",
+                        "{n} more perfumes in the database match, but don't have enough confirmed notes for a page yet."),
+        "nfH": "Not here (yet)",
+        "nfD": "This perfume or note has no page yet. A perfume gets one once at least {n} of its notes are confirmed by two different shops.",
+    },
+    "nl": {
+        "langName": "Nederlands", "getExt": "Installeer de extensie", "back": "← Terug naar de database",
+        "theDb": "De database", "allNotes": "Alle geurnoten", "privacy": "Privacy", "source": "Broncode",
+        "footData": 'Uit de open parfumdatabase van Fragrance Notes: wat parfumwinkels op hun eigen pagina\'s laten zien, anoniem '
+                    'gedeeld door gebruikers, en <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Beschikbaar onder de '
+                    '<a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Foto\'s van Open Beauty Facts (CC BY-SA).',
+        "footNot": "Niet verbonden aan de genoemde merken of winkels. Prijzen veranderen; kijk altijd even bij de winkel.",
+        "months": "jan feb mrt apr mei jun jul aug sep okt nov dec".split(),
+        "gender": {"m": "Voor mannen", "f": "Voor vrouwen", "u": "Unisex"},
+        "tiers": (("top", "Top", "eerste minuten"), ("heart", "Hart", "eerste uren"), ("base", "Basis", "wat blijft hangen")),
+        "shops": _n("{n} winkel", "{n} winkels"), "sources": _n("{n} bron", "{n} bronnen"),
+        "perfumes": _n("{n} parfum", "{n} parfums"), "perfume": "parfum",
+        "by": "{name} van {brand}", "bottleOf": "Fles {name} van {brand}", "photo": "Foto",
+        "trustShops": _n("<b>{n} bron</b> beschrijft het", "<b>{n} bronnen</b> beschrijven het"),
+        "trustNotes": _n("<b>{n} noot</b> bevestigd", "<b>{n} noten</b> bevestigd"), "lastSeen": "Laatst gezien",
+        "notes": "Geurnoten", "notesSub": "Zoals de winkels het beschrijven. Een noot krijgt een ✓ zodra twee verschillende winkels hem noemen.",
+        "legendOk": "Bevestigd door 2 of meer winkels", "legendOne": "Tot nu toe door één winkel genoemd",
+        "prices": "Prijzen", "pricesSub": "Laagste prijs per inhoud in de afgelopen {days} dagen bij {shops}, anoniem gedeeld door gebruikers van Fragrance Notes.",
+        "size": "Inhoud", "lowest": "Laagste", "at": "Bij", "perMl": "Per ml", "range": "Van – tot", "oneShop": "1 winkel",
+        "atEachShop": "{size} per winkel", "chartTitle": "Laagste prijs voor {size}, per dag",
+        "chartLabel": "van {low} tot {high}",
+        "family": "Geurfamilie", "sizes": "Inhoud", "describedBy": "Beschreven door", "barcodes": "Barcodes (EAN)",
+        "more": "Meer erover", "moreFrag": "Accoorden, reviews en stemmen op {link}", "details": "Details",
+        "helpT": "Zie dit op elke winkelpagina",
+        "helpD": "De gratis extensie Fragrance Notes toont de geurnoten, accoorden en prijzen direct op de productpagina. Zet “Help andere parfumliefhebbers” aan en de winkels die je bezoekt helpen deze noten bevestigen.",
+        "getFN": "Installeer Fragrance Notes",
+        "perfumeDesc": "Geurnoten van {full} ({conc}), bevestigd door meerdere winkels: {notes}.",
+        "perfumeTitle": "{full} – geurnoten en prijzen | Fragrance Notes",
+        "smellsLike": "Hoe het ruikt", "comesFrom": "Waar het vandaan komt",
+        "aiNote": "Geschreven door ons eigen AI-model op basis van de brontekst, met de hand gecontroleerd voordat het online ging.",
+        "sourceWord": "Bron", "confirmedBy": "bevestigd door {n} winkels", "perfumeNote": "Geurnoot",
+        "alsoWrite": "Winkels schrijven ook", "perfumesWith": "Parfums met {note}", "whereSits": "Waar hij zit",
+        "pairedWith": "Vaak samen met", "noteDesc": "Parfums met een bevestigde noot {note} in de open parfumdatabase van Fragrance Notes.",
+        "noteTitle": "{name} – hoe het ruikt, parfums met deze geurnoot | Fragrance Notes",
+        "notesLead": "Elke geurnoot die in minstens één parfum bevestigd is, met het aantal parfums.",
+        "notesTitle": "Alle geurnoten | Fragrance Notes", "nothingYet": "Nog niets te zien.",
+        "brandKind": "Parfumhuis", "brandLead": "{n} van {brand} met geurnoten die door meerdere winkels bevestigd zijn.",
+        "brandMore": "Er staan nog {n} parfums van {brand} in de database, maar die hebben nog te weinig bevestigde noten voor een eigen pagina.",
+        "brandTitle": "Parfums van {brand} – geurnoten en prijzen | Fragrance Notes",
+        "from": "{size} vanaf",
+        "dbH1": "Een open parfumdatabase, gebouwd terwijl je shopt",
+        "dbLead": "Elke parfumwinkel beschrijft zijn parfums net iets anders. Als mensen met Fragrance Notes een winkelpagina bezoeken, kan de extensie delen wat die winkel zegt. Waar winkels het eens zijn, wordt een geurnoot bevestigd. Alles is vrij te gebruiken.",
+        "searchPh": "Zoek een parfum, merk of geurnoot", "search": "Zoeken",
+        "statPerfumes": "parfums", "statBrands": "merken", "statConfirmed": "met bevestigde noten", "statShops": "winkels met prijzen",
+        "counted": "Geteld op {day}. Hij groeit met elke winkelpagina die mensen bezoeken.",
+        "howH": "Hoe een geurnoot bevestigd wordt",
+        "howIntro": "Niets hier is gekopieerd van andere sites. Het is alleen wat parfumwinkels op hun eigen productpagina's laten zien, verzameld door mensen die delen aan hebben gezet.",
+        "step1T": "Je bezoekt een parfumpagina", "step1D": "Bij een van de 300+ ondersteunde winkels, zoals je normaal doet. Delen staat uit tot je “Help andere parfumliefhebbers” aanzet.",
+        "step2T": "De gegevens van de winkel worden gedeeld", "step2D": "De geurnoten, familie, inhoud, barcode en prijs die de winkel zelf laat zien. Nooit wie je bent of wat je koopt.",
+        "step3T": "Winkels zijn het eens: bevestigd", "step3D": 'Zodra twee verschillende winkels dezelfde noot noemen, wordt hij <span class="chip">bevestigd</span> en verschijnt hij in de extensie en op deze site.',
+        "withConfirmed": "Parfums met bevestigde noten", "pageRule": "Een parfum krijgt een eigen pagina zodra minstens {n} van zijn noten bevestigd zijn.",
+        "nextT": "Jouw parfum kan de volgende zijn", "nextD": "Bekijk een parfum bij twee winkels met delen aan.",
+        "brandsH": "Merken", "notesH": "Meest bevestigde noten",
+        "openH": "Open data",
+        "openD1": 'De database valt onder de <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Gebruik hem in je eigen app, onderzoek of site, zolang je de bron noemt en verbeteringen onder dezelfde licentie deelt.',
+        "openD2": 'Hij bevat ook parfumgegevens van <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>.',
+        "apiSearch": "Zoeken", "apiOne": "Eén parfum", "apiStats": "Totalen", "growBtn": "Help hem groeien: installeer de extensie",
+        "dsName": "Open parfumdatabase van Fragrance Notes",
+        "dbTitle": "De open parfumdatabase | Fragrance Notes",
+        "dbDesc": "Een open parfumdatabase, gebouwd door shoppers: geurnoten bevestigd door meerdere winkels, inhoud, barcodes en anonieme prijzen. Gratis onder de Open Database License.",
+        "noMatch": "Nog geen parfumpagina die daarop past.",
+        "moreMatch": _n("Er past nog {n} parfum in de database, maar die heeft te weinig bevestigde noten voor een pagina.",
+                        "Er passen nog {n} parfums in de database, maar die hebben te weinig bevestigde noten voor een pagina."),
+        "nfH": "(Nog) niet hier",
+        "nfD": "Dit parfum of deze noot heeft nog geen pagina. Een parfum krijgt er een zodra minstens {n} van zijn noten door twee verschillende winkels bevestigd zijn.",
+    },
+}
+
+# The Dutch name of a note: the first spelling of its line in catalog.NOTE_WORDS (written Dutch first).
+NOTE_NL = {line.split(":", 1)[0].strip(): line.split(":", 1)[1].split("|")[0].strip()
+           for line in catalog.NOTE_WORDS.strip().splitlines() if ":" in line}
 
 
 def load_texts(path=TEXTS_FILE):
@@ -58,6 +205,11 @@ e = html.escape
 
 
 # ---------- small helpers ----------
+
+def P(lang, path):
+    """The path in a language: English without a prefix, Dutch under /nl."""
+    return path if lang == "en" else f"/{lang}{path}"
+
 
 def slug(s):
     return "-".join(catalog.plain(s).split())[:80] or "perfume"
@@ -75,17 +227,29 @@ def nice(key):
     return key[:1].upper() + key[1:]
 
 
-def day(s):
+def note_name(key, lang="en"):
+    return nice(NOTE_NL.get(key, key) if lang == "nl" else key)
+
+
+def day(s, lang="en"):
     try:
         d = date.fromisoformat(s)
-        return f"{d.day} {MONTHS[d.month - 1]} {d.year}"
+        return f"{d.day} {T[lang]['months'][d.month - 1]} {d.year}"
     except (TypeError, ValueError):
         return ""
 
 
-def money(v, cur):
+def money(v, cur, lang="en", decimals=2):
     sym = CURRENCY.get(cur, (cur or "") + " ")
-    return f"{sym}{v:,.2f}"
+    s = f"{v:,.{decimals}f}"
+    if lang == "nl":   # 1.234,56
+        s = s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+    return f"{sym}{s}"
+
+
+def num(n, lang="en"):
+    s = f"{n:,}"
+    return s.replace(",", ".") if lang == "nl" else s
 
 
 def ml(v):
@@ -111,7 +275,7 @@ def index(con):
     notes = defaultdict(lambda: {"perfumes": [], "tiers": Counter(), "names": Counter(), "pairs": Counter()})
     for p in perfumes:
         en = {n["en"] for t in p["notes"].values() for n in t if n.get("en") and n["confirmed"]}
-        for tier, _, _ in TIERS:
+        for tier in TIER_KEYS:
             for n in p["notes"][tier]:
                 k = n.get("en")
                 if not k:
@@ -123,7 +287,11 @@ def index(con):
                     x["perfumes"].append((p, n["shops"]))
                     x["pairs"].update(en - {k})
     notes = {k: v for k, v in notes.items() if v["perfumes"]}
-    idx = {"perfumes": perfumes, "byId": {p["id"]: p for p in perfumes}, "notes": notes}
+    brands = {}
+    for p in perfumes:
+        b = brands.setdefault(slug(p["brand"]), {"name": p["brand"], "perfumes": []})
+        b["perfumes"].append(p)
+    idx = {"perfumes": perfumes, "byId": {p["id"]: p for p in perfumes}, "notes": notes, "brands": brands}
     _cache.update(stamp=stamp, index=idx)
     return idx
 
@@ -323,41 +491,65 @@ footer{padding:36px 0 56px;color:var(--ink-soft);font-size:.875rem;border-top:1p
 .card{padding:22px 18px;border-radius:18px}.tier{grid-template-columns:1fr;gap:10px}.bar{grid-template-columns:88px 1fr 64px}
 .hide-sm{display:none}.stats{grid-template-columns:1fr 1fr}.stats div:nth-child(3){border-left:0}.stats div:nth-child(n+3){border-top:1px solid var(--line)}
 .stats div{padding:20px 18px}.open{padding:34px 22px;gap:24px}section.part{padding-top:60px}.search{flex-direction:column}.swatch{height:90px}}
+.top nav{display:flex;align-items:center;gap:14px}.lang{font:600 .9375rem/1 var(--text);text-decoration:none;color:var(--ink-soft)}
+.lang:hover{color:var(--plum)}
+.chart{margin:26px 0 0}.chart h3{margin:0 0 8px;font:700 1rem/1.2 var(--display)}.chart svg{width:100%;height:auto;display:block}
+.chart .axis{display:flex;justify-content:space-between;font-size:.8125rem;color:var(--ink-soft);margin-top:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.chips a{display:inline-block;padding:8px 14px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:.9688rem}
+.chips a:hover{box-shadow:0 0 0 2px var(--plum)}.chips small{color:var(--ink-soft);margin-left:4px}
+.letter{font:750 1.25rem/1 var(--display);margin:26px 0 10px;color:var(--plum)}
 """
 
 
-def frame(title, desc, path, body, noindex=False, extra_head=""):
-    robots = '<meta name="robots" content="noindex">' if noindex else f'<link rel="canonical" href="{e(BASE + path)}">'
+def ld_json(obj):
+    """JSON for a <script type="application/ld+json"> block: <, > and & as \\u escapes, so no value can end
+    the block or start markup in it."""
+    s = json.dumps(obj, ensure_ascii=False)
+    return s.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None):
+    """A whole page. `path` is the page's path without the language prefix (the same in every language)."""
+    t = T[lang]
+    alt = "".join(f'<link rel="alternate" hreflang="{l}" href="{e(BASE + P(l, path))}">' for l in LANGS)
+    head = ('<meta name="robots" content="noindex">' if noindex else
+            f'<link rel="canonical" href="{e(BASE + P(lang, path))}">{alt}<link rel="alternate" hreflang="x-default" href="{e(BASE + path)}">')
+    ld = f'<script type="application/ld+json">{ld_json(jsonld)}</script>' if jsonld else ""
+    other = "nl" if lang == "en" else "en"
     return f"""<!doctype html>
-<html lang="en">
+<html lang="{lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)}</title>
 <meta name="description" content="{e(desc)}">
-{robots}
+{head}
 <meta property="og:title" content="{e(title)}">
 <meta property="og:description" content="{e(desc)}">
-<meta property="og:image" content="{SITE}img/og.png">
+<meta property="og:image" content="{e(image or SITE + 'img/og.png')}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{e(BASE + P(lang, path))}">
+<meta name="twitter:card" content="{'summary' if image else 'summary_large_image'}">
 <link rel="icon" href="{SITE}img/icon.png">
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link rel="stylesheet" href="https://fonts.bunny.net/css?family=bricolage-grotesque:600,700,750,800|figtree:400,500,600&display=swap">
 <link rel="stylesheet" href="/assets/pages.css?v={CSS_VERSION}">
-{extra_head}</head>
+{ld}
+</head>
 <body>
 <header class="top"><div class="wrap">
 <a class="brand" href="{SITE}"><img src="{SITE}img/icon.png" alt="">Fragrance Notes</a>
-<a class="btn small" href="{STORE}">Get the extension</a>
+<nav><a class="lang" href="{e(P(other, path))}" hreflang="{other}" lang="{other}">{T[other]["langName"]}</a>
+<a class="btn small" href="{STORE}">{t["getExt"]}</a></nav>
 </div></header>
 <main class="wrap">
 {body}
 </main>
 <footer><div class="wrap">
-<p>From the open Fragrance Notes perfume database: what perfume shops show on their own pages, shared anonymously by
-users, and <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Available under the
-<a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Photos from Open Beauty Facts (CC BY-SA).</p>
-<p>Not affiliated with the brands or shops named. Prices change; check the shop.</p>
-<p><a href="/database">The database</a> · <a href="{SITE}privacy.html">Privacy</a> · <a href="https://github.com/Tygovanschie/fragrance-notes">Source</a></p>
+<p>{t["footData"]}</p>
+<p>{t["footNot"]}</p>
+<p><a href="{P(lang, '/database')}">{t["theDb"]}</a> · <a href="{P(lang, '/notes')}">{t["allNotes"]}</a> · <a href="{SITE}privacy.html">{t["privacy"]}</a> · <a href="https://github.com/Tygovanschie/fragrance-notes">{t["source"]}</a></p>
 </div></footer>
 </body>
 </html>"""
@@ -366,8 +558,8 @@ users, and <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. A
 CSS_VERSION = hashlib.sha1(CSS.encode()).hexdigest()[:8]
 
 
-def back():
-    return '<a class="back" href="/database">← Back to the database</a>'
+def back(lang):
+    return f'<a class="back" href="{P(lang, "/database")}">{T[lang]["back"]}</a>'
 
 
 def img_tag(con, p, cls="", size=400):
@@ -389,104 +581,141 @@ def best_prices(stats):
     return out
 
 
+def chart(points, cur, lang):
+    """An inline SVG line of the lowest price per day (no script); None with fewer than two days."""
+    if len(points) < 2:
+        return None
+    w, h, pad = 600, 140, 8
+    lo, hi = min(v for _, v in points), max(v for _, v in points)
+    span = (hi - lo) or 1
+    xs = [pad + i * (w - 2 * pad) / (len(points) - 1) for i in range(len(points))]
+    ys = [pad + (h - 2 * pad) * (1 - (v - lo) / span) for _, v in points]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in zip(xs, ys))
+    area = f"{xs[0]:.1f},{h} {line} {xs[-1]:.1f},{h}"
+    dots = "".join(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3" fill="#7e2f63"/>' for x, y in zip(xs, ys)) if len(points) <= 31 else ""
+    label = T[lang]["chartLabel"].format(low=money(lo, cur, lang), high=money(hi, cur, lang))
+    return (f'<svg viewBox="0 0 {w} {h}" role="img" aria-label="{e(label)}" preserveAspectRatio="none">'
+            f'<polygon points="{area}" fill="#c58bb0" fill-opacity=".18"/>'
+            f'<polyline points="{line}" fill="none" stroke="#7e2f63" stroke-width="2.5" stroke-linejoin="round"/>{dots}</svg>'
+            f'<div class="axis"><span>{e(day(points[0][0], lang))}</span><span>{e(label)}</span><span>{e(day(points[-1][0], lang))}</span></div>')
+
+
 # ---------- /perfume/<id>-<slug> ----------
 
-def perfume_page(con, pid, prices=None):
-    """(path, html) for a published perfume; (path, None) when the slug differs (redirect); None if no page."""
+def conc_name(p):
+    return CONC.get(p.get("conc") or "", "")
+
+
+def perfume_page(con, pid, prices=None, lang="en"):
+    """(path, html) for a published perfume, path without language prefix; None if it has no page."""
+    t = T[lang]
     idx = index(con)
     p = idx["byId"].get(pid)
     if not p:
         return None
     path = perfume_path(p)
     linkable = idx["notes"]
-    conf = sum(n["confirmed"] for t in p["notes"].values() for n in t)
-    tags = [CONC.get(p.get("conc") or "", "")] + [GENDER.get(p.get("gender") or "", "")]
+    conf = sum(n["confirmed"] for tr in p["notes"].values() for n in tr)
+    tags = [conc_name(p), t["gender"].get(p.get("gender") or "", "")]
     sizes = p.get("sizes") or []
     if sizes:
         tags.append(ml(sizes[0]) if len(sizes) == 1 else f"{sizes[0]:g} – {sizes[-1]:g} ml")
     ph = photo(con, p)
-    photo_html = (f'<figure class="photo"><img src="/photo/{e(ph[0])}" alt="Bottle of {e(p["name"])} by {e(p["brand"])}" width="400" height="400">'
-                  f'<figcaption>Photo: <a href="https://world.openbeautyfacts.org/product/{e(ph[1])}">Open Beauty Facts</a>, CC BY-SA</figcaption></figure>') if ph else ""
-    full = f"{p['name']} by {p['brand']}"
+    photo_html = (f'<figure class="photo"><img src="/photo/{e(ph[0])}" alt="{e(t["bottleOf"].format(name=p["name"], brand=p["brand"]))}" width="400" height="400">'
+                  f'<figcaption>{t["photo"]}: <a href="https://world.openbeautyfacts.org/product/{e(ph[1])}">Open Beauty Facts</a>, CC BY-SA</figcaption></figure>') if ph else ""
+    full = t["by"].format(name=p["name"], brand=p["brand"])
 
     tiers = []
-    for tier, label, hint in TIERS:
+    for tier, label, hint in t["tiers"]:
         chips = []
         for n in p["notes"][tier]:
-            name = nice(n["en"]) if n.get("en") else n["name"]
+            name = note_name(n["en"], lang) if n.get("en") else n["name"]
             cls = "note ok" if n["confirmed"] else "note one"
-            extra = "" if n["confirmed"] else f' <small>{n["shops"]} shop{"s" if n["shops"] != 1 else ""}</small>'
+            extra = "" if n["confirmed"] else f' <small>{t["shops"](n["shops"])}</small>'
             if n.get("en") in linkable:
-                chips.append(f'<li><a class="{cls}" href="{note_path(n["en"])}">{e(name)}{extra}</a></li>')
+                chips.append(f'<li><a class="{cls}" href="{P(lang, note_path(n["en"]))}">{e(name)}{extra}</a></li>')
             else:
                 chips.append(f'<li><span class="{cls}">{e(name)}{extra}</span></li>')
         if chips:
             tiers.append(f'<div class="tier"><h3>{label}<small>{hint}</small></h3><ul class="notes">{"".join(chips)}</ul></div>')
 
-    price_html = ""
+    price_html, offers = "", None
     st = prices(p["fragrantica"][0]) if prices and p.get("fragrantica") else None
     rows = best_prices(st)
     if rows:
         cur = st.get("currency")
         trs = "".join(
-            f'<tr><td>{ml(m)}</td><td class="num"><span class="low">{e(money(low, cur))}</span></td><td>{e(shop)}</td>'
-            f'<td class="num hide-sm">{e(money(low / m, cur))}</td>'
-            f'<td class="num hide-sm muted">{"1 shop" if n == 1 else e(money(low, cur).split(".")[0] + " – " + f"{high:,.0f}")}</td></tr>'
+            f'<tr><td>{ml(m)}</td><td class="num"><span class="low">{e(money(low, cur, lang))}</span></td><td>{e(shop)}</td>'
+            f'<td class="num hide-sm">{e(money(low / m, cur, lang))}</td>'
+            f'<td class="num hide-sm muted">{t["oneShop"] if n == 1 else e(money(low, cur, lang, 0) + " – " + money(high, cur, lang, 0))}</td></tr>'
             for m, low, shop, high, n, _ in rows)
         m, _, _, _, _, lows = max(rows, key=lambda r: (r[4], r[0] == 100, r[0]))
         top = max(lows.values())
         bars = "".join(
             f'<div class="bar{" best" if i == 0 else ""}"><span>{e(s)}</span><span class="track"><span class="fill" style="width:{v / top * 100:.0f}%"></span></span>'
-            f'<span class="eur">{e(money(v, cur))}</span></div>'
+            f'<span class="eur">{e(money(v, cur, lang))}</span></div>'
             for i, (s, v) in enumerate(sorted(lows.items(), key=lambda kv: kv[1]))) if len(lows) > 1 else ""
+        hist = chart([(d, v) for d, v in (st.get("history") or {}).get(m, [])], cur, lang)
         shops_n = len({s for r in rows for s in r[5]})
-        price_html = f"""<section class="card" aria-labelledby="price-h"><h2 id="price-h">Prices</h2>
-<p class="sub">Lowest price per size in the last {st.get("days", 30)} days at {shops_n} shop{"s" if shops_n != 1 else ""}, shared anonymously by Fragrance Notes users.</p>
-<table><thead><tr><th>Size</th><th class="num">Lowest</th><th>At</th><th class="num hide-sm">Per ml</th><th class="num hide-sm">Range</th></tr></thead>
+        price_html = f"""<section class="card" aria-labelledby="price-h"><h2 id="price-h">{t["prices"]}</h2>
+<p class="sub">{t["pricesSub"].format(days=st.get("days", 30), shops=t["shops"](shops_n))}</p>
+<table><thead><tr><th>{t["size"]}</th><th class="num">{t["lowest"]}</th><th>{t["at"]}</th><th class="num hide-sm">{t["perMl"]}</th><th class="num hide-sm">{t["range"]}</th></tr></thead>
 <tbody>{trs}</tbody></table>
-{f'<div class="bars"><h3>{ml(m)} at each shop</h3>{bars}</div>' if bars else ""}</section>"""
+{f'<div class="bars"><h3>{t["atEachShop"].format(size=ml(m))}</h3>{bars}</div>' if bars else ""}
+{f'<div class="chart"><h3>{t["chartTitle"].format(size=ml(m))}</h3>{hist}</div>' if hist else ""}</section>"""
+        offers = {"@type": "AggregateOffer", "priceCurrency": cur, "lowPrice": f"{min(r[1] for r in rows):.2f}",
+                  "highPrice": f"{max(r[3] for r in rows):.2f}", "offerCount": shops_n}
 
-    fams = [nice(f["key"]) if f["key"] in catalog.NOTE_EN else f["name"] for f in p.get("families", [])
+    fams = [note_name(f["key"], lang) if f["key"] in catalog.NOTE_EN else f["name"] for f in p.get("families", [])
             if f["confirmed"] or f["key"] in catalog.NOTE_EN]
     srcs = ["Open Beauty Facts" if s == obf.SOURCE else s for s in p.get("shopList", [])]
     facts = []
     if fams:
-        facts.append(("Fragrance family", e(" · ".join(fams))))
+        facts.append((t["family"], e(" · ".join(fams))))
     if sizes:
-        facts.append(("Sizes", e(", ".join(f"{s:g}" for s in sizes) + " ml")))
-    facts.append(("Described by", e(", ".join(srcs))))
+        facts.append((t["sizes"], e(", ".join(f"{s:g}" for s in sizes) + " ml")))
+    facts.append((t["describedBy"], e(", ".join(srcs))))
     if p.get("gtins"):
-        facts.append(("Barcodes (EAN)", f'<span class="codes">{"<br>".join(e(g) for g in p["gtins"][:8])}</span>'))
+        facts.append((t["barcodes"], f'<span class="codes">{"<br>".join(e(g) for g in p["gtins"][:8])}</span>'))
     q = urllib.parse.quote(f"{p['brand']} {p['name']}")
-    facts.append(("More about it", f'Accords, reviews and votes on <a href="https://www.fragrantica.com/search/?query={q}" rel="nofollow">Fragrantica ↗</a>'))
+    facts.append((t["more"], t["moreFrag"].format(link=f'<a href="https://www.fragrantica.com/search/?query={q}" rel="nofollow">Fragrantica ↗</a>')))
     facts_html = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in facts)
 
-    body = f"""{back()}
+    body = f"""{back(lang)}
 <section class="head{'' if ph else ' nophoto'}">{photo_html}<div>
-<p class="house">{e(p["brand"])}</p>
+<p class="house"><a href="{P(lang, brand_path(p['brand']))}" style="color:inherit;text-decoration:none">{e(p["brand"])}</a></p>
 <h1>{e(p["name"])}</h1>
-<ul class="tags">{"".join(f"<li>{e(t)}</li>" for t in tags if t)}</ul>
-<p class="trust"><span><b>{p["shops"]} source{"s" if p["shops"] != 1 else ""}</b> describe it</span><span><b>{conf} notes</b> confirmed</span><span>Last seen <b>{e(day(p.get("lastSeen")))}</b></span></p>
+<ul class="tags">{"".join(f"<li>{e(x)}</li>" for x in tags if x)}</ul>
+<p class="trust"><span>{t["trustShops"](p["shops"])}</span><span>{t["trustNotes"](conf)}</span><span>{t["lastSeen"]} <b>{e(day(p.get("lastSeen"), lang))}</b></span></p>
 </div></section>
 <div class="grid"><div>
-<section class="card" aria-labelledby="notes-h"><h2 id="notes-h">Notes</h2>
-<p class="sub">As the shops describe it. A note gets a ✓ once two different shops list it.</p>
+<section class="card" aria-labelledby="notes-h"><h2 id="notes-h">{t["notes"]}</h2>
+<p class="sub">{t["notesSub"]}</p>
 {"".join(tiers)}
-<div class="legend"><span><i class="k-ok"></i>Confirmed by 2 or more shops</span><span><i class="k-one"></i>Named by one shop so far</span></div>
+<div class="legend"><span><i class="k-ok"></i>{t["legendOk"]}</span><span><i class="k-one"></i>{t["legendOne"]}</span></div>
 </section>
 {price_html}
 </div><aside>
-<section class="card" aria-label="Details"><dl class="facts">{facts_html}</dl></section>
-<section class="card help"><h2>See this on every shop page</h2>
-<p>The free Fragrance Notes extension shows the notes, accords and prices right on the product page. Turn on “Help other perfume lovers” and the shops you visit help confirm these notes.</p>
-<a class="btn" href="{STORE}">Get Fragrance Notes</a></section>
+<section class="card" aria-label="{t["details"]}"><dl class="facts">{facts_html}</dl></section>
+<section class="card help"><h2>{t["helpT"]}</h2>
+<p>{t["helpD"]}</p>
+<a class="btn" href="{STORE}">{t["getFN"]}</a></section>
 </aside></div>"""
-    confirmed_names = [nice(n["en"]) if n.get("en") else n["name"] for t in p["notes"].values() for n in t if n["confirmed"]]
-    desc = f"Notes of {full} ({CONC.get(p.get('conc') or '', 'perfume')}), confirmed by several shops: {', '.join(confirmed_names[:6])}."
-    return path, frame(f"{full} – notes and prices | Fragrance Notes", desc, path, body)
+    confirmed_names = [note_name(n["en"], lang) if n.get("en") else n["name"] for tr in p["notes"].values() for n in tr if n["confirmed"]]
+    desc = t["perfumeDesc"].format(full=full, conc=conc_name(p) or t["perfume"], notes=", ".join(confirmed_names[:6]))
+    image = BASE + f"/photo/{ph[0]}" if ph else None
+    ld = {"@context": "https://schema.org", "@type": "Product", "name": p["name"], "category": "Perfume",
+          "brand": {"@type": "Brand", "name": p["brand"]}, "url": BASE + P(lang, path), "description": desc}
+    if image:
+        ld["image"] = image
+    if p.get("gtins"):
+        ld["gtin13"] = p["gtins"][0]
+    if offers:
+        ld["offers"] = offers
+    return path, frame(lang, t["perfumeTitle"].format(full=full), desc, path, body, image=image, jsonld=ld)
 
 
-# ---------- /note/<slug> ----------
+# ---------- /note/<slug> and /notes ----------
 
 def swatch(key):
     """A soft colour field per note (no photo): three warm circles on a gradient, from a hash of the name."""
@@ -499,136 +728,227 @@ def swatch(key):
             f"linear-gradient(120deg,{c(4, 50, 90)},{c(5, 35, 62)} 60%,{c(6, 40, 40)})")
 
 
-def note_page(con, slug_):
+def note_page(con, slug_, lang="en"):
+    t = T[lang]
     key = " ".join(slug_.split("-"))
     idx = index(con)
     x = idx["notes"].get(key)
     if not x:
         return None
     path = note_path(key)
-    name = nice(key)
-    aka = [n for n, _ in x["names"].most_common() if catalog.plain(n) != key][:6]
+    name = note_name(key, lang)
+    aka = [n for n, _ in x["names"].most_common() if catalog.plain(n) not in (key, catalog.plain(name))][:6]
     text = TEXTS.get(key)
+    about = ""
     if text:
+        smell = text.get(f"smell_{lang}") or text["smell"]
+        origin = text.get(f"origin_{lang}") or text["origin"]
+        english = lang != "en" and not text.get(f"smell_{lang}")
         src = text.get("source", "")
-        about = f"""<section class="card"><h2>What it smells like</h2><p>{e(text["smell"])}</p>
-<h2 style="margin-top:26px">Where it comes from</h2><p>{e(text["origin"])}</p>
-<p class="src">Written by our own AI model from the source text, checked by hand before it went online.
-{f'Source: <a href="{e(src)}" rel="nofollow">{e(text.get("sourceName", "source"))}</a> ({e(text.get("license", ""))}).' if src else ""}</p></section>"""
-    else:
-        about = ""
+        about = f"""<section class="card"{' lang="en"' if english else ""}><h2>{t["smellsLike"]}</h2><p>{e(smell)}</p>
+<h2 style="margin-top:26px">{t["comesFrom"]}</h2><p>{e(origin)}</p>
+<p class="src">{t["aiNote"]}
+{f'{t["sourceWord"]}: <a href="{e(src)}" rel="nofollow">{e(text.get("sourceName", "source"))}</a> ({e(text.get("license", ""))}).' if src else ""}</p></section>"""
     items = []
-    for p, shops in sorted(x["perfumes"], key=lambda t: (-t[1], t[0]["name"])):
+    for p, shops in sorted(x["perfumes"], key=lambda q: (-q[1], q[0]["name"])):
         im = img_tag(con, p, size=56) or "<i></i>"
-        items.append(f'<li><a href="{perfume_path(p)}">{im}<span><b>{e(p["name"])}</b>'
-                     f'<small>{e(p["brand"])} · {e(CONC.get(p.get("conc") or "", "perfume"))} · confirmed by {shops} shops</small></span></a></li>')
+        items.append(f'<li><a href="{P(lang, perfume_path(p))}">{im}<span><b>{e(p["name"])}</b>'
+                     f'<small>{e(p["brand"])} · {e(conc_name(p) or t["perfume"])} · {t["confirmedBy"].format(n=shops)}</small></span></a></li>')
     total = sum(x["tiers"].values()) or 1
-    where = "".join(f'<div class="{"on" if x["tiers"][t] * 2 >= total and x["tiers"][t] else ""}"><b>{label}</b>'
-                    f'{x["tiers"][t]} perfume{"s" if x["tiers"][t] != 1 else ""}</div>' for t, label, _ in TIERS)
+    where = "".join(f'<div class="{"on" if x["tiers"][tr] * 2 >= total and x["tiers"][tr] else ""}"><b>{label}</b>'
+                    f'{t["perfumes"](x["tiers"][tr])}</div>' for tr, label, _ in t["tiers"])
     pairs = [k for k, _ in x["pairs"].most_common(8) if k in idx["notes"]]
-    pairs_html = (f'<section class="card"><h2>Often paired with</h2><ul class="pairs">'
-                  f'{"".join(f"<li><a href={chr(34)}{note_path(k)}{chr(34)}>{e(nice(k))}</a></li>" for k in pairs)}</ul></section>') if pairs else ""
-    body = f"""{back()}
+    pairs_html = (f'<section class="card"><h2>{t["pairedWith"]}</h2><ul class="pairs">'
+                  f'{"".join(f"<li><a href={chr(34)}{P(lang, note_path(k))}{chr(34)}>{e(note_name(k, lang))}</a></li>" for k in pairs)}</ul></section>') if pairs else ""
+    body = f"""{back(lang)}
 <section class="head" style="grid-template-columns:1fr 340px;align-items:end"><div>
-<p class="kind">Perfume note</p><h1>{e(name)}</h1>
-{f'<p class="muted" style="font-size:1rem">Shops also write: {", ".join(f"<b>{e(a)}</b>" for a in aka)}</p>' if aka else ""}
+<p class="kind"><a href="{P(lang, '/notes')}" style="color:inherit;text-decoration:none">{t["perfumeNote"]}</a></p><h1>{e(name)}</h1>
+{f'<p class="muted" style="font-size:1rem">{t["alsoWrite"]}: {", ".join(f"<b>{e(a)}</b>" for a in aka)}</p>' if aka else ""}
 </div><div class="swatch" style="{swatch(key)}" aria-hidden="true"></div></section>
 <div class="grid"><div>
 {about}
-<section class="card"><h2>Perfumes with {e(key)}</h2><ul class="plist">{"".join(items)}</ul></section>
+<section class="card"><h2>{t["perfumesWith"].format(note=e(name.lower()))}</h2><ul class="plist">{"".join(items)}</ul></section>
 </div><aside>
-<section class="card"><h2>Where it sits</h2><div class="where">{where}</div></section>
+<section class="card"><h2>{t["whereSits"]}</h2><div class="where">{where}</div></section>
 {pairs_html}
 </aside></div>"""
-    desc = (text["smell"][:150] if text else f"Perfumes with a confirmed {key} note in the open Fragrance Notes database.")
-    return path, frame(f"{name} – what it smells like, perfumes with this note | Fragrance Notes", desc, path, body)
+    if text:
+        desc = (text.get(f"smell_{lang}") or text["smell"])[:155]
+    else:
+        desc = t["noteDesc"].format(note=name.lower())
+    return path, frame(lang, t["noteTitle"].format(name=name), desc, path, body)
+
+
+def notes_page(con, lang="en"):
+    t = T[lang]
+    idx = index(con)
+    keys = sorted(idx["notes"], key=lambda k: catalog.plain(note_name(k, lang)))
+    groups = defaultdict(list)
+    for k in keys:
+        groups[catalog.plain(note_name(k, lang))[:1].upper() or "#"].append(k)
+    blocks = "".join(
+        f'<p class="letter">{e(letter)}</p><ul class="chips">'
+        + "".join(f'<li><a href="{P(lang, note_path(k))}">{e(note_name(k, lang))}<small>{len(idx["notes"][k]["perfumes"])}</small></a></li>' for k in ks)
+        + "</ul>" for letter, ks in groups.items())
+    body = f"""{back(lang)}<h1>{t["allNotes"]}</h1><p class="lead">{t["notesLead"]}</p>
+<section class="card">{blocks or f"<p>{t['nothingYet']}</p>"}</section>"""
+    return frame(lang, t["notesTitle"], t["notesLead"], "/notes", body)
+
+
+# ---------- /brand/<slug> ----------
+
+def brand_path(brand):
+    return "/brand/" + slug(brand)
+
+
+def brand_page(con, slug_, lang="en"):
+    t = T[lang]
+    idx = index(con)
+    b = idx["brands"].get(slug_)
+    if not b:
+        return None
+    cards = "".join(card(con, p, None, lang) for p in b["perfumes"])
+    con.row_factory = sqlite3.Row
+    more = 0
+    for r in con.execute("SELECT brand FROM catalog WHERE confirmed < ?", (PAGE_MIN_CONFIRMED,)):
+        more += slug(r["brand"]) == slug_
+    more_html = f'<p class="asof">{t["brandMore"].format(n=more, brand=e(b["name"]))}</p>' if more else ""
+    body = f"""{back(lang)}<p class="kind">{t["brandKind"]}</p><h1>{e(b["name"])}</h1>
+<p class="lead">{t["brandLead"].format(brand=e(b["name"]), n=t["perfumes"](len(b["perfumes"])))}</p>
+<div class="cards">{cards}</div>{more_html}"""
+    path = brand_path(b["name"])
+    ld = {"@context": "https://schema.org", "@type": "Brand", "name": b["name"], "url": BASE + P(lang, path)}
+    return path, frame(lang, t["brandTitle"].format(brand=b["name"]), t["brandLead"].format(brand=b["name"], n=t["perfumes"](len(b["perfumes"]))),
+                       path, body, jsonld=ld)
 
 
 # ---------- /database and /database/search ----------
 
-def card(con, p, prices=None):
-    conf = [nice(n["en"]) if n.get("en") else n["name"] for t in p["notes"].values() for n in t if n["confirmed"]]
+def card(con, p, prices=None, lang="en"):
+    t = T[lang]
+    conf = [note_name(n["en"], lang) if n.get("en") else n["name"] for tr in p["notes"].values() for n in tr if n["confirmed"]]
     tail = ""
     st = prices(p["fragrantica"][0]) if prices and p.get("fragrantica") else None
     rows = best_prices(st)
     if rows:
         m, low, *_ = min(rows, key=lambda r: (abs(r[0] - 100), r[0]))
-        tail = f'<p class="p"><span>{ml(m)} from</span><b>{e(money(low, st.get("currency")))}</b></p>'
-    bits = [CONC.get(p.get("conc") or "", ""), (GENDER.get(p.get("gender") or "", "") or "").lower(), f'{p["shops"]} sources']
-    return (f'<a class="pcard" href="{perfume_path(p)}">{img_tag(con, p, "img", 84)}<p class="h">{e(p["brand"])}</p>'
+        tail = f'<p class="p"><span>{t["from"].format(size=ml(m))}</span><b>{e(money(low, st.get("currency"), lang))}</b></p>'
+    bits = [conc_name(p), (t["gender"].get(p.get("gender") or "", "") or "").lower(), t["sources"](p["shops"])]
+    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}">{img_tag(con, p, "img", 84)}<p class="h">{e(p["brand"])}</p>'
             f'<p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
             f'<ul>{"".join(f"<li>{e(c)}</li>" for c in conf[:8])}</ul>{tail}</a>')
 
 
-def database_page(con, prices=None):
+def database_page(con, prices=None, lang="en"):
+    t = T[lang]
     idx = index(con)
     s = catalog.stats(con)
     shops = con.execute("SELECT COUNT(DISTINCT shop) FROM reports").fetchone()[0] if _has(con, "reports") else 0
-    cards = "".join(card(con, p, prices) for p in idx["perfumes"][:24])
+    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][:24])
+    brands = "".join(f'<li><a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}<small>{len(b["perfumes"])}</small></a></li>'
+                     for b in sorted(idx["brands"].values(), key=lambda b: catalog.plain(b["name"])))
+    notes = "".join(f'<li><a href="{P(lang, note_path(k))}">{e(note_name(k, lang))}<small>{len(v["perfumes"])}</small></a></li>'
+                    for k, v in sorted(idx["notes"].items(), key=lambda kv: (-len(kv[1]["perfumes"]), kv[0]))[:16])
     body = f"""<section class="hero">
-<h1>An open perfume database, built while you shop</h1>
-<p class="lead">Every perfume shop describes its perfumes a little differently. When people who use Fragrance Notes visit a shop page, it can share what that shop says. Where shops agree, a note gets confirmed. Everything is free to use.</p>
-<form class="search" role="search" action="/database/search"><input type="search" name="q" placeholder="Search a perfume or brand" aria-label="Search a perfume or brand" required maxlength="100"><button class="btn" type="submit">Search</button></form>
+<h1>{t["dbH1"]}</h1>
+<p class="lead">{t["dbLead"]}</p>
+<form class="search" role="search" action="{P(lang, '/database/search')}"><input type="search" name="q" placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" required maxlength="100"><button class="btn" type="submit">{t["search"]}</button></form>
 </section>
 <div class="stats">
-<div><b>{s["perfumes"]:,}</b><span>perfumes</span></div>
-<div><b>{s["brands"]:,}</b><span>brands</span></div>
-<div class="hl"><b>{s["withConfirmedNotes"]:,}</b><span>with confirmed notes</span></div>
-<div><b>{shops:,}</b><span>shops with prices</span></div>
+<div><b>{num(s["perfumes"], lang)}</b><span>{t["statPerfumes"]}</span></div>
+<div><b>{num(s["brands"], lang)}</b><span>{t["statBrands"]}</span></div>
+<div class="hl"><b>{num(s["withConfirmedNotes"], lang)}</b><span>{t["statConfirmed"]}</span></div>
+<div><b>{num(shops, lang)}</b><span>{t["statShops"]}</span></div>
 </div>
-<p class="asof">Counted {e(day(date.today().isoformat()))}. It grows with every shop page people visit.</p>
-<section class="part"><h2>How a note gets confirmed</h2>
-<p class="intro">Nothing here is copied from other sites. It's only what perfume shops show on their own product pages, collected by people who turned sharing on.</p>
+<p class="asof">{t["counted"].format(day=e(day(date.today().isoformat(), lang)))}</p>
+<section class="part"><h2>{t["howH"]}</h2>
+<p class="intro">{t["howIntro"]}</p>
 <ol class="steps">
-<li><h3>You visit a perfume page</h3><p>On any of 300+ supported shops, as you normally would. Sharing is off until you turn on “Help other perfume lovers”.</p></li>
-<li><h3>The shop's facts are shared</h3><p>The notes, family, sizes, barcode and price that the shop itself shows. Never who you are or what you buy.</p></li>
-<li><h3>Shops agree, it's confirmed</h3><p>Once two different shops list the same note, it gets <span class="chip">confirmed</span> and shows up in the extension and on this site.</p></li>
+<li><h3>{t["step1T"]}</h3><p>{t["step1D"]}</p></li>
+<li><h3>{t["step2T"]}</h3><p>{t["step2D"]}</p></li>
+<li><h3>{t["step3T"]}</h3><p>{t["step3D"]}</p></li>
 </ol></section>
-<section class="part"><h2>Perfumes with confirmed notes</h2>
-<p class="intro">A perfume gets its own page once at least {PAGE_MIN_CONFIRMED} of its notes are confirmed.</p>
-<div class="cards">{cards}<div class="pcard soon"><div><b>Yours could be next</b>Visit a perfume at two shops with sharing on.</div></div></div>
+<section class="part"><h2>{t["withConfirmed"]}</h2>
+<p class="intro">{t["pageRule"].format(n=PAGE_MIN_CONFIRMED)}</p>
+<div class="cards">{cards}<div class="pcard soon"><div><b>{t["nextT"]}</b>{t["nextD"]}</div></div></div>
 </section>
-<section class="open"><div><h2>Open data</h2>
-<p>The database is published under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database License</a>. Use it in your own app, research or site, as long as you name the source and share improvements under the same licence.</p>
-<p>It also includes perfume data from <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>.</p></div>
-<div><ul><li>Search: <code>api.fragrancenotes.app/catalog/search?q=</code></li><li>One perfume: <code>api.fragrancenotes.app/catalog/perfume/{{id}}</code></li>
-<li>Totals: <code>api.fragrancenotes.app/catalog/stats</code></li></ul>
-<a class="btn" href="{STORE}">Help it grow: get the extension</a></div></section>"""
-    return frame("The open perfume database | Fragrance Notes",
-                 "An open perfume database built by shoppers: notes confirmed by several shops, sizes, barcodes and anonymous prices. Free under the Open Database License.",
-                 "/database", body)
+{f'<section class="part"><h2>{t["brandsH"]}</h2><ul class="chips">{brands}</ul></section>' if brands else ""}
+{f'<section class="part"><h2>{t["notesH"]}</h2><ul class="chips">{notes}</ul><p class="asof"><a href="{P(lang, "/notes")}">{t["allNotes"]} →</a></p></section>' if notes else ""}
+<section class="open"><div><h2>{t["openH"]}</h2>
+<p>{t["openD1"]}</p>
+<p>{t["openD2"]}</p></div>
+<div><ul><li>{t["apiSearch"]}: <code>api.fragrancenotes.app/catalog/search?q=</code></li><li>{t["apiOne"]}: <code>api.fragrancenotes.app/catalog/perfume/{{id}}</code></li>
+<li>{t["apiStats"]}: <code>api.fragrancenotes.app/catalog/stats</code></li></ul>
+<a class="btn" href="{STORE}">{t["growBtn"]}</a></div></section>"""
+    ld = {"@context": "https://schema.org", "@type": "Dataset", "name": t["dsName"], "description": t["dbLead"],
+          "url": BASE + P(lang, "/database"), "license": "https://opendatacommons.org/licenses/odbl/1-0/",
+          "creator": {"@type": "Organization", "name": "Fragrance Notes", "url": SITE},
+          "isAccessibleForFree": True,
+          "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json",
+                            "contentUrl": "https://api.fragrancenotes.app/catalog/stats"}]}
+    return frame(lang, t["dbTitle"], t["dbDesc"], "/database", body, jsonld=ld)
 
 
-def search_page(con, q):
+def search_page(con, q, lang="en"):
+    t = T[lang]
     q = (q or "")[:100]
     idx = index(con)
     words = catalog.plain(q).split()
     hits = [p for p in idx["perfumes"] if words and all(f" {w}" in " " + catalog.plain(p["brand"] + " " + p["name"]) for w in words)]
-    notes = [k for k in idx["notes"] if words and all(w in k for w in words)]
-    others = 0
-    if words:
-        others = sum(1 for r in catalog.search(con, q) if r["id"] not in idx["byId"])
-    lis = "".join(f'<li><a href="{perfume_path(p)}"><b>{e(p["name"])}</b></a> <span class="muted">{e(p["brand"])} · {e(CONC.get(p.get("conc") or "", "perfume"))}</span></li>' for p in hits)
-    lis += "".join(f'<li><a href="{note_path(k)}"><b>{e(nice(k))}</b></a> <span class="muted">perfume note</span></li>' for k in notes)
-    none = "" if lis else "<p>No perfume page matches that yet.</p>"
-    more = (f'<p class="muted">{others} more perfume{"s" if others != 1 else ""} in the database match, but don\'t have enough confirmed notes for a page yet.</p>' if others else "")
-    body = f"""{back()}<h1 style="font-size:clamp(2rem,4vw,3rem)">Search</h1>
-<form class="search" role="search" action="/database/search" style="margin-bottom:28px"><input type="search" name="q" value="{e(q)}" aria-label="Search a perfume or brand" required maxlength="100"><button class="btn" type="submit">Search</button></form>
+    notes = [k for k in idx["notes"] if words and all(w in k or w in catalog.plain(note_name(k, lang)) for w in words)]
+    others = sum(1 for r in catalog.search(con, q) if r["id"] not in idx["byId"]) if words else 0
+    lis = "".join(f'<li><a href="{P(lang, perfume_path(p))}"><b>{e(p["name"])}</b></a> <span class="muted">{e(p["brand"])} · {e(conc_name(p) or t["perfume"])}</span></li>' for p in hits)
+    lis += "".join(f'<li><a href="{P(lang, note_path(k))}"><b>{e(note_name(k, lang))}</b></a> <span class="muted">{t["perfumeNote"].lower()}</span></li>' for k in notes)
+    none = "" if lis else f"<p>{t['noMatch']}</p>"
+    more = f'<p class="muted">{t["moreMatch"](others)}</p>' if others else ""
+    body = f"""{back(lang)}<h1 style="font-size:clamp(2rem,4vw,3rem)">{t["search"]}</h1>
+<form class="search" role="search" action="{P(lang, '/database/search')}" style="margin-bottom:28px"><input type="search" name="q" value="{e(q)}" aria-label="{t["searchPh"]}" required maxlength="100"><button class="btn" type="submit">{t["search"]}</button></form>
 <section class="card"><ul class="results">{lis}</ul>{none}{more}</section>"""
-    return frame(f"Search: {q} | Fragrance Notes", "Search the open perfume database.", "/database/search", body, noindex=True)
+    return frame(lang, f'{t["search"]}: {q} | Fragrance Notes', t["dbDesc"], "/database/search", body, noindex=True)
 
 
-def not_found():
-    body = f"""{back()}<h1>Not here (yet)</h1><p class="lead">This perfume or note has no page yet. A perfume gets one once
-at least {PAGE_MIN_CONFIRMED} of its notes are confirmed by two different shops.</p>"""
-    return frame("Not found | Fragrance Notes", "This page doesn't exist yet.", "/database", body, noindex=True)
+def not_found(lang="en"):
+    t = T[lang]
+    body = f"""{back(lang)}<h1>{t["nfH"]}</h1><p class="lead">{t["nfD"].format(n=PAGE_MIN_CONFIRMED)}</p>"""
+    return frame(lang, "Not found | Fragrance Notes", t["nfH"], "/database", body, noindex=True)
 
 
 def sitemap(con):
     idx = index(con)
-    urls = ["/database"] + [perfume_path(p) for p in idx["perfumes"]] + [note_path(k) for k in sorted(idx["notes"])]
-    return ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-            + "".join(f"<url><loc>{e(BASE + u)}</loc></url>\n" for u in urls) + "</urlset>\n")
+    paths = (["/database", "/notes"] + [perfume_path(p) for p in idx["perfumes"]]
+             + [note_path(k) for k in sorted(idx["notes"])] + [brand_path(b["name"]) for b in idx["brands"].values()])
+    urls = "".join(
+        f"<url><loc>{e(BASE + P(l, u))}</loc>"
+        + "".join(f'<xhtml:link rel="alternate" hreflang="{a}" href="{e(BASE + P(a, u))}"/>' for a in LANGS)
+        + "</url>\n" for u in paths for l in LANGS)
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" '
+            'xmlns:xhtml="http://www.w3.org/1999/xhtml">\n' + urls + "</urlset>\n")
+
+
+def route(con, path, query, prices):
+    """(status, html or None, redirect target or None) for a page path, in either language."""
+    lang = "en"
+    if path == "/nl" or path.startswith("/nl/"):
+        lang, path = "nl", path[3:] or "/"
+    if path in ("/", ""):
+        return 301, None, P(lang, "/database")
+    if path in ("/database", "/database/"):
+        return 200, database_page(con, prices, lang), None
+    if path == "/database/search":
+        q = (urllib.parse.parse_qs(query).get("q") or [""])[0]
+        return 200, search_page(con, q, lang), None
+    if path in ("/notes", "/notes/"):
+        return 200, notes_page(con, lang), None
+    m = re.fullmatch(r"/perfume/([0-9a-f]{12})(?:-[a-z0-9-]*)?", path)
+    if m and (r := perfume_page(con, m.group(1), prices, lang)):
+        return (301, None, P(lang, r[0])) if path != r[0] else (200, r[1], None)
+    m = re.fullmatch(r"/note/([a-z0-9-]{1,60})", path)
+    if m and (r := note_page(con, m.group(1), lang)):
+        return 200, r[1], None
+    m = re.fullmatch(r"/brand/([a-z0-9-]{1,80})", path)
+    if m and (r := brand_page(con, m.group(1), lang)):
+        return 200, r[1], None
+    return 404, not_found(lang), None
 
 
 def _has(con, table):

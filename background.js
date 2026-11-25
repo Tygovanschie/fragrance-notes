@@ -1,6 +1,6 @@
 // Chrome/Edge run this as a service worker (loads settings.js here); Firefox runs it as an event page
 // with settings.js listed before it in the manifest.
-if (typeof importScripts === 'function') importScripts('settings.js');
+if (typeof importScripts === 'function') importScripts('settings.js', 'i18n-settings.js');
 
 // Service worker: finds the Fragrantica page for a perfume, loads it in a background
 // tab, reads the data Fragrantica's own page script decodes, then closes the tab.
@@ -641,8 +641,8 @@ async function shareFacts(perfumeId, f, pageUrl) {
 chrome.storage.onChanged.addListener((changes, area) => {
   const was = changes.settings?.oldValue, now = changes.settings?.newValue;
   if (area === 'sync' && (was?.sharePrices || was?.shareFacts) && !now?.sharePrices && !now?.shareFacts) {
-    chrome.storage.local.remove('fn:installId').catch(() => {});
-    chrome.storage.session.remove('fn:shared').catch(() => {});
+    chrome.storage.local.remove(['fn:installId', 'fn:suggested']).catch(() => {});
+    chrome.storage.session.remove(['fn:shared', 'fn:mine']).catch(() => {});
     communityCache.clear();
   }
 });
@@ -674,6 +674,24 @@ async function ownLookup(f) {
   } catch { return null; }
 }
 
+// "You helped confirm …" in the toolbar menu: what this install's shared facts did for the database. Only for
+// installs that share (they have an install id; none is made here), read-only on the server. Kept 10 minutes.
+async function myContribution() {
+  const { 'fn:installId': id } = await chrome.storage.local.get('fn:installId');
+  if (!id) return null;
+  const { 'fn:mine': c } = await chrome.storage.session.get('fn:mine').catch(() => ({}));
+  if (c && Date.now() - c.t < 600e3) return c.data;
+  try {
+    const r = await fetch(`${FN.API_BASE}/facts/mine`, {
+      credentials: 'omit', headers: { 'X-Install-Id': id }, signal: AbortSignal.timeout(6000)
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    await chrome.storage.session.set({ 'fn:mine': { t: Date.now(), data } }).catch(() => {});
+    return data;
+  } catch { return null; }
+}
+
 // ---------- messaging ----------
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   (async () => {
@@ -683,6 +701,7 @@ chrome.runtime.onMessage.addListener((msg, sender, send) => {
     if (msg.type === 'share') { sharePrices(msg.perfumeId, msg.prices, sender.url); return send({ ok: true }); }
     if (msg.type === 'facts') { shareFacts(msg.perfumeId, msg.facts, sender.url); return send({ ok: true }); }
     if (msg.type === 'own') return send(await ownLookup(msg.facts));
+    if (msg.type === 'mine') return send(await myContribution());
     if (msg.type === 'note') return send(await noteInfo(msg.url));
     if (msg.type === 'opinions') return send(await englishOpinions(msg.url));
     if (msg.type !== 'lookup') return;
@@ -791,3 +810,84 @@ async function updateBadge() {
 chrome.storage.onChanged.addListener((changes, area) => { if (area === 'sync' && changes.settings) updateBadge(); });
 chrome.runtime.onStartup.addListener(updateBadge);
 chrome.runtime.onInstalled.addListener(updateBadge);
+
+// ---------- price alerts for favourites ----------
+// Set on the favourites page ("alert:<Fragrantica id>" in storage.sync: size in ml, price, currency). Every six
+// hours the prices other users shared (the same request as the panel's comparison, so only while sharing is on)
+// are checked; when a shop's lowest price for that size is at or below the alert price, one notification is shown.
+// The same or a higher price isn't announced again within a week. Notifications need the optional "notifications"
+// permission, which the favourites page asks for when the first alert is set.
+const ALERT_EVERY_MIN = 360;
+function scheduleAlerts() {
+  chrome.alarms?.get('priceAlerts').then(a => { if (!a) chrome.alarms.create('priceAlerts', { periodInMinutes: ALERT_EVERY_MIN, delayInMinutes: 10 }); }).catch(() => {});
+}
+chrome.runtime.onStartup.addListener(scheduleAlerts);
+chrome.runtime.onInstalled.addListener(scheduleAlerts);
+chrome.alarms?.onAlarm.addListener(a => { if (a.name === 'priceAlerts') checkAlerts().catch(() => {}); });
+
+let alertClicksOn = false;
+function listenAlertClicks() {
+  if (alertClicksOn || !chrome.notifications) return;
+  alertClicksOn = true;
+  chrome.notifications.onClicked.addListener(id => {
+    if (!id.startsWith('alert:')) return;
+    chrome.tabs.create({ url: chrome.runtime.getURL('favourites.html#' + id.slice(6)) }).catch(() => {});
+    chrome.notifications.clear(id);
+  });
+}
+listenAlertClicks();
+
+async function checkAlerts() {
+  if (!chrome.notifications || !await sharing()) return;
+  listenAlertClicks();
+  const all = await chrome.storage.sync.get(null);
+  const list = Object.entries(all).filter(([k, v]) => k.startsWith('alert:') && v && v.price > 0 && v.ml > 0);
+  if (!list.length) return;
+  const S = await FN.loadSettings();
+  const { 'fn:alerted': told = {} } = await chrome.storage.local.get('fn:alerted');
+  for (const [k, a] of list) {
+    const id = k.slice(6);
+    const data = await communityPrices(id, a.cur);
+    const size = (data?.sizes || []).find(s => Math.abs(s.ml - a.ml) < 0.5);
+    const best = Object.entries(size?.lows || {}).sort((x, y) => x[1] - y[1])[0];
+    if (!best || best[1] > a.price) continue;
+    const prev = told[id];
+    if (prev && prev.price <= best[1] && Date.now() - prev.t < 7 * 864e5) continue;
+    const cur = data.currency || a.cur || 'EUR';
+    let price;
+    try { price = new Intl.NumberFormat(S.lang, { style: 'currency', currency: cur }).format(best[1]); } catch { price = `${best[1].toFixed(2)} ${cur}`; }
+    const name = all['fav:' + id]?.name || 'Fragrance Notes';
+    await chrome.notifications.create('alert:' + id, {
+      type: 'basic', iconUrl: chrome.runtime.getURL('icons/128.png'),
+      title: FN_st(S.lang, 'al_notifT', { name }),
+      message: FN_st(S.lang, 'al_notifD', { ml: Math.round(a.ml), price, shop: best[0] })
+    }).catch(() => {});
+    told[id] = { price: best[1], t: Date.now() };
+  }
+  await chrome.storage.local.set({ 'fn:alerted': told });
+}
+
+// ---------- shops people add themselves (opt-in) ----------
+// While sharing is on, the domains of shops the user added in Settings (only the domain, e.g. "armani.com") are
+// sent once, so popular ones can be reviewed and added to the built-in list. Built-in shops are skipped here and on
+// the server. "fn:suggested" remembers what was sent; it's cleared with the install id when sharing is turned off.
+async function suggestCustomShops() {
+  try {
+    if (!await sharing()) return;
+    const { customShops = [] } = await chrome.storage.sync.get('customShops');
+    const { 'fn:suggested': sent = [] } = await chrome.storage.local.get('fn:suggested');
+    const todo = [...new Set(customShops.map(d => String(d).toLowerCase().replace(/^www\./, '')))]
+      .filter(d => /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) && d.length <= 100 && !FN.builtInShop(d) && !sent.includes(d)).slice(0, 20);
+    if (!todo.length) return;
+    const r = await fetch(`${FN.API_BASE}/shops/suggest`, {
+      method: 'POST', credentials: 'omit', signal: AbortSignal.timeout(8000),
+      headers: { 'Content-Type': 'application/json', 'X-Install-Id': await installId() },
+      body: JSON.stringify({ domains: todo })
+    });
+    if (r.ok) await chrome.storage.local.set({ 'fn:suggested': [...sent, ...todo].slice(-200) });
+  } catch {}
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && (changes.customShops || changes.settings)) suggestCustomShops();
+});
+chrome.runtime.onStartup.addListener(suggestCustomShops);

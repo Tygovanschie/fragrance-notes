@@ -106,7 +106,10 @@ class PagesTest(unittest.TestCase):
         self.assertIn("1 shop", body)
         self.assertIn('rel="canonical"', body)
         self.assertIn("default-src 'none'", h["Content-Security-Policy"])
-        self.assertNotIn("<script", body)
+        self.assertEqual(re.findall(r'<script(?! type="application/ld\+json")', body), [])   # only the JSON-LD data block
+        ld = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', body).group(1))
+        self.assertEqual((ld["@type"], ld["name"], ld["brand"]["name"]), ("Product", "Stronger With You Intensely", "Armani"))
+        self.assertIn('hreflang="nl"', body)
         code, body, _ = get(f"/perfume/{self.pid('Guilty')}")
         self.assertEqual(code, 404)
         self.assertIn("noindex", body)
@@ -217,6 +220,60 @@ class PagesTest(unittest.TestCase):
             n = len(fake.calls)
             pages.refresh_images(con, opener=fake)
             self.assertEqual(len(fake.calls), n)
+
+    def test_dutch_pages(self):
+        pid = self.pid("Intensely")
+        code, body, _ = get(f"/nl/perfume/{pid}-armani-stronger-with-you-intensely")
+        self.assertEqual(code, 200)
+        self.assertIn('<html lang="nl">', body)
+        self.assertIn("Geurnoten", body)
+        self.assertIn('href="/nl/note/tonka-bean"', body)
+        self.assertIn(">Tonkaboon<", body)                     # the note's Dutch name
+        self.assertIn('hreflang="en"', body)
+        code, _, h = get(f"/nl/perfume/{pid}")
+        self.assertEqual((code, h["Location"]), (301, f"/nl/perfume/{pid}-armani-stronger-with-you-intensely"))
+        code, body, _ = get("/nl/note/tonka-bean")
+        self.assertEqual(code, 200)
+        self.assertIn("Hoe het ruikt", body)
+        self.assertIn("cumaruboom", body)                      # the Dutch text from note_texts.json
+        self.assertEqual(get("/nl/database")[0], 200)
+        self.assertIn("Terug naar de database", get("/nl/notes")[1])
+        self.assertEqual(get("/nl")[0], 301)
+        self.assertEqual(get("/nl/nothing")[0], 404)
+
+    def test_brand_and_notes_pages(self):
+        code, body, _ = get("/brand/armani")
+        self.assertEqual(code, 200)
+        self.assertIn("Stronger With You Intensely", body)
+        self.assertIn('"@type": "Brand"', body)
+        self.assertEqual(get("/brand/gucci")[0], 404)          # no published perfume
+        code, body, _ = get("/notes")
+        self.assertEqual(code, 200)
+        self.assertIn('href="/note/tonka-bean"', body)
+        self.assertNotIn('href="/note/mandarin"', body)
+        _, body, _ = get("/database")
+        self.assertIn('href="/brand/armani"', body)
+        self.assertIn('"@type": "Dataset"', body)
+        _, body, _ = get("/sitemap.xml")
+        self.assertIn("/nl/perfume/", body)
+        self.assertIn("/brand/armani", body)
+        self.assertIn('hreflang="nl"', body)
+
+    def test_price_chart(self):
+        now = int(time.time() * 1000)
+        with app.db() as con:
+            con.execute("INSERT INTO reports VALUES (?,?,?,?,?,?,?,?)", (52802, 100, 68.95, "EUR", .6895, "zalando.nl", "h-z", now))
+            for i, price in enumerate((79.0, 74.5, 68.95)):
+                d = time.strftime("%Y-%m-%d", time.gmtime(time.time() - (2 - i) * 86400))
+                con.execute("INSERT INTO daily_lows VALUES (?,?,?,?,?,?,?,?)", ("h-z", 52802, "zalando.nl", 100, "EUR", d, price, now))
+            con.commit()
+        _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        self.assertIn("day by day", body)
+        self.assertIn("<polyline", body)
+        self.assertIn("from €68.95 to €79.00", body)
+        self.assertIn('"lowPrice": "68.95"', body)
+        _, body, _ = get(f"/nl/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        self.assertIn("van €68,95 tot €79,00", body)
 
     def test_api_still_answers_json(self):
         with urllib.request.urlopen(BASE + "/catalog/stats", timeout=5) as r:

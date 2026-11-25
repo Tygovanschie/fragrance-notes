@@ -1,15 +1,17 @@
 {
   "manifest_version": 3,
   "name": "Fragrance Notes",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "homepage_url": "https://fragrancenotes.app",
   "description": "See a perfume's notes, accords, longevity and similar scents from Fragrantica while you shop. Not affiliated with Fragrantica.",
   "permissions": [
     "storage",
     "scripting",
     "activeTab",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "alarms"
   ],
+  "optional_permissions": ["notifications"],
   "host_permissions": [
     "https://www.fragrantica.com/*",
     "https://www.fragrantica.nl/*",
@@ -39,7 +41,7 @@
   ],
   "background": {
     "service_worker": "background.js",
-    "scripts": ["settings.js", "background.js"]
+    "scripts": ["settings.js", "i18n-settings.js", "background.js"]
   },
   "action": {
     "default_title": "Fragrance Notes",
@@ -393,7 +395,28 @@
         "https://*.bulgari.com/*",
         "https://*.guerlain.fr/*",
         "https://*.chanel.fr/*",
-        "https://*.dior.fr/*"
+        "https://*.dior.fr/*",
+        "https://*.armani.com/*",
+        "https://*.lancome.nl/*",
+        "https://*.lancome.de/*",
+        "https://*.lancome.fr/*",
+        "https://*.lancome.co.uk/*",
+        "https://*.prada.com/*",
+        "https://*.prada-beauty.com/*",
+        "https://*.rabanne.com/*",
+        "https://*.hugoboss.com/*",
+        "https://*.gucci.com/*",
+        "https://*.burberry.com/*",
+        "https://*.versace.com/*",
+        "https://*.givenchybeauty.com/*",
+        "https://*.mugler.com/*",
+        "https://*.carolinaherrera.com/*",
+        "https://*.jeanpaulgaultier.com/*",
+        "https://*.dolcegabbana.com/*",
+        "https://*.narcisorodriguez.com/*",
+        "https://*.valentino.com/*",
+        "https://*.valentino-beauty.com/*",
+        "https://*.ysl.com/*"
       ],
       "js": [
         "settings.js",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Nightly proposals from the local LLM (Ollama on 127.0.0.1, see ~/ollama). Runs on the host (cron), like backup.py.
 
-Four jobs, each writing a list to review/ for a person to check; the job itself never changes the database or
+Five jobs, each writing a list to review/ for a person to check; the job itself never changes the database or
 the code, because the model makes mistakes (it guessed "almond wood" for "Belambra Hout"):
 
 1. notes-DATE.md  Note names in the catalog that catalog.NOTE_WORDS doesn't know: an English name, and whether it
@@ -14,6 +14,9 @@ the code, because the model makes mistakes (it guessed "almond wood" for "Belamb
 
 4. texts-DATE.md   Descriptions for the note pages (pages.py): the model rewrites the Wikipedia intro of the plant
                   or material, with a check for names it added. Good ones go into server/note_texts.json by hand.
+
+5. shops-DATE.md   Shops users added themselves (domain only, opt-in), with how many installs: candidates for
+                  the built-in list. No model involved.
 
 What was asked before is remembered in review/seen.json, so each list only has new items.
 Prints one line per job; under cron through `systemd-cat -t fragrance-llm` (journalctl -t fragrance-llm).
@@ -322,6 +325,24 @@ def job_texts(con, seen):
     return f"texts: {len(drafts)} drafts, {len(rows) - len(drafts)} without a source -> {path}", asked
 
 
+# ---------- 5. shops people added themselves ----------
+def job_shops(con, seen):
+    """No model needed: the domains users added as their own shop (opt-in, see app.add_suggestions), with how
+    many installs added each. New ones are listed; popular ones are candidates for the built-in list."""
+    try:
+        rows = con.execute("SELECT domain, COUNT(*) FROM shop_suggestions GROUP BY domain ORDER BY COUNT(*) DESC, domain").fetchall()
+    except sqlite3.OperationalError:   # table not there yet
+        return "shops: no table yet", []
+    new = [(d, n) for d, n in rows if f"{d}:{n}" not in seen]
+    if not new:
+        return f"shops: nothing new ({len(rows)} domains)", []
+    path = write_list("shops", "Shops people added themselves",
+                      "Domains only, from users who share. Popular ones can go into manifest.json (content_scripts\n"
+                      "matches) and server/shops.txt; check first that it sells perfume and shows product data.",
+                      ["Domain", "Installs"], new)
+    return f"shops: {len(new)} new or grown -> {path}", [f"{d}:{n}" for d, n in new]
+
+
 def main():
     if not os.path.isfile(DB):
         raise RuntimeError(f"database not found: {DB}")
@@ -333,7 +354,7 @@ def main():
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     failed = []
     try:
-        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts)):
+        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts), ("shops", job_shops)):
             try:
                 line, asked = job(con, set(seen.get(name, [])))
             except Exception as e:   # one job failing doesn't stop the others

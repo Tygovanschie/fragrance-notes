@@ -58,6 +58,25 @@ BRAND_FILLER = {"parfums", "parfum", "perfumes", "perfume", "paris", "fragrances
 MALE_WORDS = {"homme", "hommes", "men", "man", "him", "uomo", "hombre", "herren", "heren", "mannen"}
 FEMALE_WORDS = {"femme", "femmes", "women", "woman", "her", "donna", "mujer", "damen", "dames", "vrouwen"}
 NAME_FILLER = {"pour", "for", "voor", "fur", "per", "para", "spray", "vapo", "vaporisateur", "natural", "the"}
+# Promotion and packaging words that shops put behind the name ("Stronger With You Intensely - Summer Deal",
+# "Libre - Rechargeable", "Bleu Byzantin (Travel)"). Without a barcode they would split one perfume in two, so
+# name_key ignores them at the end of a name, and the displayed name drops them.
+PROMO_TAIL = re.compile(r"[\s,]*[-–(\[/]?\s*\b(?:summer deal|winter deal|black friday deal|deal|actie|aanbieding|"
+                        r"rechargeable|refillable|refill|recharge|navulbaar|nachfullbar|nachfüllbar|"
+                        r"travel(?: size| spray| edition)?|new in box|brand new|tester|gift ?set|coffret|"
+                        r"parf[uü]m(?:[uü])? seti|seti)\b\s*[)\]]?\s*$", re.I)
+# Sub-brand words that shops leave in front of the name without the house itself ("Emporio Stronger With You",
+# "Giorgio Stronger With You", "EA STRONGER WITH YOU"); the displayed name leaves them out. Only these: in
+# "Armani Code", "Narciso Poudrée" or "Cerruti 1881 Black" the house word is part of the perfume's name.
+ORPHAN_PREFIX = {"armani": {"emporio", "giorgio", "ea"}}
+
+
+def strip_promo(name):
+    """"Libre - Rechargeable" -> "Libre"; repeated for "… Refillable - Summer Deal". Never empties a name."""
+    s = str(name or "")
+    while (t := PROMO_TAIL.sub("", s).strip()) != s and re.search(r"\w", t):
+        s = t
+    return s
 # Product words that are no name on their own ("WhatsApp Perfume" stays, not "Perfume").
 PRODUCT_WORDS = {"perfume", "perfumes", "parfum", "parfume", "fragrance", "cologne", "kolonya", "deodorant", "deo",
                  "body", "mist", "spray", "eau", "edp", "edt", "edc"}
@@ -74,6 +93,9 @@ NOTE_WORDS = """
 vanilla: vanille | vanilla | vainilla | vaniglia | baunilha | wanilia
 tonka bean: tonkaboon | tonkabonen | tonka | tonkabohne | tonka bohne | feve tonka | feve de tonka | haba tonka | fava tonka | tonka bean | tonka beans
 chestnut: kastanje | kastanjes | chestnut | chestnuts | kastanie | kastanien | chataigne | marron | castana | castagna
+glazed chestnut: geglazuurde kastanje | geglazuurde kastanjes | glazed chestnut | glazed chestnuts | marron glace | marrons glaces | kandierte kastanie | castagna candita
+bourbon vanilla: bourbon vanille | bourbonvanille | bourbon vanilla | vanille bourbon | vanilla bourbon | vainilla bourbon
+frangipani: frangipani | frangipanier | plumeria
 lavender: lavendel | lavender | lavande | lavanda
 cinnamon: kaneel | cinnamon | zimt | cannelle | canela | cannella
 sage: salie | sage | salbei | sauge | salvia
@@ -183,10 +205,12 @@ def brand_words(key):
     return words
 
 
-def name_key(name, bkey):
+def name_key(name, bkey, promo=True):
+    """The name as a key: no brand words, filler or promotion words (promo=False keeps those, for the keys
+    names had before PROMO_TAIL, see build)."""
     drop = brand_words(bkey)
     out = []
-    for w in plain(name).split():
+    for w in plain(strip_promo(name) if promo else name).split():
         if w in drop or w in NAME_FILLER:
             continue
         w = "homme" if w in MALE_WORDS else "femme" if w in FEMALE_WORDS else w
@@ -242,8 +266,22 @@ def note_key(note):
 SHOP_GENDER_TAIL = re.compile(r"(?:\s+(?:voor|fur|für))?\s+(?:mannen|vrouwen|heren|dames|herren|damen)\s*$", re.I)
 
 
-def display_name(name):
-    rest = SHOP_GENDER_TAIL.sub("", name).strip()
+def display_name(name, bkey=""):
+    """The name as shown: without shop gender tails ("… Mannen"), promotion words ("- Summer Deal") and the
+    house's words in front ("Emporio", "Giorgio", "EA" for Armani), as long as a real name is left."""
+    rest = strip_promo(SHOP_GENDER_TAIL.sub("", name).strip())
+    orphans = ORPHAN_PREFIX.get(bkey)
+    if orphans:
+        tokens = list(re.finditer(r"[^\W_]+", rest))
+        n = 0
+        while n < len(tokens) and plain(tokens[n].group()) in orphans:
+            n += 1
+        # Only a loose sub-brand word: "Emporio Armani Stronger With You" and "Armani Code" stay as they are.
+        if n and n < len(tokens) and plain(tokens[n].group()) not in brand_words(bkey):
+            tail = rest[tokens[n].start():].strip(" -–—:,|/·")
+            real = [w for w in plain(tail).split() if w not in NAME_FILLER | MALE_WORDS | FEMALE_WORDS | PRODUCT_WORDS]
+            if real:
+                rest = tail
     return rest if re.search(r"\w", rest) else name
 
 
@@ -346,7 +384,7 @@ def combine(rows, ids=None, brands=None):
     # The shortest common spelling of the name is usually the clean one ("Stronger With You Absolutely"
     # rather than "Emporio Armani Stronger With You Absolutely"), but not one in ALL CAPS when a shop writes
     # it normally, and without the gender words shops add ("… Mannen").
-    names = Counter(display_name(r["name"]) for r in rows)
+    names = Counter(display_name(r["name"], r.get("_bk", "")) for r in rows)
     top = names.most_common(1)[0][1]
     name = min((n for n, c in names.items() if c >= max(1, top // 2)), key=lambda n: (shouting(n), len(n)))
     conc = Counter(r.get("_conc", r["conc"]) for r in rows).most_common(1)[0][0]
@@ -415,6 +453,7 @@ def build(con):
         # for, so it becomes the gender instead of part of the name. Men's and women's versions still stay
         # apart through the gender. A name that is only that word ("Dior Homme") keeps it.
         d["_oldname"] = nk   # the key before this rule, so ids stay the same (see below)
+        d["_promoname"] = name_key(d["name"], bk, promo=False)   # and before PROMO_TAIL
         d["_rawg"] = d["gender"] if d["gender"] in ("m", "f") else ""
         nk, implied = gender_tail(nk)
         if implied and d["gender"] not in ("m", "f", "u"):
@@ -444,7 +483,7 @@ def build(con):
         d["_key"] = d["_base"] + "|" + g
         # Keys this row may have had before: the name with the gender word, and the gender as the shop
         # sent it (before it was filled in from the name or from the only men's/women's version).
-        d["_oldkeys"] = [f"{d['_bk']}|{n}|{d['_conc']}|{x}" for n in dict.fromkeys((d["_name"].split("|", 1)[1], d["_oldname"]))
+        d["_oldkeys"] = [f"{d['_bk']}|{n}|{d['_conc']}|{x}" for n in dict.fromkeys((d["_name"].split("|", 1)[1], d["_oldname"], d["_promoname"]))
                          for x in dict.fromkeys((g, d["_rawg"], ""))]
 
     groups = Groups(len(rows))

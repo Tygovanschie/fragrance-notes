@@ -78,6 +78,21 @@
     return [parts[0], ...parts.slice(1).filter(p => FN.detectConc(p) && !/[\p{L}]{3,}/u.test(FN.stripConc(p)) ? true : !DESC_RE.test(p))].join(' - ');
   }
 
+  // Gift sets, in the shop languages ("Geschenkset", "cadeauset", "coffret", "gift box", Turkish "seti").
+  const SET_RE = /\b(sets?|giftsets?|gift ?box|gift set|geschenk(set|box|packung)|cadeau(set|doos)|kerst(set|pakket)|coffrets?|kit|confezione regalo|estuche|zestaw|seti)\b/i;
+  // Shop abbreviations in set contents ("EMPORIO STRONGER WYO EDP SPRAY").
+  const ABBR = { wyo: 'With You', swy: 'Stronger With You' };
+  const expandAbbr = s => s.replace(/\b[A-Za-z]{3}\b/g, w => ABBR[w.toLowerCase()] || w);
+  // The perfume line of a set's contents: a size in ml and a concentration, not shower gel, lotion or a sample.
+  function setPerfume() {
+    const lines = (document.querySelector('main') || document.body).innerText.split('\n').map(l => l.replace(/^[\s•·*-]+/, '').trim());
+    return lines.find(l => l.length < 120
+      && /\d+(?:[.,]\d+)?\s?ml\b/i.test(l)
+      && /\b(edp|edt|edc|eau de (parfum|toilette|cologne)|parfum|extrait)\b/i.test(l)
+      && !/\b(shower|douche|dusch|gel|lotion|balm|baume|deo|deodorant|body|after ?shave|cream|cr[eè]me|smpl|sample|mini|miniature)\b/i.test(l))
+      ?.replace(/\(\s*\d+(?:[.,]\d+)?\s?ml\s*\)/i, ' ') || '';
+  }
+
   // Name without brand, sizes, packaging words and concentration (that is added back separately).
   function cleanName(name, brand) {
     let n = withoutBrand(trimDescription(name), brand);
@@ -115,6 +130,21 @@
     let conc = '';
     for (const s of concSources) { conc = FN.detectConc(withoutBrand(trimDescription(s || ''), brand)); if (conc) break; }
 
+    // Gift sets ("Stronger With You Geschenkset"): the set's own name often says little ("Armani Set"), so the
+    // perfume is taken from the list of what's in it ("EMPORIO STRONGER WYO EDP SPRAY (50.0 ml)"), skipping the
+    // shower gel and samples. Without such a line there is no automatic lookup. Set pages never share prices or
+    // facts (see isSet below): a set price isn't the price of the bottle.
+    const isSet = SET_RE.test(`${name} ${h1Text} ${document.title}`);
+    if (isSet) {
+      const item = setPerfume();
+      if (item) {
+        conc = FN.detectConc(item) || conc;
+        cleaned = cleanName(expandAbbr(item), brand).replace(new RegExp(`^(${escRe(brand)}\\s+)`, 'i'), '');
+      } else {
+        cleaned = '';
+      }
+    }
+
     // Also look at the size options and breadcrumbs ("Parfum › Herrendüfte") for the word "perfume".
     const offerNames = (p?.offers && [].concat(p.offers).map(o => o?.name || '').join(' ')) || '';
     // Only the outermost breadcrumb elements: on some shops the first match is a single "Home" item.
@@ -132,7 +162,7 @@
     const blob = `${brand} ${candidates.join(' ')} ${p?.category || ''} ${offerNames} ${crumbs} ${path} ${document.title}`;
     // Only real product pages count (not the homepage or category pages).
     const isProduct = !!p || !!document.querySelector('meta[property="og:type"][content*="product" i]');
-    const isFragrance = !!name && FRAG_RE.test(blob);
+    const isFragrance = !!name && !!cleaned && FRAG_RE.test(blob);
     // Keep "Pour Homme" / "Pour Femme" from the name: cleanName drops them, but they tell versions apart
     // (Gucci Guilty Pour Homme vs the women's Gucci Guilty). Only the explicit phrase, not descriptions.
     const gText = ` ${name} ${h1Text} `.toLowerCase();
@@ -142,6 +172,7 @@
       query: [brand, cleaned, gender, FN.CONC_PHRASE[conc] || ''].filter(Boolean).join(' ').trim(),
       brand, name: cleaned, product: p, crumbs,
       conc,
+      isSet,
       isProduct,
       isFragrance,
       show: isProduct && isFragrance
@@ -200,7 +231,7 @@
   // NOTE_GROUPS (spelling > the note's English name) is generated from NOTE_WORDS in server/catalog.py, without
   // fragrance families such as "zoet", "fris" or "hout" (adjectives in running text); regenerate it when that table
   // grows. It's also how the panel recognises a Fragrantica note as one the database confirmed (see ownChecks).
-  const NOTE_GROUPS = new Map('schwarze johannisbeere>blackcurrant|frutto della passione>passion fruit|feuilles de violette>violet leaf|feuille de violette>violet leaf|fruit de la passion>passion fruit|lirio de los valles>lily of the valley|chiodi di garofano>clove|foglia di violetta>violet leaf|fruta de la pasion>passion fruit|lelietje van dalen>lily of the valley|lily of the valley|muschio di quercia>oakmoss|baies de genievre>juniper|roze peperkorrels>pink pepper|schwarzer pfeffer>black pepper|viooltjesbladeren>violet leaf|pink peppercorns>pink pepper|roze peperkorrel>pink pepper|sciroppo d acero>maple syrup|clou de girofle>clove|fiore d arancio>orange blossom|fiori d arancio>orange blossom|fleur d oranger>orange blossom|hoja de violeta>violet leaf|juniper berries>juniper|mousse de chene>oakmoss|noix de muscade>nutmeg|pink peppercorn>pink pepper|veilchenblatter>violet leaf|bois de santal>sandalwood|grosella negra>blackcurrant|jarabe de arce>maple syrup|musgo de roble>oakmoss|orange blossom|passionsfrucht>passion fruit|pimienta negra>black pepper|sirop d erable>maple syrup|wacholderbeere>juniper|black currant>blackcurrant|bois de cedre>cedar|bois de gaiac>guaiac wood|feve de tonka>tonka bean|jeneverbessen>juniper|jeneverstruik>juniper|juniper berry>juniper|orangenbluete>orange blossom|oranjebloesem>orange blossom|passion fruit|pimienta rosa>pink pepper|sour cherries>sour cherry|veilchenblatt>violet leaf|violet leaves>violet leaf|vioolblaadjes>violet leaf|viooltjesblad>violet leaf|zwarte bessen>blackcurrant|black pepper|blackcurrant|karamelsnoep>toffee|maiglockchen>lily of the valley|noce moscata>nutmeg|noix de coco>coconut|nuez moscada>nutmeg|orangenblute>orange blossom|pamplemousse>grapefruit|passievrucht>passion fruit|peperkorrels>pepper|rosa pfeffer>pink pepper|sauerkirsche>sour cherry|zwarte peper>black pepper|ahornsiroop>maple syrup|baies roses>pink pepper|bois ambres>amberwood|gewurznelke>clove|guaiac hout>guaiac wood|guaiac wood|kruidnagels>clove|maple syrup|nootmuskaat>nutmeg|peperkorrel>pepper|peppercorns>pepper|pink pepper|poivre noir>black pepper|poivre rose>pink pepper|rosa pepper>pink pepper|sinaasappel>orange|sour cherry|tonka beans>tonka bean|tonka bohne>tonka bean|violet leaf|zure kersen>sour cherry|ahornsirup>maple syrup|amber wood>amberwood|bergamotte>bergamot|bergamotto>bergamot|bois ambre>amberwood|bois d oud>oud|cioccolato>chocolate|eichenmoos>oakmoss|fava tonka>tonka bean|feve tonka>tonka bean|grapefruit|guaiachout>guaiac wood|guajakholz>guaiac wood|haba tonka>tonka bean|jeneverbes>juniper|kruidnagel>clove|mintachtig>mint|muskatnuss>nutmeg|peppercorn>pepper|pompelmoes>grapefruit|ribes nero>blackcurrant|roze peper>pink pepper|rozemarijn>rosemary|sandalwood|sandelholz>sandalwood|sandelhout>sandalwood|schokolade>chocolate|tonka bean|tonkabohne>tonka bean|tonkabonen>tonka bean|zedernholz>cedar|zwarte bes>blackcurrant|adlerholz>oud|amberhout>amberwood|amberwood|basilicum>basil|basilikum>basil|bergamota>bergamot|caramello>caramel|cardamome>cardamom|cardamomo>cardamom|cedarwood>cedar|cederhout>cedar|chataigne>chestnut|chestnuts>chestnut|chocolade>chocolate|chocolate|framboise>raspberry|frambozen>raspberry|frambuesa>raspberry|gelsomino>jasmine|gingembre>ginger|kastanien>chestnut|kastanjes>chestnut|kokosnoot>coconut|kokosnuss>coconut|mandarijn>mandarin|mandarina>mandarin|mandarine>mandarin|mandarino>mandarin|melocoton>peach|patchoeli>patchouli|patchouli|patchouly>patchouli|pepe nero>black pepper|pepe rosa>pink pepper|pineapple|raspberry|rosmarino>rosemary|tonkaboon>tonka bean|tubereuse>tuberose|vioolblad>violet leaf|viooltjes>violet|wacholder>juniper|weihrauch>incense|wildleder>suede|zafferano>saffron|zure kers>sour cherry|agarwood>oud|albahaca>basil|almendra>almond|almizcle>musk|basilico>basil|baunilha>vanilla|benzoino>benzoin|bergamot|camoscio>suede|cannella>cinnamon|cannelle>cinnamon|caramelo>caramel|cardamom|castagna>chestnut|cherries>cherry|chestnut|chocolat>chocolate|ciliegia>cherry|cinnamon|eikenmos>oakmoss|framboos>raspberry|genievre>juniper|geranium|himbeere>raspberry|incienso>incense|jengibre>ginger|karamell>caramel|kardamom>cardamom|kardemom>cardamom|kastanie>chestnut|kastanje>chestnut|kirschen>cherry|lavendel>lavender|lavender|mandarin|mandorla>almond|maracuja>passion fruit|mughetto>lily of the valley|oak moss>oakmoss|pfirsich>peach|pimienta>pepper|pompelmo>grapefruit|rosemary|rosmarin>rosemary|saffraan>saffron|tuberoos>tuberose|tuberosa>tuberose|tuberose|vainilla>vanilla|vaniglia>vanilla|veilchen>violet|vetivert>vetiver|violetta>violet|violette>violet|viooltje>violet|amandel>almond|amarena>sour cherry|arancia>orange|azafran>saffron|basilic>basil|benjoin>benzoin|benzoin|caramel|castana>chestnut|citroen>lemon|coconut|geranie>geranium|geranio>geranium|ginepro>juniper|griotte>sour cherry|guaiaco>guaiac wood|guayaco>guaiac wood|incense|incenso>incense|jasmijn>jasmine|jasmine|jenever>juniper|juniper|karamel>caramel|kirsche>cherry|lampone>raspberry|lavanda>lavender|lavande>lavender|leather|manzana>apple|moschus>musk|muschio>musk|naranja>orange|oakmoss|oudhout>oud|pachuli>patchouli|pfeffer>pepper|pimenta>pepper|romarin>rosemary|saffron|sandalo>sandalwood|tabacco>tobacco|tobacco|vanilla|vanille>vanilla|vetiver|vetyver>vetiver|violeta>violet|wanilia>vanilla|wierook>incense|zenzero>ginger|zitrone>lemon|almond|amande>almond|ananas>pineapple|azahar>orange blossom|benjui>benzoin|benzoe>benzoin|canela>cinnamon|cassis>blackcurrant|cereza>cherry|cerise>cherry|cherry|citron>lemon|cloves>clove|coffee|encens>incense|enebro>juniper|gamuza>suede|gember>ginger|ginger|guinda>sour cherry|honing>honey|ingwer>ginger|jasmin>jasmine|jazmin>jasmine|kaffee>coffee|kaneel>cinnamon|kersen>cherry|koffie>coffee|limone>lemon|mandel>almond|marron>chestnut|meloen>melon|melone>melon|menthe>mint|muguet>lily of the valley|muskus>musk|myrrhe>myrrh|nutmeg|pepper|perzik>peach|poivre>pepper|pomelo>grapefruit|romero>rosemary|safran>saffron|salbei>sage|salvia>sage|santal>sandalwood|tabaco>tobacco|toffee|violet|ambar>amber|amber|ambra>amber|ambre>amber|apfel>apple|appel>apple|apple|basil|birne>pear|cacao>cocoa|caffe>coffee|cedar|ceder>cedar|cedre>cedar|cedro>cedar|clavo>clove|clove|cocco>coconut|cocoa|cuero>leather|cuoio>leather|gaiac>guaiac wood|honey|honig>honey|kakao>cocoa|kokos>coconut|leder>leather|lemon|limon>lemon|melon|menta>mint|miele>honey|minty>mint|minze>mint|mirra>myrrh|mirre>myrrh|myrrh|nelke>clove|peach|peche>peach|peper>pepper|pesca>peach|poire>pear|pomme>apple|rosen>rose|roses>rose|rozen>rose|salie>sage|sauge>sage|suede|tabac>tobacco|tabak>tobacco|tonka>tonka bean|zeder>cedar|cafe>coffee|cuir>leather|daim>suede|kers>cherry|miel>honey|mint|munt>mint|musc>musk|musk|oudh>oud|pear|peer>pear|pepe>pepper|pina>pineapple|roos>rose|rose|sage|thee>tea|zimt>cinnamon|oud|tea|tee>tea'.split('|').map(x => { const [v, c] = x.split('>'); return [v, c || v]; }));
+  const NOTE_GROUPS = new Map('geglazuurde kastanjes>glazed chestnut|geglazuurde kastanje>glazed chestnut|kandierte kastanie>glazed chestnut|castagna candita>glazed chestnut|glazed chestnuts>glazed chestnut|vainilla bourbon>bourbon vanilla|bourbon vanille>bourbon vanilla|vanille bourbon>bourbon vanilla|vanilla bourbon>bourbon vanilla|marrons glaces>glazed chestnut|bourbonvanille>bourbon vanilla|glazed chestnut|bourbon vanilla|marron glace>glazed chestnut|frangipanier>frangipani|frangipani|plumeria>frangipani|schwarze johannisbeere>blackcurrant|frutto della passione>passion fruit|feuilles de violette>violet leaf|feuille de violette>violet leaf|fruit de la passion>passion fruit|lirio de los valles>lily of the valley|chiodi di garofano>clove|foglia di violetta>violet leaf|fruta de la pasion>passion fruit|lelietje van dalen>lily of the valley|lily of the valley|muschio di quercia>oakmoss|baies de genievre>juniper|roze peperkorrels>pink pepper|schwarzer pfeffer>black pepper|viooltjesbladeren>violet leaf|pink peppercorns>pink pepper|roze peperkorrel>pink pepper|sciroppo d acero>maple syrup|clou de girofle>clove|fiore d arancio>orange blossom|fiori d arancio>orange blossom|fleur d oranger>orange blossom|hoja de violeta>violet leaf|juniper berries>juniper|mousse de chene>oakmoss|noix de muscade>nutmeg|pink peppercorn>pink pepper|veilchenblatter>violet leaf|bois de santal>sandalwood|grosella negra>blackcurrant|jarabe de arce>maple syrup|musgo de roble>oakmoss|orange blossom|passionsfrucht>passion fruit|pimienta negra>black pepper|sirop d erable>maple syrup|wacholderbeere>juniper|black currant>blackcurrant|bois de cedre>cedar|bois de gaiac>guaiac wood|feve de tonka>tonka bean|jeneverbessen>juniper|jeneverstruik>juniper|juniper berry>juniper|orangenbluete>orange blossom|oranjebloesem>orange blossom|passion fruit|pimienta rosa>pink pepper|sour cherries>sour cherry|veilchenblatt>violet leaf|violet leaves>violet leaf|vioolblaadjes>violet leaf|viooltjesblad>violet leaf|zwarte bessen>blackcurrant|black pepper|blackcurrant|karamelsnoep>toffee|maiglockchen>lily of the valley|noce moscata>nutmeg|noix de coco>coconut|nuez moscada>nutmeg|orangenblute>orange blossom|pamplemousse>grapefruit|passievrucht>passion fruit|peperkorrels>pepper|rosa pfeffer>pink pepper|sauerkirsche>sour cherry|zwarte peper>black pepper|ahornsiroop>maple syrup|baies roses>pink pepper|bois ambres>amberwood|gewurznelke>clove|guaiac hout>guaiac wood|guaiac wood|kruidnagels>clove|maple syrup|nootmuskaat>nutmeg|peperkorrel>pepper|peppercorns>pepper|pink pepper|poivre noir>black pepper|poivre rose>pink pepper|rosa pepper>pink pepper|sinaasappel>orange|sour cherry|tonka beans>tonka bean|tonka bohne>tonka bean|violet leaf|zure kersen>sour cherry|ahornsirup>maple syrup|amber wood>amberwood|bergamotte>bergamot|bergamotto>bergamot|bois ambre>amberwood|bois d oud>oud|cioccolato>chocolate|eichenmoos>oakmoss|fava tonka>tonka bean|feve tonka>tonka bean|grapefruit|guaiachout>guaiac wood|guajakholz>guaiac wood|haba tonka>tonka bean|jeneverbes>juniper|kruidnagel>clove|mintachtig>mint|muskatnuss>nutmeg|peppercorn>pepper|pompelmoes>grapefruit|ribes nero>blackcurrant|roze peper>pink pepper|rozemarijn>rosemary|sandalwood|sandelholz>sandalwood|sandelhout>sandalwood|schokolade>chocolate|tonka bean|tonkabohne>tonka bean|tonkabonen>tonka bean|zedernholz>cedar|zwarte bes>blackcurrant|adlerholz>oud|amberhout>amberwood|amberwood|basilicum>basil|basilikum>basil|bergamota>bergamot|caramello>caramel|cardamome>cardamom|cardamomo>cardamom|cedarwood>cedar|cederhout>cedar|chataigne>chestnut|chestnuts>chestnut|chocolade>chocolate|chocolate|framboise>raspberry|frambozen>raspberry|frambuesa>raspberry|gelsomino>jasmine|gingembre>ginger|kastanien>chestnut|kastanjes>chestnut|kokosnoot>coconut|kokosnuss>coconut|mandarijn>mandarin|mandarina>mandarin|mandarine>mandarin|mandarino>mandarin|melocoton>peach|patchoeli>patchouli|patchouli|patchouly>patchouli|pepe nero>black pepper|pepe rosa>pink pepper|pineapple|raspberry|rosmarino>rosemary|tonkaboon>tonka bean|tubereuse>tuberose|vioolblad>violet leaf|viooltjes>violet|wacholder>juniper|weihrauch>incense|wildleder>suede|zafferano>saffron|zure kers>sour cherry|agarwood>oud|albahaca>basil|almendra>almond|almizcle>musk|basilico>basil|baunilha>vanilla|benzoino>benzoin|bergamot|camoscio>suede|cannella>cinnamon|cannelle>cinnamon|caramelo>caramel|cardamom|castagna>chestnut|cherries>cherry|chestnut|chocolat>chocolate|ciliegia>cherry|cinnamon|eikenmos>oakmoss|framboos>raspberry|genievre>juniper|geranium|himbeere>raspberry|incienso>incense|jengibre>ginger|karamell>caramel|kardamom>cardamom|kardemom>cardamom|kastanie>chestnut|kastanje>chestnut|kirschen>cherry|lavendel>lavender|lavender|mandarin|mandorla>almond|maracuja>passion fruit|mughetto>lily of the valley|oak moss>oakmoss|pfirsich>peach|pimienta>pepper|pompelmo>grapefruit|rosemary|rosmarin>rosemary|saffraan>saffron|tuberoos>tuberose|tuberosa>tuberose|tuberose|vainilla>vanilla|vaniglia>vanilla|veilchen>violet|vetivert>vetiver|violetta>violet|violette>violet|viooltje>violet|amandel>almond|amarena>sour cherry|arancia>orange|azafran>saffron|basilic>basil|benjoin>benzoin|benzoin|caramel|castana>chestnut|citroen>lemon|coconut|geranie>geranium|geranio>geranium|ginepro>juniper|griotte>sour cherry|guaiaco>guaiac wood|guayaco>guaiac wood|incense|incenso>incense|jasmijn>jasmine|jasmine|jenever>juniper|juniper|karamel>caramel|kirsche>cherry|lampone>raspberry|lavanda>lavender|lavande>lavender|leather|manzana>apple|moschus>musk|muschio>musk|naranja>orange|oakmoss|oudhout>oud|pachuli>patchouli|pfeffer>pepper|pimenta>pepper|romarin>rosemary|saffron|sandalo>sandalwood|tabacco>tobacco|tobacco|vanilla|vanille>vanilla|vetiver|vetyver>vetiver|violeta>violet|wanilia>vanilla|wierook>incense|zenzero>ginger|zitrone>lemon|almond|amande>almond|ananas>pineapple|azahar>orange blossom|benjui>benzoin|benzoe>benzoin|canela>cinnamon|cassis>blackcurrant|cereza>cherry|cerise>cherry|cherry|citron>lemon|cloves>clove|coffee|encens>incense|enebro>juniper|gamuza>suede|gember>ginger|ginger|guinda>sour cherry|honing>honey|ingwer>ginger|jasmin>jasmine|jazmin>jasmine|kaffee>coffee|kaneel>cinnamon|kersen>cherry|koffie>coffee|limone>lemon|mandel>almond|marron>chestnut|meloen>melon|melone>melon|menthe>mint|muguet>lily of the valley|muskus>musk|myrrhe>myrrh|nutmeg|pepper|perzik>peach|poivre>pepper|pomelo>grapefruit|romero>rosemary|safran>saffron|salbei>sage|salvia>sage|santal>sandalwood|tabaco>tobacco|toffee|violet|ambar>amber|amber|ambra>amber|ambre>amber|apfel>apple|appel>apple|apple|basil|birne>pear|cacao>cocoa|caffe>coffee|cedar|ceder>cedar|cedre>cedar|cedro>cedar|clavo>clove|clove|cocco>coconut|cocoa|cuero>leather|cuoio>leather|gaiac>guaiac wood|honey|honig>honey|kakao>cocoa|kokos>coconut|leder>leather|lemon|limon>lemon|melon|menta>mint|miele>honey|minty>mint|minze>mint|mirra>myrrh|mirre>myrrh|myrrh|nelke>clove|peach|peche>peach|peper>pepper|pesca>peach|poire>pear|pomme>apple|rosen>rose|roses>rose|rozen>rose|salie>sage|sauge>sage|suede|tabac>tobacco|tabak>tobacco|tonka>tonka bean|zeder>cedar|cafe>coffee|cuir>leather|daim>suede|kers>cherry|miel>honey|mint|munt>mint|musc>musk|musk|oudh>oud|pear|peer>pear|pepe>pepper|pina>pineapple|roos>rose|rose|sage|thee>tea|zimt>cinnamon|oud|tea|tee>tea'.split('|').map(x => { const [v, c] = x.split('>'); return [v, c || v]; }));
   const KNOWN_NOTES = [...NOTE_GROUPS.keys()];   // longest first
   const plainText = s => String(s || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
   const TIER_CUES = [
@@ -663,7 +694,7 @@
       renderError(res, query);
       // Fragrantica has nothing (or can't be reached): the database's confirmed notes, if it has them.
       if (current.isProduct && query === current.query) {
-        askOwn(current.isProduct ? readPrices() : []).then(p => {
+        askOwn(current.isProduct && !current.isSet ? readPrices() : []).then(p => {
           const notes = ownPyramid(p);
           if (!notes || loadedFor !== query || lastRender) return;
           const d = { title: `${p.brand} ${p.name}`.trim(), url: '', notes, accords: [] };
@@ -858,7 +889,7 @@
     if (lastRender?.data !== d) showSearch(false);
     lastRender = { data: d, cached, query };
     pendingWork = null;
-    const prices = current.isProduct ? readPrices() : [];
+    const prices = current.isProduct && !current.isSet ? readPrices() : [];   // a set price is not the bottle price
     const elsewhere = S.sections.elsewhere ? await seenPrices(d, prices) : [];
     if (lastRender?.data !== d) return;    // a newer render started meanwhile
     const builtIn = !!FN.builtInShop(location.hostname);
@@ -935,7 +966,7 @@
     }
 
     // "Help build the open perfume database" (off by default): the facts this shop shows about the perfume.
-    if (S.shareFacts && current.isProduct && FN.builtInShop(location.hostname) && !factsSent.has(location.pathname)) {
+    if (S.shareFacts && current.isProduct && !current.isSet && FN.builtInShop(location.hostname) && !factsSent.has(location.pathname)) {
       factsSent.add(location.pathname);
       try { chrome.runtime.sendMessage({ type: 'facts', perfumeId: perfumeId(d.url) || '', facts: readFacts(current, prices) }).catch(() => {}); } catch {}
     }
@@ -958,7 +989,7 @@
     clearTimeout(priceTimer);
     priceTimer = setTimeout(() => {
       const w = priceWatch;
-      if (!w || lastRender?.data !== w.d || !current.isProduct || !S.sections.perMl) return;
+      if (!w || lastRender?.data !== w.d || !current.isProduct || current.isSet || !S.sections.perMl) return;
       const byMl = new Map(w.opts.prices.map(p => [p.ml, p]));
       const added = readPrices().filter(p => byMl.get(p.ml)?.price !== p.price);
       if (!added.length) return;

@@ -1,6 +1,6 @@
 # Fragrance Notes – Privacy policy
 
-Last updated: 24 November 2026 (version 1.3)
+Last updated: 25 November 2026 (version 1.4)
 
 Fragrance Notes is a browser extension that shows information from Fragrantica about the perfume you are looking at in a web shop. This policy explains what the extension reads, where it sends it and what it stores.
 
@@ -40,6 +40,8 @@ While **Help other perfume lovers** is on, on a perfume product page of a *built
 - **What is sent** to the Fragrance Notes server: the facts the shop shows about that perfume. That is the brand, the name, the concentration (for example Eau de Parfum), the sizes, the barcode (EAN) if the shop includes it, the top, heart and base notes and fragrance family if the shop lists them, whether it is sold for men, women or both, the page's language, and the shop's domain. If the panel found the perfume on Fragrantica, its Fragrantica number goes with it to link the facts to the right perfume. With it goes the same random install ID as for price sharing.
 - **What is not sent:** page addresses, prices, your search terms, your name, e-mail, account or any other personal details. Pages of shops you added yourself are never used.
 - **On the server:** the install ID is only stored as a salted hash, used to limit how much one install can send and to keep one report per install, shop and perfume a day. After 90 days the hash is replaced by a random value, so older facts can't be linked to each other or to an install. IP addresses are not stored or logged by the server. The facts themselves are kept: they are combined with facts from other users and other open sources into an open perfume database, published under the Open Database License (ODbL), so anyone may use it. They contain nothing about you.
+- **Shops you added yourself:** the domain names of shops you added yourself in Settings (for example armani.com, never a page address) are sent once, with the install ID, so shops that many people add can be reviewed and added to the built-in list. Their prices and product facts are still never shared. On the server each domain is stored with the install hash, which is replaced by a random value after 90 days.
+- **What you see back:** the toolbar menu shows how many notes your shared facts helped confirm. To count them, it sends the install ID to the server, which only reads the facts you shared in the last 90 days and stores nothing about this request.
 - **Connection:** the same as for price sharing (through Cloudflare, see above).
 - **Turning the setting off** stops this too (see above).
 
@@ -49,6 +51,7 @@ In your own browser:
 
 - your settings and the shops you added (synced by your browser if you use browser sync);
 - your favourites: for each perfume its name, Fragrantica address and picture address (synced by your browser if you use browser sync);
+- your price alerts: for each favourite with an alert, the size and the price you set (synced by your browser if you use browser sync). While sharing is on, the extension checks them every six hours with the same anonymous price request as above (only the perfume number and currency), and shows a notification if you allowed notifications;
 - a count of how many perfumes you have looked up, used only to ask once for a store review and once whether you want to share;
 - whether you already answered those questions;
 - looked-up perfume results, kept for 14 days;

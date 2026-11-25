@@ -250,7 +250,7 @@
       const entry = { id, url: d.url, name: String(d.title || '').slice(0, 120), img: `https://fimgs.net/mdimg/perfume-thumbs/375x500.${id}.jpg`, t: Date.now() };
       try { await chrome.storage.sync.set({ ['fav:' + id]: entry }); return true; } catch { return false; }
     },
-    async remove(id) { try { await chrome.storage.sync.remove('fav:' + id); } catch {} }
+    async remove(id) { try { await chrome.storage.sync.remove(['fav:' + id, 'alert:' + id]); } catch {} }
   };
 
   globalThis.FN = { API_BASE, OWN_MIN_CONFIRMED, IS_FIREFOX, REVIEW_URL, favs, builtInShop, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };

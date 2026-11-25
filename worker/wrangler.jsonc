@@ -1,4 +1,5 @@
-// Deploy: worker/deploy.sh on the server (Wrangler in a throwaway container; the token stays in ~/site-deploy.env).
+// Deploy: worker/deploy.sh on the server (Wrangler in a throwaway container). It fills in ALERT_EMAIL and
+// STATE_KV_ID from ~/site-deploy.env, so the alert address isn't in this public repo.
 {
   "name": "fragrancenotes",
   "main": "worker.js",
@@ -7,9 +8,15 @@
     "directory": "../site",
     "binding": "ASSETS",
     // Only these paths run the Worker code (the database pages from the API); everything else is a site file.
-    "run_worker_first": ["/database", "/database/*", "/perfume/*", "/note/*", "/photo/*", "/assets/*", "/sitemap.xml"]
+    "run_worker_first": ["/database", "/database/*", "/perfume/*", "/note/*", "/notes", "/brand/*", "/nl", "/nl/*", "/photo/*", "/assets/*", "/sitemap.xml"]
   },
   "routes": [{ "pattern": "fragrancenotes.app", "custom_domain": true }],
   "workers_dev": true,
+  // Health check of the API every 5 minutes (scheduled() in worker.js).
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "kv_namespaces": [{ "binding": "STATE", "id": "__STATE_KV_ID__" }],
+  // Through Cloudflare Email Routing; the address must be a verified destination there.
+  "send_email": [{ "name": "ALERT", "destination_address": "__ALERT_EMAIL__" }],
+  "vars": { "ALERT_TO": "__ALERT_EMAIL__" },
   "observability": { "enabled": false }
 }

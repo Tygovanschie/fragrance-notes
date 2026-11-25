@@ -38,6 +38,22 @@
     await chrome.storage.sync.set({ settings: S });
   });
 
+  // ---------- what sharing did ----------
+  // Only while sharing is on; the numbers come from the server for this install (background.js myContribution).
+  if (S.sharePrices || S.shareFacts) {
+    chrome.runtime.sendMessage({ type: 'mine' }).then(m => {
+      if (!m || !m.shared) return;
+      const text = m.notesConfirmed ? st('p_mineT', { n: m.notesConfirmed, p: m.perfumes }) : st('p_mineNone', { n: m.shared });
+      const p = $('mineText');
+      p.textContent = '';
+      const b = document.createElement('b');
+      b.textContent = m.notesConfirmed ? '✓ ' : '♥ ';
+      p.append(b, text + ' ' + st('p_mineLink'));
+      $('mine').href = S.lang === 'nl' ? 'https://fragrancenotes.app/nl/database' : 'https://fragrancenotes.app/database';
+      $('mine').hidden = false;
+    }).catch(() => {});
+  }
+
   // ---------- review request ----------
   // Once, after 10 perfumes looked up (counted in content.js). Clicking either button hides it for good.
   chrome.storage.local.get(['fn:lookups', 'fn:reviewAsked', 'fn:shareReminded', 'fn:shareDeclined']).then(({

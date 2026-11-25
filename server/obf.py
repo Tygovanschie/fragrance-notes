@@ -48,7 +48,20 @@ CONC_WORDS = [("extrait", re.compile(r"\bextrait\b", re.I)),
               ("edc", re.compile(r"\beau de cologne\b|\bedc\b", re.I)),
               ("parfum", re.compile(r"\b(le )?parfum\s*$", re.I))]
 STRIP = re.compile(r"\b(extrait de parfum|eau de parfum|eau de toilette|eau de cologne|edp|edt|edc|spray|vaporisateur|"
-                   r"natural spray)\b|\b\d+(?:[.,]\d+)?\s?(?:ml|fl\.?\s?oz|oz)\b", re.I)
+                   r"natural spray|(?:kad[ıi]n|erkek|unisex) parf[üu]m(?:[üu])?)\b|\b\d+(?:[.,]\d+)?\s?(?:ml|fl\.?\s?oz|oz)\b", re.I)
+# Products that come in through a perfume category but are something else: body mists and sprays, deodorants,
+# soap, bath products, aftershave, room sprays, essential oils (checked against the 2026-11-24 review list
+# of llm_review.py; "Burberry Body" and other perfumes named "… Body" stay).
+NOT_PERFUME = re.compile(
+    r"\b(?:body ?mist|bodymist|body spray|body splash|hair (?:&|and) body|hair perfume|hair mist|brume|brumisateur|"
+    r"mgie[lł]ka|v[üu]cut|sa[çc] spreyi|(?:perfumed|refreshing|fragrance|deodorant) body|perfumed body|"
+    r"d[ée]odorant|desodorante|deodorant|antitranspirant\w*|antiperspirant|aftershave|after shave|"
+    r"savon|soap|bath|room spray|bougie|encens|candle|[äa]therisches [öo]l|essential oil|suncare|"
+    r"kolonyas[ıi]|limon kolonya|eau de senteur pour b[ée]b[ée])\b", re.I)
+
+
+def not_perfume(brand, name):
+    return bool(NOT_PERFUME.search(f"{brand} {name}"))
 BOTTLES = [5, 7.5, 10, 15, 20, 30, 40, 50, 60, 75, 80, 90, 100, 110, 120, 125, 150, 175, 200, 250]
 GTIN = re.compile(r"^\d{8}$|^\d{12,14}$")
 
@@ -89,7 +102,7 @@ def product(p):
     import catalog   # here, not at the top: catalog imports this module
     # "brands" often lists the parent company first ("L'Oréal, Giorgio Armani"); prefer the house.
     brand = catalog.pick_brand(str(p.get("brands") or "").split(","), raw_name)
-    if not raw_name or not brand:
+    if not raw_name or not brand or not_perfume(brand, raw_name):
         return None
     joined = " ".join(tags)
     conc = next((c for c, rx in CONC_TAGS if rx.search(joined)), None) or \
@@ -179,6 +192,8 @@ def as_facts(con):
     out = []
     for code, brand, name, conc, gender, ml, lang, modified in con.execute(
             "SELECT code, brand, name, conc, gender, ml, lang, modified FROM obf_products"):
+        if not_perfume(brand, name):   # imported before NOT_PERFUME existed; gone after the next import
+            continue
         out.append({
             "install": "obf", "shop": SOURCE, "perfume_id": None, "brand": brand, "name": name, "conc": conc,
             "gender": gender, "lang": lang, "sizes": [ml] if ml else [], "gtins": [code],

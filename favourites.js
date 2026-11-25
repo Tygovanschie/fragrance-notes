@@ -118,7 +118,7 @@
     if (!body.querySelector('table, .detail')) body.innerHTML = `<p class="loading">${esc(st('fav_loading'))}</p>`;
     const [data, prices] = await Promise.all([Promise.all(favs.map(load)), seenPrices(shown)]);
     if ($('itemView').hidden || favs.map(f => f.id).join() !== shown.join()) return;   // changed meanwhile
-    if (favs.length === 1) showDetail(body, data[0], prices[favs[0].id]);
+    if (favs.length === 1) { showDetail(body, data[0], prices[favs[0].id]); alertTools(body, favs[0]); }
     else showCompare(body, favs, data, prices);
     body.querySelector('select.add')?.addEventListener('change', e => { if (e.target.value) showItems([...shown, e.target.value]); });
   }
@@ -128,6 +128,52 @@
     const money = v => { try { return new Intl.NumberFormat(S.lang, { style: 'currency', currency: cur }).format(v); } catch { return `${v.toFixed(2)} ${cur}`; } };
     return { bottle: money(p.per * p.ml), perMl: money(p.per), ml: Math.round(p.ml) };
   };
+
+  // Price alert for one favourite (checked every six hours in background.js). It uses the prices other users
+  // share, so it needs "Help other perfume lovers"; notifications need an optional permission, asked on "Set".
+  async function alertTools(body, fav) {
+    const tools = body.querySelector('.detail-tools');
+    if (!tools || !fav) return;
+    const box = document.createElement('div');
+    box.className = 'alert';
+    tools.append(box);
+    const key = 'alert:' + fav.id;
+    const money = (v, cur) => { try { return new Intl.NumberFormat(S.lang, { style: 'currency', currency: cur }).format(v); } catch { return `${v.toFixed(2)} ${cur}`; } };
+    if (!S.sharePrices) { box.innerHTML = `<span class="muted">🔔 ${esc(st('al_needShare'))}</span>`; return; }
+    const data = await chrome.runtime.sendMessage({ type: 'community', perfumeId: fav.id }).catch(() => null);
+    const sizes = (data?.sizes || []).filter(s => Object.keys(s.lows || {}).length).sort((a, b) => a.ml - b.ml);
+    const cur = data?.currency || 'EUR';
+    const saved = (await chrome.storage.sync.get(key).catch(() => ({})))[key];
+    const showSaved = a => {
+      box.innerHTML = `<span>🔔 ${esc(st('al_saved', { ml: Math.round(a.ml), price: money(a.price, a.cur || cur) }))}</span>
+        <button class="btn quiet" type="button">${esc(st('al_remove'))}</button>`;
+      box.querySelector('button').addEventListener('click', async () => { await chrome.storage.sync.remove(key).catch(() => {}); showForm(); });
+    };
+    const showForm = () => {
+      if (!sizes.length) { box.innerHTML = `<span class="muted">🔔 ${esc(st('al_noSizes'))}</span>`; return; }
+      const near = sizes.reduce((a, b) => (Math.abs(b.ml - 100) < Math.abs(a.ml - 100) ? b : a));
+      const low = s => Math.min(...Object.values(s.lows));
+      box.innerHTML = `<form class="alert-form"><b>🔔 ${esc(st('al_title'))}</b>
+        <select aria-label="${esc(st('al_size'))}">${sizes.map(s => `<option value="${s.ml}"${s === near ? ' selected' : ''}>${s.ml} ml · ${esc(money(low(s), cur))}</option>`).join('')}</select>
+        <label>${esc(st('al_below'))} <input type="number" min="1" step="0.01" required value="${Math.floor(low(near) * 0.9)}"></label>
+        <button class="btn primary">${esc(st('al_save'))}</button></form>`;
+      const form = box.querySelector('form');
+      form.querySelector('select').addEventListener('change', e => {
+        const s = sizes.find(x => String(x.ml) === e.target.value);
+        if (s) form.querySelector('input').value = Math.floor(low(s) * 0.9);
+      });
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const ok = await chrome.permissions.request({ permissions: ['notifications'] }).catch(() => false);
+        if (!ok) return;
+        const a = { ml: Number(form.querySelector('select').value), price: Number(form.querySelector('input').value), cur, t: Date.now() };
+        if (!(a.ml > 0 && a.price > 0)) return;
+        await chrome.storage.sync.set({ [key]: a }).catch(() => {});
+        showSaved(a);
+      });
+    };
+    if (saved) showSaved(saved); else showForm();
+  }
 
   // One perfume: the same view as the panel on a shop page, with a picker to compare it with another.
   function showDetail(body, d, price) {
@@ -320,5 +366,8 @@
     });
   }
 
-  showList();
+  // Opened from a price-alert notification (favourites.html#<id>): straight to that perfume.
+  await showList();
+  const fromAlert = location.hash.slice(1);
+  if (/^\d+$/.test(fromAlert)) showItems([fromAlert]);
 })();

@@ -6,6 +6,8 @@ Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenote
   GET  /prices/{perfumeId}  ?currency=EUR (optional; defaults to the most-reported one)
   POST /facts               product facts a shop shows (opt-in "Help build the open perfume database")
   GET  /facts/stats         how the collection is growing
+  GET  /facts/mine          header X-Install-Id: what this install's shared facts helped confirm (popup)
+  POST /shops/suggest       {domains: [...]} shops this install added itself (opt-in, domain only), for review
   GET  /catalog/stats       the combined open perfume database (see catalog.py; includes Open Beauty Facts, obf.py)
   GET  /catalog/search?q=   find perfumes in it
   GET  /catalog/perfume/{id}
@@ -138,6 +140,10 @@ def init_db():
             sizes TEXT NOT NULL, gtins TEXT NOT NULL, notes TEXT NOT NULL, families TEXT NOT NULL,
             PRIMARY KEY (install, shop, brand, name, conc, gender, day))""")
         con.execute("CREATE INDEX IF NOT EXISTS facts_day ON facts (day)")
+        # Shops people added themselves (opt-in, domain only), to find shops worth adding to the built-in list.
+        # One row per domain and install; like facts, the install hash is replaced after RETENTION_DAYS.
+        con.execute("""CREATE TABLE IF NOT EXISTS shop_suggestions (
+            domain TEXT NOT NULL, install TEXT NOT NULL, day TEXT NOT NULL, PRIMARY KEY (domain, install))""")
         catalog.init(con)
         pages.init(con)
         if new:   # one-time migration: start the history with the prices we have
@@ -153,6 +159,8 @@ def purge_old():
         # Facts stay (they're about perfumes, not people), but after RETENTION_DAYS the install hash is
         # replaced by a random value per row, so old rows can't be linked to each other or to an install.
         con.execute("""UPDATE facts SET install = 'old-' || lower(hex(randomblob(12)))
+            WHERE day < ? AND install NOT LIKE 'old-%'""", (day_of(cutoff),))
+        con.execute("""UPDATE shop_suggestions SET install = 'old-' || lower(hex(randomblob(12)))
             WHERE day < ? AND install NOT LIKE 'old-%'""", (day_of(cutoff),))
 
 
@@ -331,6 +339,58 @@ def add_facts(install, f):
 _facts_stats = {"t": 0, "data": None}
 
 
+def add_suggestions(key, body):
+    """POST /shops/suggest {"domains": ["armani.com", …]}: shops this install added itself (opt-in). Only domain
+    names; built-in shops are ignored. Returns how many were new for this install."""
+    domains = body.get("domains") if isinstance(body, dict) else None
+    if not isinstance(domains, list) or not 1 <= len(domains) <= 20:
+        raise Invalid("domains must be a list of 1-20 host names")
+    clean = set()
+    for d in domains:
+        if not isinstance(d, str):
+            raise Invalid("domains must be host names")
+        s = d.strip().lower().removeprefix("www.")
+        if len(s) > 100 or not HOST_RE.match(s):
+            raise Invalid("domains must be host names like example.com")
+        if not any(p in SHOPS for p in (s, *[s.split(".", i)[-1] for i in range(1, s.count("."))])):
+            clean.add(s)
+    day = day_of(now_ms())
+    with db() as con:
+        before = con.total_changes
+        con.executemany("INSERT OR IGNORE INTO shop_suggestions (domain, install, day) VALUES (?,?,?)",
+                        [(d, key, day) for d in sorted(clean)])
+        return con.total_changes - before
+
+
+def shop_suggestions(min_installs=1):
+    """Domains people added themselves, most installs first (for the nightly review list)."""
+    with db() as con:
+        return [tuple(r) for r in con.execute("SELECT domain, COUNT(*) FROM shop_suggestions GROUP BY domain HAVING COUNT(*) >= ? "
+                                              "ORDER BY COUNT(*) DESC, domain", (min_installs,))]
+
+
+def contribution(key):
+    """What one install's shared facts (last RETENTION_DAYS; older rows no longer carry the install) did for the
+    database: GET /facts/mine, for the popup's "You helped confirm …". Only reads; the perfumes are found the
+    same way as /catalog/lookup, and a note counts when this install named it and it is confirmed now."""
+    with db() as con:
+        rows = con.execute("SELECT brand, name, conc, gender, gtins, notes FROM facts WHERE install=?", (key,)).fetchall()
+        perfumes, notes = {}, set()
+        for r in rows:
+            p = catalog.lookup(con, json.loads(r["gtins"] or "[]")[:8], r["brand"], r["name"], r["conc"], r["gender"])
+            if not p:
+                continue
+            perfumes[p["id"]] = p
+            mine = {catalog.note_key(n) for tier in json.loads(r["notes"] or "{}").values() for n in tier}
+            for tier in p["notes"].values():
+                for n in tier:
+                    if n["confirmed"] and n["key"] in mine:
+                        notes.add((p["id"], n["key"]))
+    return {"shared": len(rows), "perfumes": len(perfumes), "notesConfirmed": len(notes),
+            "withPage": sum(p["confirmedNotes"] >= pages.PAGE_MIN_CONFIRMED for p in perfumes.values()),
+            "days": RETENTION_DAYS}
+
+
 def facts_stats():
     if time.monotonic() - _facts_stats["t"] < 60 and _facts_stats["data"]:
         return _facts_stats["data"]
@@ -355,8 +415,20 @@ def facts_stats():
 
 
 def page_prices(fragrantica_id):
-    """Price stats for a perfume page (pages.py), in the most-reported currency."""
-    return stats(int(fragrantica_id))
+    """Price stats for a perfume page (pages.py), in the most-reported currency, plus "history": per size the
+    lowest price of each day in the window (all shops together), for the price chart."""
+    pid = int(fragrantica_id)
+    out = stats(pid)
+    cur = out.get("currency")
+    history = defaultdict(list)
+    if cur:
+        with db() as con:
+            for ml, day, low in con.execute(
+                    "SELECT ml, day, MIN(price) FROM daily_lows WHERE perfume_id=? AND currency=? AND day>=? "
+                    "GROUP BY ml, day ORDER BY ml, day", (pid, cur, day_of(now_ms() - WINDOW_DAYS * 86400_000))):
+                history[ml].append((day, round(low, 2)))
+    out["history"] = dict(history)
+    return out
 
 
 def stats(pid, currency=None):
@@ -528,11 +600,22 @@ class Handler(BaseHTTPRequestHandler):
         u = urlsplit(self.path)
         if u.path == "/health":
             return self.reply(200, {"ok": True})
+        if u.path == "/facts/mine":
+            # The install id is sent only by installs that share (it's made when sharing is turned on). Read-only:
+            # nothing is stored or logged (log_request writes the path only).
+            install = (self.headers.get("X-Install-Id") or "").lower()
+            if not UUID_RE.match(install):
+                return self.reply(400, {"error": "X-Install-Id must be a random UUID"})
+            key = hashlib.sha256(SALT + install.encode()).hexdigest()[:32]
+            wait = LIMITER.allow("m:" + key, [(600, 30)])
+            if wait:
+                return self.reply(429, {"error": "too many requests"}, [("Retry-After", str(wait))])
+            return self.reply(200, contribution(key), [("Cache-Control", "private, max-age=300")])
         if u.path == "/facts/stats":
             return self.reply(200, facts_stats(), [("Cache-Control", "public, max-age=60")])
         if u.path.startswith("/catalog/"):
             return self.catalog_get(u)
-        if u.path.split("/")[1] in ("database", "perfume", "note", "photo", "assets", "sitemap.xml"):
+        if u.path.split("/")[1] in ("database", "perfume", "note", "notes", "brand", "nl", "photo", "assets", "sitemap.xml"):
             return self.page_get(u)
         m = re.fullmatch(r"/prices/([0-9]+)", u.path)
         if not m or not ID_RE.match(m.group(1)):
@@ -575,21 +658,11 @@ class Handler(BaseHTTPRequestHandler):
         with db() as con:
             if path == "/sitemap.xml":
                 return self.send(200, pages.sitemap(con), "application/xml; charset=utf-8", "public, max-age=3600")
-            if path in ("/database", "/database/"):
-                return self.send(200, pages.database_page(con, page_prices), html_t)
-            if path == "/database/search":
-                q = (parse_qs(u.query).get("q") or [""])[0]
-                return self.send(200, pages.search_page(con, q), html_t, "public, max-age=300")
-            m = re.fullmatch(r"/perfume/([0-9a-f]{12})(?:-[a-z0-9-]*)?", path)
-            if m and (r := pages.perfume_page(con, m.group(1), page_prices)):
-                canon, body = r
-                if path != canon:
-                    return self.send(301, "", html_t, headers=[("Location", canon)])
-                return self.send(200, body, html_t)
-            m = re.fullmatch(r"/note/([a-z0-9-]{1,60})", path)
-            if m and (r := pages.note_page(con, m.group(1))):
-                return self.send(200, r[1], html_t)
-        return self.send(404, pages.not_found(), html_t, "public, max-age=300")
+            code, body, location = pages.route(con, path, u.query, page_prices)
+        if location:
+            return self.send(301, "", html_t, headers=[("Location", location)])
+        cache = "public, max-age=300" if code != 200 or path.endswith("/search") else "public, max-age=600"
+        return self.send(code, body, html_t, cache)
 
     def catalog_get(self, u):
         cache = [("Cache-Control", "public, max-age=300")]
@@ -628,7 +701,7 @@ class Handler(BaseHTTPRequestHandler):
         limit = MAX_FACTS_BODY if path == "/facts" else MAX_BODY
         if not (0 < length <= limit):
             return self.reply(413 if length > limit else 400, {"error": f"body must be 1-{limit} bytes"})
-        if path not in ("/prices", "/facts"):
+        if path not in ("/prices", "/facts", "/shops/suggest"):
             return self.reply(404, {"error": "not found"})
         if self.headers.get("Origin") and not origin_ok(self.headers.get("Origin")):
             return self.reply(403, {"error": "origin not allowed"})
@@ -638,6 +711,17 @@ class Handler(BaseHTTPRequestHandler):
         if not (self.headers.get("Content-Type") or "").startswith("application/json"):
             return self.reply(415, {"error": "use application/json"})
         key = hashlib.sha256(SALT + install.encode()).hexdigest()[:32]
+        if path == "/shops/suggest":
+            wait = LIMITER.allow("s:" + key, [(86400, 20)]) or LIMITER.allow("s:*", [(3600, 2000)])
+            if wait:
+                return self.reply(429, {"error": "too many reports"}, [("Retry-After", str(wait))])
+            try:
+                n = add_suggestions(key, json.loads(raw))
+            except Invalid as e:
+                return self.reply(422, {"error": str(e)})
+            except ValueError:
+                return self.reply(400, {"error": "invalid JSON"})
+            return self.reply(201, {"ok": True, "new": n})
         if path == "/facts":
             for k, lim in (("f:" + key, FACT_LIMITS), ("f:*", [GLOBAL_FACT_LIMIT])):
                 wait = LIMITER.allow(k, lim)

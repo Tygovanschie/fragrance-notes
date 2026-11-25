@@ -7,6 +7,7 @@
   document.documentElement.dir = ['ar', 'he'].includes(S.lang) ? 'rtl' : 'ltr';
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = st(el.dataset.i18n); });
   document.getElementById('privacy').textContent = FN.t(S.lang, 'privacy');
+  if (S.lang === 'nl') document.getElementById('seeDb').href = 'https://fragrancenotes.app/nl/database';
   document.title = 'Fragrance Notes – ' + st('wel_title');
 
   // One clear choice for both kinds of sharing (like the one switch in Settings → Data). Nothing is on until

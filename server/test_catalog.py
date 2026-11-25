@@ -242,6 +242,44 @@ class Build(unittest.TestCase):
         self.assertEqual([p["id"] for p in catalog.search(con, "aventus")], [first])
         self.assertIsNotNone(catalog.perfume(con, first))
 
+    def test_promotion_words_dont_split_a_perfume(self):
+        con = db()
+        add(con, "douglas.nl", "Armani", "Emporio Stronger With You Intensely", top=["Roze peper"])
+        catalog.build(con)
+        first = catalog.search(con, "intensely")[0]["id"]
+        add(con, "parfumerie.nl", "Armani", "Stronger With You Intensely - Summer Deal", top=["Roze peper"], install="b")
+        add(con, "zalando.nl", "Armani Beauty", "EA STRONGER WITH YOU INTENSELY", install="c")
+        add(con, "deloox.nl", "Armani", "Giorgio Stronger With You Intensely (Travel)", install="d")
+        catalog.build(con)
+        found = catalog.search(con, "intensely")
+        self.assertEqual([p["id"] for p in found], [first])
+        self.assertEqual(found[0]["name"], "Stronger With You Intensely")
+        self.assertEqual(found[0]["confirmedNotes"], 1)
+        for raw, clean in [("YSL Libre - Rechargeable", "YSL Libre"), ("Acqua di Giò Pour Homme Refillable", "Acqua di Giò Pour Homme"),
+                           ("Angel recharge", "Angel"), ("Tester", "Tester"), ("Club De Nuit Intense Man New in Box", "Club De Nuit Intense Man"),
+                           ("Libre Refillable - Summer Deal", "Libre"), ("Sunset", "Sunset"), ("Jet Set", "Jet Set")]:
+            self.assertEqual(catalog.strip_promo(raw), clean, raw)
+
+    def test_house_words_in_front_of_the_name(self):
+        for name, brand, shown in [("Emporio Stronger With You", "armani", "Stronger With You"),
+                                   ("Giorgio Stronger With You", "armani", "Stronger With You"),
+                                   ("EA STRONGER WITH YOU INTENSELY", "armani", "STRONGER WITH YOU INTENSELY"),
+                                   ("Armani Privé Cuir Améthyste", "armani", "Armani Privé Cuir Améthyste"),
+                                   ("Emporio Armani Stronger With You", "armani", "Emporio Armani Stronger With You"),
+                                   ("Armani Code", "armani", "Armani Code"),
+                                   ("Narciso Poudrée", "narciso rodriguez", "Narciso Poudrée"),
+                                   ("Cerruti 1881 Black", "cerruti 1881", "Cerruti 1881 Black"),
+                                   ("Emporio Homme", "armani", "Emporio Homme"),               # nothing real left
+                                   ("Emporio Armani", "armani", "Emporio Armani"),
+                                   ("Aventus", "creed", "Aventus")]:
+            self.assertEqual(catalog.display_name(name, brand), shown, name)
+
+    def test_new_note_words(self):
+        self.assertEqual(catalog.note_key("Geglazuurde kastanje"), "glazed chestnut")
+        self.assertEqual(catalog.note_key("Bourbon Vanille"), "bourbon vanilla")
+        self.assertEqual(catalog.note_key("Kastanje"), "chestnut")
+        self.assertEqual(catalog.note_key("Frangipani"), "frangipani")
+
     def test_gender_is_text_on_perfume_page(self):
         con = db()
         add(con, "douglas.nl", "Gucci", "Guilty Pour Homme", gender="m")

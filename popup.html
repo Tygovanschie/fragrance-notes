@@ -68,7 +68,10 @@
   .review p { margin:0 26px 10px 0; font-size:13px; line-height:1.45; }
   .review .btn { display:inline-block; text-decoration:none; }
   .review .btn.q { background:none; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft); margin-inline-start:6px; }
-  .review .x { position:absolute; top:6px; inset-inline-end:6px; border:0; background:none; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 7px; border-radius:999px; }
+  .review.mine { display:block; color:inherit; text-decoration:none; padding:10px 14px; }
+  .review.mine p { margin:0; }
+  .review.mine b { color:var(--accent); }
+  .review .x {position:absolute; top:6px; inset-inline-end:6px; border:0; background:none; color:var(--muted); font-size:18px; line-height:1; cursor:pointer; padding:4px 7px; border-radius:999px; }
   .review .x:hover { color:var(--accent); background:var(--chip); }
   .rm:hover { text-decoration:underline; }
   .off main > :not(.rows) { opacity:.45; pointer-events:none; }
@@ -112,6 +115,9 @@
     <a class="btn" id="revGo" href="https://chromewebstore.google.com/detail/fragrance-notes/hhhiolpcmkdkegcmjmpglcnfolohldgc/reviews" target="_blank" rel="noopener"></a>
     <button class="x" id="revClose">×</button>
   </div>
+
+  <!-- While sharing is on: what it did for the open perfume database (popup.js, GET /facts/mine). -->
+  <a class="review mine" id="mine" hidden target="_blank" rel="noopener"><p id="mineText"></p></a>
 
   <!-- One-time "help other perfume lovers?" card (popup.js): yes turns on both sharing settings. -->
   <div class="review" id="shareCard" hidden>

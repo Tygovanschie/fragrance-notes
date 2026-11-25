@@ -80,6 +80,22 @@ class Import(unittest.TestCase):
                          "quantity": "75 ml", "categories_tags": ["en:perfumes", "en:eau-de-toilette"]})
         self.assertEqual((r["brand"], r["name"], r["conc"]), ("Hugo Boss", "RED", "edt"))
 
+    def test_not_perfume(self):
+        for brand, name in [("Victoria's Secret", "Romantic Body Mist"), ("Rexona", "Desodorante Antitranspirante Aerosol"),
+                            ("touareg", "Touareg déodorant"), ("Ucla", "Champion Glow Parfümlü Vücut ve Saç Spreyi"),
+                            ("Revlon", "Charlie Blue Perfumed Body"), ("Clean", "Pure Soap"), ("Yves Rocher", "Brume Parfumée"),
+                            ("AXE", "Aftershave Black"), ("Zwitsal", "Original Bodymist"), ("Sezgin Sayar", "Limon Kolonyası")]:
+            self.assertTrue(obf.not_perfume(brand, name), name)
+        for brand, name in [("Burberry", "Body"), ("Armani", "Stronger With You"), ("Dior", "Sauvage"),
+                            ("Chanel", "Coco Mademoiselle"), ("Lancôme", "La Vie est Belle")]:
+            self.assertFalse(obf.not_perfume(brand, name), name)
+        r = obf.product({"code": "4006381333931", "product_name": "Romantic Body Mist", "brands": "Victoria's Secret",
+                         "categories_tags": ["en:perfumes"]})
+        self.assertIsNone(r)
+        r = obf.product({"code": "3614272225695", "product_name": "La Vie Est Belle Kadın Parfüm", "brands": "Lancôme",
+                         "categories_tags": ["en:perfumes"]})
+        self.assertEqual(r["name"], "La Vie Est Belle")
+
     def test_ml(self):
         self.assertEqual([obf.ml_of(q) for q in ["50 ml", "1,7 fl. oz", "10 cl", "", "100g"]], [50, 50, 100, None, None])
 
