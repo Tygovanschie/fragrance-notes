@@ -713,7 +713,9 @@
   const setReady = on => pill.classList.toggle('ready', !!on && panel.hidden);
 
   function prefetch() {
-    if (!S.enabled || !current.show || !(S.autoSearch || S.autoOpen)) return;
+    if (!S.enabled || !current.show) return;
+    shareFactsLater();
+    if (!(S.autoSearch || S.autoOpen)) return;
     input.value = current.query;
     if (current.query && loadedFor !== current.query) lookup(current.query);
   }
@@ -865,6 +867,20 @@
   };
   let pricesOpen = false;
   const factsSent = new Set();   // product pages whose facts were sent (once per page load)
+  // The facts normally go once the panel has found the perfume on Fragrantica (so they carry its number). When that
+  // takes long, fails, or waits for a click (automatic search off), they go anyway after a few seconds on the page:
+  // what a shop or brand site says is worth keeping without Fragrantica.
+  let factsTimer = 0;
+  function shareFactsLater() {
+    const path = location.pathname;
+    clearTimeout(factsTimer);
+    factsTimer = setTimeout(() => {
+      if (location.pathname !== path || factsSent.has(path) || !S.shareFacts || !current.isProduct || current.isSet
+        || !FN.builtInShop(location.hostname)) return;
+      factsSent.add(path);
+      try { chrome.runtime.sendMessage({ type: 'facts', perfumeId: '', facts: readFacts(current, readPrices()) }).catch(() => {}); } catch {}
+    }, 5000);
+  }
   const perfumeId = url => (String(url || '').match(/-(\d+)\.html/) || [])[1];
 
   // ---------- own database first ----------
