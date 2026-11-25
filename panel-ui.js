@@ -224,7 +224,6 @@
     .astrip i { display:block; min-width:6px; }
     .achips { display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:7px; }
     .achip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; }
-    .achip small { color:var(--muted); font-size:10.5px; font-variant-numeric:tabular-nums; }
     .achip i { width:9px; height:9px; border-radius:50%; flex:none; box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--fg) 16%, transparent); }
 
     /* 5. Notes pyramid. */
@@ -586,19 +585,11 @@
       wearBest && (simple ? tile(esc(wearBest.text), T('wear')) : tile(`<span class="ic">${wearBest.icons}</span>`, T('wear'), wearBest.text))
     ].filter(Boolean).join('') : '';
 
-    // 3. Accords: bars (default) or one colour strip with labelled chips underneath. The chips show each accord's
-    // share of the whole, adding up to 100 (largest remainder), as on fragrancenotes.app.
-    const accShare = (() => {
-      const list = d.accords || [], total = list.reduce((s, a) => s + (a.width || 0), 0) || 1;
-      const raw = list.map(a => (a.width || 0) * 100 / total), out = raw.map(Math.floor);
-      raw.map((x, i) => [x - Math.floor(x), i]).sort((a, b) => b[0] - a[0])
-        .slice(0, 100 - out.reduce((s, x) => s + x, 0)).forEach(([, i]) => { out[i] += 1; });
-      return out;
-    })();
+    // 3. Accords: bars (default) or one colour strip with labelled chips underneath (no percentages: too busy here).
     const accHtml = !(on.accords && d.accords?.length) ? '' : S.accStyle !== 'bars'
       ? `<h3>${esc(T('accords'))}</h3><div class="astrip">${d.accords.map(a =>
           `<i title="${esc(a.name)} · ${Math.round(a.width)}%" style="flex-grow:${Math.max(4, a.width)};background:${accBg(a.bg)}"></i>`).join('')}</div>
-        <div class="achips">${d.accords.map((a, i) => `<span class="achip"><i style="background:${accBg(a.bg)}"></i>${esc(a.name)}<small>${accShare[i]}%</small></span>`).join('')}</div>`
+        <div class="achips">${d.accords.map((a, i) => `<span class="achip"><i style="background:${accBg(a.bg)}"></i>${esc(a.name)}</span>`).join('')}</div>`
       : `<h3>${esc(T('accords'))}</h3><div class="accs">${d.accords.map(a =>
           `<div class="accbar" title="${esc(a.name)} · ${Math.round(a.width)}%" style="width:${Math.max(30, Math.round(a.width / maxAcc * 100))}%;background:${accBg(a.bg)};color:${accFg(a.fg)}">${esc(a.name)}</div>`).join('')}</div>`;
 
