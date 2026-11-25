@@ -220,7 +220,7 @@
     .tile span { font-size:10px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
     /* 3. Accord strip. */
-    .astrip { display:flex; height:14px; border-radius:7px; overflow:hidden; gap:2px; }
+    .astrip { display:flex; height:20px; border-radius:8px; overflow:hidden; gap:2px; }
     .astrip i { display:block; min-width:6px; }
     .achips { display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:7px; }
     .achip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; }

@@ -527,7 +527,7 @@ h2{margin:0 0 6px;font:750 1.6rem/1.1 var(--display);letter-spacing:-.02em}
 .tags{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 22px;padding:0;list-style:none}
 .tags li{padding:6px 12px;border-radius:999px;background:var(--white);border:1px solid var(--line);font-size:.9375rem}
 .trust{display:flex;flex-wrap:wrap;gap:6px 22px;color:var(--ink-soft);font-size:.9375rem;margin:0}.trust b{color:var(--ink);font-weight:600}
-.tier{display:grid;grid-template-columns:92px 1fr;gap:14px;padding:18px 0;border-top:1px solid var(--line)}.tier:last-of-type{border-bottom:1px solid var(--line)}
+.tier{display:grid;grid-template-columns:92px 1fr;gap:14px;padding:18px 0;border-top:1px solid var(--line)}.tier:last-of-type{border-bottom:1px solid var(--line)}.tier:last-of-type:has(+ details.single){border-bottom:0}
 .tier h3{margin:4px 0 0;font:700 1rem/1.2 var(--display)}.tier h3 small{display:block;font:400 .8125rem/1.3 var(--text);color:var(--ink-soft);margin-top:3px}
 .notes{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
 .note{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;font:500 .9688rem/1.2 var(--text);text-decoration:none}
@@ -566,7 +566,7 @@ section.part{padding:80px 0 0}section.part h2{font-size:clamp(1.8rem,3.4vw,2.5re
 .steps li{background:var(--white);border:1px solid var(--line);border-radius:22px;padding:26px;counter-increment:s}
 .steps li::before{content:counter(s);display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--paper);color:var(--plum);font:800 1.125rem/1 var(--display);margin-bottom:16px}
 .steps h3{margin:0 0 6px;font:700 1.1875rem/1.25 var(--display)}.steps p{margin:0;color:var(--ink-soft);font-size:.9688rem}
-.chip{display:inline-flex;gap:6px;padding:3px 10px;border-radius:999px;background:var(--ok-bg);color:#173f28;font-weight:500;font-size:.875rem}
+.chip{display:inline-flex;gap:6px;padding:3px 10px;border-radius:999px;background:var(--paper);color:var(--ink);font-weight:500;font-size:.875rem}
 .chip::before{content:"\\2713";color:var(--ok);font-weight:700}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
 .pcard{display:block;background:var(--white);border:1px solid var(--line);border-radius:22px;padding:24px;color:var(--ink);text-decoration:none}
@@ -575,7 +575,7 @@ section.part{padding:80px 0 0}section.part h2{font-size:clamp(1.8rem,3.4vw,2.5re
 .pcard .h{font:600 .9375rem/1 var(--display);color:var(--plum);margin:0 0 8px}.pcard .n{font:750 1.375rem/1.15 var(--display);margin:0 0 4px}
 .pcard .c{color:var(--ink-soft);font-size:.9375rem;margin:0 0 16px}
 .pcard ul{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 16px;padding:0;list-style:none}
-.pcard li{padding:4px 10px;border-radius:999px;background:var(--ok-bg);color:#173f28;font-size:.8438rem}
+.pcard li{padding:4px 10px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);font-size:.8438rem}
 .pcard .p{display:flex;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;font-size:.9375rem;color:var(--ink-soft);clear:both}
 .pcard .p b{color:var(--ink)}
 .soon{border-style:dashed;background:transparent;display:grid;place-content:center;text-align:center;color:var(--ink-soft);min-height:220px}
@@ -638,11 +638,11 @@ form.vote .btn{margin-top:16px;padding:11px 20px;font-size:.9375rem}form.vote .m
 .credit{margin:10px 0 0;font-size:.8125rem}
 .notephoto{margin:0}.notephoto img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:22px;display:block;background:var(--paper)}
 .notephoto figcaption{margin-top:6px;font-size:.75rem;color:var(--ink-soft)}.notephoto figcaption a{color:var(--ink-soft)}
-details.single{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}details.single summary{cursor:pointer;font-weight:600;font-size:.9375rem;color:var(--ink-soft)}
+details.single{border-top:1px solid var(--line);padding-top:14px}details.single summary{cursor:pointer;font-weight:600;font-size:.9375rem;color:var(--ink-soft)}
 details.single summary:hover{color:var(--plum)}details.single p{margin:8px 0 6px}details.single ul{margin:0;padding:0;list-style:none;columns:2;column-gap:24px}
 details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.single li .muted{display:inline-block;min-width:3.6em}
 @media (max-width:560px){details.single ul{columns:1}}
-.astrip{display:flex;gap:3px;height:16px;border-radius:8px;overflow:hidden;margin-top:6px}.astrip i{flex:var(--w) 1 0;min-width:8px;background:var(--c)}
+.astrip{display:flex;gap:3px;height:44px;border-radius:12px;overflow:hidden;margin-top:6px}.astrip i{flex:var(--w) 1 0;min-width:8px;background:var(--c)}
 .achips{display:flex;flex-wrap:wrap;gap:8px 18px;margin:14px 0 0;padding:0;list-style:none}
 .achips li{display:inline-flex;align-items:center;gap:7px;font:500 .9375rem/1.2 var(--text);color:var(--ink)}
 .achips li i{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
@@ -653,8 +653,27 @@ details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.si
 .vbar .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vbar .track{height:8px}.vbar .n{text-align:right;font-variant-numeric:tabular-nums}
 .vbar.best{color:var(--ink)}.vbar.best .fill{background:var(--plum)}.vbar.best .n{font-weight:700}
 .score{margin:2px 0 4px}.score .big{font-size:2rem}
-@media (max-width:560px){.vgrid,.qgrid{grid-template-columns:1fr}}
+@media (max-width:560px){.vgrid,.qgrid{grid-template-columns:1fr}.astrip{height:32px;border-radius:10px}}
+.sizes{margin-top:24px}.szpick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.szpick label{padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--white);font:600 .875rem/1 var(--text);color:var(--ink-soft);cursor:pointer}
+.szpick label:hover{border-color:var(--mauve);color:var(--ink)}.szp{display:none}.sizes .bars{margin-top:18px}
+.dbhero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:40px;align-items:end;padding:28px 0 4px}
+.dbhero h1{font-size:clamp(2.2rem,4.4vw,3.6rem);max-width:none;margin:0}.dbhero .lead{font-size:1.0625rem;margin:0 0 18px}
+section.part.first{padding-top:44px}.parthead{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.parthead h2{margin:0}section.part.first .intro{margin:8px 0 24px}.showsel ul{min-width:150px}
+.how h2{font-size:clamp(1.3rem,2.4vw,1.6rem)}.how .intro{font-size:.9375rem;margin-bottom:18px}.how .steps{gap:14px}
+.how .steps li{padding:18px;border-radius:18px}.how .steps li::before{width:28px;height:28px;font-size:.9375rem;margin-bottom:10px}
+.how .steps h3{font-size:1rem}.how .steps p{font-size:.875rem}
+.astrip.mini{height:10px;border-radius:5px;gap:2px;margin:-6px 0 16px}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
+@media (max-width:900px){.dbhero{grid-template-columns:1fr;gap:12px}.astrip.big{height:90px}}
 """
+# The size picker of the price card (no script): the n-th radio shows the n-th panel and marks the n-th button.
+MAX_SIZES = 8
+CSS += "".join(
+    f".sizes input:nth-of-type({n}):checked~.szp:nth-of-type({n}){{display:block}}"
+    f".sizes input:nth-of-type({n}):checked~.szpick label:nth-of-type({n}){{background:var(--plum);border-color:var(--plum);color:#fff}}"
+    f".sizes input:nth-of-type({n}):focus-visible~.szpick label:nth-of-type({n}){{outline:2px solid var(--mauve);outline-offset:2px}}\n"
+    for n in range(1, MAX_SIZES + 1))
 
 
 def ld_json(obj):
@@ -859,6 +878,12 @@ def rate_page(con, pid, lang="en", state=None, voter=None):
 
 # ---------- /perfume/<id>-<slug> ----------
 
+def accord_strip(acc, cls=""):
+    """The colour strip of [(accord, share)]: the site's (and the extension's) way of showing a scent."""
+    return (f'<div class="astrip{" " + cls if cls else ""}" aria-hidden="true">'
+            + "".join(f'<i style="--w:{v};--c:{accords.COLOURS[a][0]};--i:{i}"></i>' for i, (a, v) in enumerate(acc)) + "</div>")
+
+
 def shares(acc):
     """[(accord, strength 0–100)] → [(accord, whole percent)] that add up to exactly 100 (largest remainder)."""
     total = sum(v for _, v in acc)
@@ -903,7 +928,7 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
         ph = notephotos.get(con, n.get("en") or "")
         if ph:
             shown.append(1)
-            return (f'<span class="nimg"><img src="/photo/n/{e(ph["file"])}" alt="" width="72" height="72" '
+            return (f'<span class="nimg"><img src="{e(ph["url"])}" alt="" width="72" height="72" '
                     f'loading="lazy"></span>')
         acc = accords.NOTES.get(n.get("en") or "")
         bg, fg = accords.COLOURS[max(acc, key=acc.get)] if acc else ("var(--paper)", "var(--ink-soft)")
@@ -937,20 +962,32 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
             f'<td class="num hide-sm">{e(money(low / m, cur, lang))}</td>'
             f'<td class="num hide-sm muted">{t["oneShop"] if n == 1 else e(money(low, cur, lang, 0) + " – " + money(high, cur, lang, 0))}</td></tr>'
             for m, low, shop, high, n, _ in rows)
-        m, _, _, _, _, lows = max(rows, key=lambda r: (r[4], r[0] == 100, r[0]))
-        top = max(lows.values())
-        bars = "".join(
-            f'<div class="bar{" best" if i == 0 else ""}"><span>{e(s)}</span><span class="track"><span class="fill" style="width:{v / top * 100:.0f}%"></span></span>'
-            f'<span class="eur">{e(money(v, cur, lang))}</span></div>'
-            for i, (s, v) in enumerate(sorted(lows.items(), key=lambda kv: kv[1]))) if len(lows) > 1 else ""
-        hist = chart([(d, v) for d, v in (st.get("history") or {}).get(m, [])], cur, lang)
+        # Per size: the price at each shop and the price history. Without a script (the pages have none), size
+        # buttons are radio inputs and CSS shows the panel of the checked one (see .sizes in CSS). It starts on the
+        # size most shops sell.
+        rows = rows[:MAX_SIZES]
+        start = max(range(len(rows)), key=lambda i: (rows[i][4], rows[i][0] == 100, rows[i][0]))
+        panels = []
+        for m, _, _, _, _, lows in rows:
+            top = max(lows.values())
+            bars = "".join(
+                f'<div class="bar{" best" if i == 0 else ""}"><span>{e(s)}</span><span class="track"><span class="fill" style="width:{v / top * 100:.0f}%"></span></span>'
+                f'<span class="eur">{e(money(v, cur, lang))}</span></div>'
+                for i, (s, v) in enumerate(sorted(lows.items(), key=lambda kv: kv[1])))
+            hist = chart([(d, v) for d, v in (st.get("history") or {}).get(m, [])], cur, lang)
+            panels.append(f'<article class="szp"><div class="bars"><h3>{t["atEachShop"].format(size=ml(m))}</h3>{bars}</div>'
+                          + (f'<div class="chart"><h3>{t["chartTitle"].format(size=ml(m))}</h3>{hist}</div>' if hist else "")
+                          + "</article>")
+        k = f"sz{p['id']}"
+        inputs = "".join(f'<input class="sr" type="radio" name="{k}" id="{k}-{i}"{" checked" if i == start else ""}>' for i in range(len(rows)))
+        picker = (f'<div class="szpick" role="group" aria-label="{t["size"]}">'
+                  + "".join(f'<label for="{k}-{i}">{ml(r[0])}</label>' for i, r in enumerate(rows)) + "</div>") if len(rows) > 1 else ""
         shops_n = len({s for r in rows for s in r[5]})
         price_html = f"""<section class="card" aria-labelledby="price-h"><h2 id="price-h">{t["prices"]}</h2>
 <p class="sub">{t["pricesSub"].format(days=st.get("days", 30), shops=t["shops"](shops_n))}</p>
 <table><thead><tr><th>{t["size"]}</th><th class="num">{t["lowest"]}</th><th>{t["at"]}</th><th class="num hide-sm">{t["perMl"]}</th><th class="num hide-sm">{t["range"]}</th></tr></thead>
 <tbody>{trs}</tbody></table>
-{f'<div class="bars"><h3>{t["atEachShop"].format(size=ml(m))}</h3>{bars}</div>' if bars else ""}
-{f'<div class="chart"><h3>{t["chartTitle"].format(size=ml(m))}</h3>{hist}</div>' if hist else ""}</section>"""
+<div class="sizes">{inputs}{picker}{"".join(panels)}</div></section>"""
         offers = {"@type": "AggregateOffer", "priceCurrency": cur, "lowPrice": f"{min(r[1] for r in rows):.2f}",
                   "highPrice": f"{max(r[3] for r in rows):.2f}", "offerCount": shops_n}
 
@@ -971,7 +1008,7 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
     vote_html, vs = vote_section(con, p, lang, vote, voter)
     acc = shares(accords.main_accords(p))
     acc_html = (f'<section class="card" aria-labelledby="acc-h"><h2 id="acc-h">{t["accordsH"]}</h2><p class="sub">{t["accordsSub"]}</p>'
-                + '<div class="astrip" aria-hidden="true">' + "".join(f'<i style="--w:{v};--c:{accords.COLOURS[a][0]};--i:{i}"></i>' for i, (a, v) in enumerate(acc)) + "</div>"
+                + accord_strip(acc)
                 + '<ul class="achips">' + "".join(f'<li><i style="--c:{accords.COLOURS[a][0]}"></i>{e(accords.name(a, lang))}<small>{v}%</small></li>' for a, v in acc) + "</ul>"
                 + "</section>") if acc else ""
 
@@ -1065,9 +1102,11 @@ def note_page(con, slug_, lang="en"):
     if ph:
         lic = (f'<a href="{e(ph["license_url"])}" rel="nofollow">{e(ph["license"])}</a>' if ph["license_url"].startswith("https://")
                else e(ph["license"]))
-        visual = (f'<figure class="notephoto"><img src="/photo/n/{e(ph["file"])}" alt="{e(name)}" width="400" height="300">'
+        visual = (f'<figure class="notephoto"><img src="{e(ph["url"])}" alt="{e(name)}" width="400" height="300">'
                   f'<figcaption>{t["photo"]}: {e(ph["artist"])}, {lic}, '
                   f'<a href="{e(ph["page"])}" rel="nofollow">Wikimedia Commons</a></figcaption></figure>')
+    elif accords.NOTES.get(key):   # no photo: the note's accords in the site's colour-strip style
+        visual = accord_strip(shares(sorted(accords.NOTES[key].items(), key=lambda kv: -kv[1])), "big")
     else:
         visual = f'<div class="swatch" style="{swatch(key)}" aria-hidden="true"></div>'
     body = f"""{back(lang)}
@@ -1144,44 +1183,58 @@ def card(con, p, prices=None, lang="en"):
         m, low, *_ = min(rows, key=lambda r: (abs(r[0] - 100), r[0]))
         tail = f'<p class="p"><span>{t["from"].format(size=ml(m))}</span><b>{e(money(low, st.get("currency"), lang))}</b></p>'
     bits = [conc_name(p), (t["gender"].get(p.get("gender") or "", "") or "").lower(), t["sources"](p["shops"])]
-    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}">{img_tag(con, p, "img", 84)}<p class="h">{e(p["brand"])}</p>'
+    acc = shares(accords.main_accords(p))
+    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}">{accord_strip(acc, "mini") if acc else ""}'
+            f'{img_tag(con, p, "img", 84)}<p class="h">{e(p["brand"])}</p>'
             f'<p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
             f'<ul>{"".join(f"<li>{e(c)}</li>" for c in conf[:8])}</ul>{tail}</a>')
 
 
-def database_page(con, prices=None, lang="en"):
+SHOW_STEPS = (16, 32, 64, 128)
+SHOW = {"en": "Show {n}", "nl": "Toon {n}", "de": "{n} anzeigen", "fr": "Afficher {n}", "es": "Mostrar {n}",
+        "it": "Mostra {n}", "pt": "Mostrar {n}", "pl": "Pokaż {n}"}
+
+
+def database_page(con, prices=None, lang="en", show=16):
     t = T[lang]
     idx = index(con)
     s = catalog.stats(con)
     shops = con.execute("SELECT COUNT(DISTINCT shop) FROM reports").fetchone()[0] if _has(con, "reports") else 0
-    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][:24])
+    show = show if show in SHOW_STEPS else SHOW_STEPS[0]
+    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][:show])
+    # How many cards to show, as a menu of links (the pages have no script), like the language menu.
+    base = P(lang, "/database")
+    showsel = (f'<details class="langsel showsel"><summary>{SHOW[lang].format(n=show)}</summary><ul>'
+               + "".join(f'<li><a href="{base}{"" if n == SHOW_STEPS[0] else f"?show={n}"}#perfumes"'
+                         f'{" aria-current=" + chr(34) + "true" + chr(34) if n == show else ""}>{SHOW[lang].format(n=n)}</a></li>'
+                         for n in SHOW_STEPS) + "</ul></details>")
     brands = "".join(f'<li><a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}<small>{len(b["perfumes"])}</small></a></li>'
                      for b in sorted(idx["brands"].values(), key=lambda b: catalog.plain(b["name"])))
     notes = "".join(f'<li><a href="{P(lang, note_path(k))}">{e(note_name(k, lang))}<small>{len(v["perfumes"])}</small></a></li>'
                     for k, v in sorted(idx["notes"].items(), key=lambda kv: (-len(kv[1]["perfumes"]), kv[0]))[:16])
-    body = f"""<section class="hero">
+    body = f"""<section class="hero dbhero">
 <h1>{t["dbH1"]}</h1>
-<p class="lead">{t["dbLead"]}</p>
-<form class="search" role="search" action="{P(lang, '/database/search')}"><input type="search" name="q" placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" required maxlength="100"><button class="btn" type="submit">{t["search"]}</button></form>
+<div><p class="lead">{t["dbLead"]}</p>
+<form class="search" role="search" action="{P(lang, '/database/search')}"><input type="search" name="q" placeholder="{t["searchPh"]}" aria-label="{t["searchPh"]}" required maxlength="100"><button class="btn" type="submit">{t["search"]}</button></form></div>
 </section>
-<div class="stats">
+<section class="part first" id="perfumes"><div class="parthead"><h2>{t["withConfirmed"]}</h2>{showsel}</div>
+<p class="intro">{t["pageRule"].format(n=PAGE_MIN_CONFIRMED)}</p>
+<div class="cards">{cards}<div class="pcard soon"><div><b>{t["nextT"]}</b>{t["nextD"]}</div></div></div>
+</section>
+<section class="part"><div class="stats">
 <div><b>{num(s["perfumes"], lang)}</b><span>{t["statPerfumes"]}</span></div>
 <div><b>{num(s["brands"], lang)}</b><span>{t["statBrands"]}</span></div>
 <div class="hl"><b>{num(s["withConfirmedNotes"], lang)}</b><span>{t["statConfirmed"]}</span></div>
 <div><b>{num(shops, lang)}</b><span>{t["statShops"]}</span></div>
 </div>
-<p class="asof">{t["counted"].format(day=e(day(date.today().isoformat(), lang)))}</p>
-<section class="part"><h2>{t["howH"]}</h2>
+<p class="asof">{t["counted"].format(day=e(day(date.today().isoformat(), lang)))}</p></section>
+<section class="part how"><h2>{t["howH"]}</h2>
 <p class="intro">{t["howIntro"]}</p>
 <ol class="steps">
 <li><h3>{t["step1T"]}</h3><p>{t["step1D"]}</p></li>
 <li><h3>{t["step2T"]}</h3><p>{t["step2D"]}</p></li>
 <li><h3>{t["step3T"]}</h3><p>{t["step3D"]}</p></li>
 </ol></section>
-<section class="part"><h2>{t["withConfirmed"]}</h2>
-<p class="intro">{t["pageRule"].format(n=PAGE_MIN_CONFIRMED)}</p>
-<div class="cards">{cards}<div class="pcard soon"><div><b>{t["nextT"]}</b>{t["nextD"]}</div></div></div>
-</section>
 {f'<section class="part"><h2>{t["brandsH"]}</h2><ul class="chips">{brands}</ul></section>' if brands else ""}
 {f'<section class="part"><h2>{t["notesH"]}</h2><ul class="chips">{notes}</ul><p class="asof"><a href="{P(lang, "/notes")}">{t["allNotes"]} →</a></p></section>' if notes else ""}
 <section class="open"><div><h2>{t["openH"]}</h2>
@@ -1251,7 +1304,11 @@ def route(con, path, query, prices, voter=None):
     if path in ("/", ""):
         return 301, None, P(lang, "/database")
     if path in ("/database", "/database/"):
-        return 200, database_page(con, prices, lang), None
+        try:
+            show = int((urllib.parse.parse_qs(query).get("show") or ["16"])[0])
+        except ValueError:
+            show = 16
+        return 200, database_page(con, prices, lang, show), None
     if path == "/database/search":
         q = (urllib.parse.parse_qs(query).get("q") or [""])[0]
         return 200, search_page(con, q, lang), None

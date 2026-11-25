@@ -204,7 +204,8 @@
     family: /^(fragrance famil(y|ies)|olfactory famil(y|ies)|scent famil(y|ies)|geurfamilie|geursoort|geurnoot|duftfamilie|duftnote|duftrichtung|famille olfactive|familia olfativa|famiglia olfattiva|fam[ií]lia olfativa|rodzina zapach[óo]w|rodzina zapachowa|nuta zapachowa)$/i
   };
   // Separators: commas, semicolons, slashes, "&", "+", " - " ("Zwarte Peper - Mandarijn - Bergamot") and "and".
-  const splitNotes = v => String(v || '').split(/\s*(?:,|;|\/|\s&\s|\s\+\s|\s[-–]\s|\s(?:and|en|und|et|y|e|i|и)\s)\s*/i)
+  // "Ceder- Amberhout" (parfumwebshop.nl) is two notes too.
+  const splitNotes = v => String(v || '').split(/\s*(?:,|;|\/|\s&\s|\s\+\s|\s[-–]\s|(?<=\w)-\s|\s(?:and|en|und|et|y|e|i|и)\s)\s*/i)
     .map(x => x.replace(/^[\s\-–•·.:]+|[\s.]+$/g, '').trim())
     .filter(x => x.length >= 2 && x.length <= 40 && !/\d{3,}/.test(x)).slice(0, 15);
   function readNotes() {
@@ -229,6 +230,8 @@
         }
         // An empty box followed by the next box's label ("Geurfamilie" then "SUBFAMILIE" on Parfumerie.nl) is no value.
         if (Object.values(NOTE_LABELS).some(re => re.test(value)) || /^(sub ?)?famil(y|ie|le|ia)\b/i.test(value)) value = '';
+        // parfumwebshop.nl puts all tiers in one line under "Top noten": stop at the next tier's label.
+        value = value.split(/\s(?:top|kop|hoofd|hart|basis|heart|middle|base)\s?(?:noten|notes|noot|note)\s*:/i)[0];
         const list = value && value.length <= 300 ? splitNotes(value) : [];
         // A story instead of a list ("Topnoten: De geur opent met de citrusachtige, houtachtige …"): not notes. A
         // later list on the page (Parfumwebshop has both) still counts.

@@ -159,6 +159,13 @@ class PagesTest(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertIn("Stronger With You Intensely", body)
         self.assertNotIn("Guilty", body)
+        self.assertLess(body.index('id="perfumes"'), body.index('class="stats"'))     # perfumes first, then numbers
+        self.assertLess(body.index('class="stats"'), body.index('class="part how"'))
+        self.assertIn('class="astrip mini"', body)                                      # accord strip on each card
+        self.assertEqual(get("/database?show=32")[0], 200)
+        self.assertEqual(get("/database?show=abc")[0], 200)
+        self.assertEqual(pages.database_page(app.db(), None, "en", 7).count('class="pcard"'),
+                         min(16, len(pages.index(app.db())["perfumes"])))                 # unknown count: 16
         self.assertIn("Back to the database", get("/note/tonka-bean")[1])
         code, body, _ = get("/database/search?q=stronger")
         self.assertEqual(code, 200)
@@ -189,6 +196,24 @@ class PagesTest(unittest.TestCase):
         self.assertIn("zalando.nl", body)
         self.assertIn("100 ml at each shop", body)
         self.assertIn("€68.95", get("/database")[1])
+        self.assertNotIn('class="szpick"', body)   # one size: nothing to pick
+
+    def test_price_size_picker(self):
+        now = int(time.time() * 1000)
+        with app.db() as con:
+            for shop, ml, price in (("zalando.nl", 30, 39.95), ("douglas.nl", 50, 59.95), ("notino.nl", 50, 57.5),
+                                    ("deloox.nl", 100, 79.0)):
+                con.execute("INSERT INTO reports VALUES (?,?,?,?,?,?,?,?)", (52802, ml, price, "EUR", price / ml, shop, "s-" + shop, now))
+            con.commit()
+        _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
+        pick = re.search(r'<div class="szpick"[^>]*>(.*?)</div>', body).group(1)
+        self.assertEqual(re.findall(r">(\d+ ml)<", pick), ["30 ml", "50 ml", "100 ml"])   # every size can be picked
+        self.assertEqual(body.count('class="szp"'), 3)
+        for size in ("30 ml", "50 ml", "100 ml"):
+            self.assertIn(f"{size} at each shop", body)
+        radios = re.findall(r'<input class="sr" type="radio" name="sz[0-9a-f]+" id="sz[0-9a-f]+-(\d)"( checked)?>', body)
+        self.assertEqual([i for i, c in radios if c], ["1"])                # starts on 50 ml: the most shops
+        self.assertIn(".sizes input:nth-of-type(3):checked~.szp:nth-of-type(3){display:block}", pages.CSS)
 
     def test_photos_from_open_beauty_facts(self):
         fake = FakeOBF()
@@ -466,15 +491,21 @@ class PagesTest(unittest.TestCase):
             ph = notephotos.get(con, "tonka bean")
         self.assertEqual((ph["file"], ph["artist"], ph["license"]), ("tonka-bean.jpg", "Jane Doe", "CC BY-SA 4.0"))
         _, body, _ = get("/note/tonka-bean")
-        self.assertIn('src="/photo/n/tonka-bean.jpg"', body)
+        self.assertRegex(body, r'src="/photo/n/tonka-bean\.jpg\?v=[0-9a-f]+"')
         self.assertIn("Jane Doe", body)
         self.assertIn("Wikimedia Commons</a>", body)
         self.assertNotIn('class="swatch"', body)
         _, body, _ = get(f"/perfume/{self.pid('Intensely')}-armani-stronger-with-you-intensely")
-        self.assertIn('<span class="nimg"><img src="/photo/n/tonka-bean.jpg"', body)
+        self.assertRegex(body, r'<span class="nimg"><img src="/photo/n/tonka-bean\.jpg\?v=[0-9a-f]+"')
+        v1 = re.search(r'/photo/n/tonka-bean\.jpg\?v=([0-9a-f]+)', body).group(1)
         self.assertIn("Note photos: Wikimedia Commons", body)
-        with urllib.request.urlopen(BASE + "/photo/n/tonka-bean.jpg", timeout=5) as r:
+        with urllib.request.urlopen(BASE + "/photo/n/tonka-bean.jpg?v=1", timeout=5) as r:
             self.assertEqual(r.read(), JPEG)
+        for name in ("Piper_nigrum_-_Köhler–s_Medizinal-Pflanzen-107.jpg", "Ficus_carica_L,_1771.jpg",
+                     "Orange_Blossom_(NGM_XXXI_p504).jpg"):
+            self.assertTrue(notephotos.DRAWING.search(name.replace("_", " ")), name)
+        for name in ("Bergamot_orange_-_whole_and_slice.jpg", "Vetiver_grass.jpg", "02017_0119_Kardamom,_Winter_in_den_Beskiden.jpg"):
+            self.assertFalse(notephotos.DRAWING.search(name.replace("_", " ")), name)
         # A file picked by hand in FILES replaces the stored photo right away (no 30-day wait), and when that file
         # isn't free the photo we have stays.
         old = dict(notephotos.FILES)
@@ -483,8 +514,9 @@ class PagesTest(unittest.TestCase):
             with app.db() as con:
                 self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC BY-NC 2.0")), 0)
                 self.assertIsNotNone(notephotos.get(con, "tonka bean"))
-                self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC0")), 1)
+                self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC0"), now=time.time() + 60), 1)
                 self.assertEqual(con.execute("SELECT title FROM note_images WHERE key='tonka bean'").fetchone()[0], "Tonka beans.jpg")
+                self.assertNotIn(f"?v={v1}", notephotos.get(con, "tonka bean")["url"])   # new address: no stale browser copy
                 self.assertEqual(notephotos.refresh(con, ["tonka bean"], opener=commons("CC0")), 0)   # done: not again
         finally:
             notephotos.FILES.clear()

@@ -344,6 +344,34 @@ class Build(unittest.TestCase):
         self.assertEqual(catalog.note_key("Kastanje"), "chestnut")
         self.assertEqual(catalog.note_key("Frangipani"), "frangipani")
 
+    def test_parfumwebshop_notes(self):
+        for raw, key in [("Kastanjeakkoord", "chestnut"), ("Vetiveressence", "vetiver"), ("Muntolie", "mint"),
+                         ("Houtachtige Leernoten", "leather"), ("roosfacetten", "rose"), ("Ceder Hout", "cedar"),
+                         ("Barnsteen", "amber"), ("Pure Roze Peper", "pink pepper"), ("Roos Absoluut", "rose"),
+                         ("Echte Arabische Jasmijn", "jasmine"), ("Eiken Mos", "oakmoss"), ("Patchuli", "patchouli"),
+                         ("Trio van Cederhout", "cedar"), ("Aquatische Noten", "aquatic"), ("Lavandin", "lavandin"),
+                         ("Pepermunt Olie", "peppermint"), ("Sinaasappelboom bloesem", "orange blossom"),
+                         ("Witte Muskus", "white musk"), ("Witte peper", "white pepper"), ("Ambrofix™", "ambroxan"),
+                         ("Vanille-Absolu uit Madagaskar", "vanilla"), ("Gekristalliseerd Kastanje Akkoord", "glazed chestnut")]:
+            self.assertEqual(catalog.note_key(raw), key, raw)
+        self.assertEqual(catalog.note_key("Een intrigerende"), "")
+        top = ["Bergamot", "Gember", "Appel Hart noten: Salie", "Jeneverbes", "Geranium Basis noten: Vetiver", "Ceder- Amberhout"]
+        self.assertEqual(catalog.tier_notes(top, "top"), ["Bergamot", "Gember", "Appel"])
+        self.assertEqual(catalog.tier_notes(["Vetiver", "Ceder- Amberhout"], "base"), ["Vetiver", "Ceder", "Amberhout"])
+        self.assertEqual(catalog.tier_notes(["Hartnoten: Peperhout", "Iris"], "heart"), ["Peperhout", "Iris"])
+        self.assertEqual(catalog.tier_notes(["Basisnoten: ceder", "Iris"], "top"), [])
+        # Heart and base notes that came in under "top" stay in their own tier.
+        con = db()
+        add(con, "parfumwebshop.nl", "Yves Saint Laurent", "Y", "edp", top=top, heart=["Salie", "Jeneverbes", "Geranium"],
+            base=["Vetiver", "Ceder- Amberhout"])
+        add(con, "douglas.nl", "Yves Saint Laurent", "Y", "edp", top=["Appel", "Gember"], heart=["Salie"], base=["Amberhout"],
+            install="b")
+        catalog.build(con)
+        p = catalog.perfume(con, catalog.search(con, "y")[0]["id"])
+        where = {n["key"]: t for t in ("top", "heart", "base") for n in p["notes"][t]}
+        self.assertEqual((where["sage"], where["juniper"], where["vetiver"], where["amberwood"]), ("heart", "heart", "base", "base"))
+        self.assertNotIn("appel hart salie", where)
+
     def test_gender_is_text_on_perfume_page(self):
         con = db()
         add(con, "douglas.nl", "Gucci", "Guilty Pour Homme", gender="m")

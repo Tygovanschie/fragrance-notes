@@ -45,13 +45,23 @@ TITLES = {
 # A Commons file chosen by hand, when the article's main image doesn't work as a small square (an old botanical
 # drawing, a landscape). Changing an entry here replaces the stored photo on the next refresh.
 FILES = {
-    "lavender": "Lavandula angustifolia in Sedovo 1.jpg",
+    "lavender": "Lavandula angustifolia in Sedovo 1.jpg", "lavandin": "Lavandula angustifolia in Sedovo 1.jpg",
+    "tonka bean": "Tonka Beans.jpg", "cedar": "Cedrus libani cone, Sète cf01.jpg", "chestnut": "Chestnuts roasted.jpg",
+    "apple": "Apples in basket 2018 G1.jpg", "mint": "Mint leaves (Mentha spicata).jpg", "peppermint": "Peppermint Plant.jpg",
+    "ginger": "Ginger Root.jpg", "pepper": "Black Pepper IMG 4866 - 02.jpg", "black pepper": "Black Pepper IMG 4866 - 02.jpg",
+    "white pepper": "Pimienta blanca (Piper nigrum), 2020-06-12, DD 01-19 FS.jpg", "clove": "Clove close up.jpg",
+    "caraway": "Kümmel 2012-07-08-9523.jpg", "fig": "Ficus carica whole fruits and fruit cut open.jpg",
+    "jasmine sambac": "Jasminum sambac flower.jpg", "date": "Fruits of date tree.jpg",
+    "coconut": "Raw and freshly cut coconut (27814).jpg",
 }
+# The article's main image is sometimes an old botanical drawing or engraving (Köhler's Medizinal-Pflanzen, 1887).
+# As a small square that's a blur of lines: rather no photo (the note's colour) than that.
+DRAWING = re.compile(r"k[öo]hler|medizinal|britannica|engraving|illustration|\bNGM\b|\b1[5-8]\d\d\b|\bL\.?,", re.I)
 # No photo: abstract accords, synthetics, animal materials and descriptions.
 SKIP = {"amber", "ambergris", "ambroxan", "iso e super", "hedione", "cashmeran", "aldehydes", "musk", "white musk",
         "civet", "castoreum", "ozonic", "marine", "solar notes", "mineral", "smoke", "resin", "toffee", "caramel",
         "sweet", "spicy", "oriental", "woody", "aromatic", "floral", "fruity", "powdery", "fresh", "citrus", "aquatic",
-        "green", "gourmand", "chypre", "fougere", "musky"}
+        "green", "gourmand", "chypre", "fougere", "musky", "cypriol"}
 
 
 def init(con):
@@ -84,7 +94,9 @@ def lookup(key, opener=urllib.request.urlopen):
                                 "format": "json", "titles": title})
     pages = json.loads(_get(f"https://en.wikipedia.org/w/api.php?{q}", opener))["query"].get("pages", {})
     name = next((pg.get("pageimage") for pg in pages.values() if pg.get("pageimage")), None)
-    return commons_file(name, opener) if name else None
+    if not name or DRAWING.search(name.replace("_", " ")):
+        return None
+    return commons_file(name, opener)
 
 
 def commons_info(names, opener=urllib.request.urlopen):
@@ -169,15 +181,18 @@ def refresh(con, keys, opener=urllib.request.urlopen, now=None, limit=20):
 
 
 def get(con, key):
-    """{file, artist, license, license_url, page} of a note's stored photo, or None."""
+    """{file, url, artist, license, license_url, page} of a note's stored photo, or None. The url carries the time the
+    photo was stored, so a replaced photo (FILES) gets a new address and browsers don't keep showing the old one."""
     try:
-        r = con.execute("SELECT file, artist, license, license_url, page FROM note_images WHERE key=? AND file IS NOT NULL",
-                        (key,)).fetchone()
+        r = con.execute("SELECT file, artist, license, license_url, page, checked FROM note_images "
+                        "WHERE key=? AND file IS NOT NULL", (key,)).fetchone()
     except Exception:
         return None
     if not r or not os.path.exists(os.path.join(NOTE_DIR, r[0])):
         return None
-    return dict(zip(("file", "artist", "license", "license_url", "page"), r))
+    d = dict(zip(("file", "artist", "license", "license_url", "page"), r[:5]))
+    d["url"] = f"/photo/n/{r[0]}?v={int(r[5]):x}"
+    return d
 
 
 def image_file(name):
