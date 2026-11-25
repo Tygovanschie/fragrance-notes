@@ -260,11 +260,23 @@
 
   // Brands' own websites (the same list as OFFICIAL_SITES in server/catalog.py): there the notes in the product text
   // count as official, so the extension also sends the notes the text names ("mentioned", without a tier).
-  const OFFICIAL_SITES = new Set(['armani.com', 'armanibeauty.com', 'giorgioarmanibeauty.com', 'dior.fr', 'dior.com', 'chanel.fr',
-    'chanel.com', 'guerlain.fr', 'guerlain.com', 'bulgari.com', 'prada.com', 'prada-beauty.com', 'rabanne.com', 'hugoboss.com',
-    'gucci.com', 'burberry.com', 'versace.com', 'givenchybeauty.com', 'mugler.com', 'carolinaherrera.com', 'jeanpaulgaultier.com',
-    'dolcegabbana.com', 'narcisorodriguez.com', 'valentino.com', 'valentino-beauty.com', 'ysl.com', 'yslbeauty.com', 'lancome.nl',
-    'lancome.de', 'lancome.fr', 'lancome.co.uk', 'zara.com', 'goldfieldandbanks.com', 'etatlibredorange.com', 'profumum.com']);
+  const OFFICIAL_SITES = new Set([
+    'armani.com', 'armanibeauty.com', 'giorgioarmanibeauty.com', 'dior.fr', 'dior.com', 'chanel.fr', 'chanel.com',
+    'guerlain.fr', 'guerlain.com', 'bulgari.com', 'prada.com', 'prada-beauty.com', 'rabanne.com', 'hugoboss.com',
+    'gucci.com', 'burberry.com', 'versace.com', 'givenchybeauty.com', 'mugler.com', 'carolinaherrera.com',
+    'jeanpaulgaultier.com', 'dolcegabbana.com', 'narcisorodriguez.com', 'valentino.com', 'valentino-beauty.com',
+    'ysl.com', 'yslbeauty.com', 'lancome.nl', 'lancome.de', 'lancome.fr', 'lancome.co.uk', 'zara.com',
+    'goldfieldandbanks.com', 'etatlibredorange.com', 'profumum.com', 'tomford.com', 'tomfordbeauty.com',
+    'acquadiparma.com', 'amouage.com', 'ateliercologne.com', 'bykilian.com', 'kilian.com', 'byredo.com',
+    'clivechristian.com', 'creedboutique.com', 'creedfragrances.co.uk', 'diptyqueparis.com', 'exnihilo-paris.com',
+    'florislondon.com', 'fredericmalle.com', 'hermes.com', 'jomalone.co.uk', 'jomalone.com', 'juliettehasagun.com',
+    'kayali.com', 'lattafa.com', 'louisvuitton.com', 'maisoncrivelli.com', 'maisonfranciskurkdjian.com',
+    'marcantoinebarrois.com', 'matiere-premiere.com', 'memoparis.com', 'minnewyork.com', 'nishane.com',
+    'ortoparisi.com', 'penhaligons.com', 'sergelutens.com', 'smnovella.com', 'tizianaterenzi.com',
+    'viktor-rolf.com', 'xerjoff.com', 'bdkparfums.com', 'bonparfumeur.com', 'essentialparfums.com',
+    'initioparfums.com', 'lelabofragrances.com', 'maisonmargiela-fragrances.com', 'mancera-parfums.com',
+    'montaleparfums.com', 'parfums-de-marly.com', 'rojaparfums.com'
+  ]);
   const officialSite = host => OFFICIAL_SITES.has(builtInShop(host));
 
   globalThis.FN = { API_BASE, OWN_MIN_CONFIRMED, IS_FIREFOX, REVIEW_URL, favs, builtInShop, officialSite, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };

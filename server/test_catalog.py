@@ -377,6 +377,9 @@ class Build(unittest.TestCase):
         notes = {n["key"]: n["confirmed"] for t in ("top", "heart", "base") for n in p["notes"][t]}
         self.assertEqual(notes, {"bergamot": False})
         self.assertTrue(catalog.is_official("armani.com", "Giorgio Armani"))
+        self.assertTrue(catalog.is_official("tomfordbeauty.com", "TOM FORD BEAUTY"))
+        self.assertTrue(catalog.is_official("bykilian.com", "By Kilian"))
+        self.assertTrue(catalog.is_official("maisonmargiela-fragrances.com", "Replica"))
         self.assertFalse(catalog.is_official("armani.com", "Dior"))
         self.assertFalse(catalog.is_official("douglas.nl", "Armani"))
 
