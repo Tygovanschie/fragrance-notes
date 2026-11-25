@@ -638,8 +638,10 @@ async function shareFacts(perfumeId, f, pageUrl) {
     lang: /^[a-z]{2}(-[a-z]{2})?$/.test(f.lang || '') ? f.lang : null
   };
   if (!body.name || !body.brand) return;
-  // Once per perfume page and shop a day.
-  const k = shop + '|' + body.brand + '|' + body.name + '|' + body.conc;
+  // Once per perfume page and shop a day, unless the page now says more (a new extension version reads more notes,
+  // or the page finished loading its notes): then the fuller facts replace the earlier ones on the server.
+  const said = ['top', 'heart', 'base', 'mentioned'].map(t => body.notes[t].length).join('.') + '.' + body.gtins.length;
+  const k = shop + '|' + body.brand + '|' + body.name + '|' + body.conc + '|' + said;
   const { 'fn:factsSent': sent = {} } = await chrome.storage.session.get('fn:factsSent').catch(() => ({}));
   for (const x of Object.keys(sent)) if (sent[x] < Date.now() - 864e5) delete sent[x];
   if (sent[k]) return;
