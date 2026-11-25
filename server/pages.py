@@ -385,12 +385,6 @@ def open_facts_image(gtin, opener=urllib.request.urlopen):
     return None
 
 
-def obf_image_url(gtin, opener=urllib.request.urlopen):
-    """Kept for older callers: the front photo URL of this barcode in any Open Facts project, or None."""
-    found = open_facts_image(gtin, opener)
-    return found[0] if found else None
-
-
 def fetch_image(url, opener=urllib.request.urlopen):
     req = urllib.request.Request(url, headers={"User-Agent": obf.USER_AGENT})
     with opener(req, timeout=20) as r:

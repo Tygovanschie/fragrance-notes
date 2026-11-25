@@ -1,3 +1,4 @@
 {
-  "_about": "Bottle photos from Wikimedia Commons, checked by hand: perfume id -> Commons file name. Only for perfumes without an Open Facts photo. Candidates come from llm_review.py (job_photos, review/photos-DATE.md); check that it is the right perfume and bottle before adding it here. The licence is checked again when the photo is downloaded (free licences only)."
+  "_about": "Bottle photos from Wikimedia Commons, checked by hand: perfume id -> Commons file name. Only for perfumes without an Open Facts photo. Candidates come from llm_review.py (job_photos, review/photos-DATE.md); check that it is the right perfume and bottle before adding it here. The licence is checked again when the photo is downloaded (free licences only).",
+  "f4d2b7dbe060": "Dior Sauvage Verpackung.jpg"
 }
