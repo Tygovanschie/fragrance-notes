@@ -608,6 +608,12 @@ class PagesTest(unittest.TestCase):
 
     def test_note_photos(self):
         import notephotos
+        # Fallback photos from the article: real photos yes; maps, satellite views, molecules, drawings no.
+        for name, ok in [("Apricots.jpg", True), ("Large_breaking_wave.jpg", True), ("Blood_orange_slices.jpg", True),
+                         ("Mediterranean_Sea_16.61811E_38.99124N.jpg", False), ("Coriander distribution map.jpg", False),
+                         ("Vanillin structure.svg", False), ("Köhler's Medizinal-Pflanzen 1887.jpg", False),
+                         ("Pacific Ocean as viewed from GOES-18.jpg", False)]:
+            self.assertEqual(notephotos.usable(name), ok, name)
 
         def commons(license):
             def opener(req, timeout=None):

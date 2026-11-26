@@ -18,7 +18,7 @@ import urllib.request
 NOTE_DIR = os.environ.get("NOTE_IMG_DIR", os.path.join(os.path.dirname(os.environ.get("DB_PATH", "/data/prices.db")), "notes"))
 USER_AGENT = "FragranceNotes/1.4 (https://fragrancenotes.app; support@fragrancenotes.app)"
 IMG_MAX = 800_000
-RECHECK = 30 * 86400
+RECHECK = 7 * 86400   # a note without a free photo is tried again after a week (new uploads, the fallbacks)
 FREE = re.compile(r"^(?:cc0|public domain|pd(?:\b|-)|cc by(?:-sa)?(?! ?-?n[cd]))", re.I)   # never NC or ND
 
 # The Wikipedia article of the plant or material, when it isn't simply the note's own name.
@@ -41,6 +41,11 @@ TITLES = {
     "mahogany": "Mahogany", "salt": "Sea salt", "maple syrup": "Maple syrup", "sugar": "Sugar", "milk": "Milk",
     "cream": "Cream", "rum": "Rum", "wine": "Wine", "hay": "Hay", "grass": "Poaceae", "praline": "Praline (nut confection)",
     "caviar": "Caviar", "monoi": "Monoi oil", "davana": "Artemisia pallens", "labdanum": "Labdanum",
+    # Accords and families with a photo that fits without misleading (not amber: that would be fossil amber).
+    "caramel": "Caramel", "smoke": "Smoke", "spicy": "Spice", "woody": "Wood", "aquatic": "Breaking wave", "marine": "Breaking wave",
+    "ambergris": "Ambergris", "elemi": "Canarium luzonicum",
+    "benzoin": "Benzoin resin", "heliotrope": "Heliotropium arborescens", "cypress": "Cupressus sempervirens",
+    "wormwood": "Artemisia absinthium", "coriander": "Coriander", "apricot": "Prunus armeniaca",
 }
 # A Commons file chosen by hand, when the article's main image doesn't work as a small square (an old botanical
 # drawing, a landscape). Changing an entry here replaces the stored photo on the next refresh.
@@ -52,15 +57,16 @@ FILES = {
     "white pepper": "Pimienta blanca (Piper nigrum), 2020-06-12, DD 01-19 FS.jpg", "clove": "Clove close up.jpg",
     "caraway": "Kümmel 2012-07-08-9523.jpg", "fig": "Ficus carica whole fruits and fruit cut open.jpg",
     "jasmine sambac": "Jasminum sambac flower.jpg", "date": "Fruits of date tree.jpg",
-    "coconut": "Raw and freshly cut coconut (27814).jpg",
+    "coconut": "Raw and freshly cut coconut (27814).jpg", "neroli": "Orange Blossom.JPG",
+    "mineral": "Beach rocks and pebbles.jpg",
 }
 # The article's main image is sometimes an old botanical drawing or engraving (Köhler's Medizinal-Pflanzen, 1887).
 # As a small square that's a blur of lines: rather no photo (the note's colour) than that.
 DRAWING = re.compile(r"k[öo]hler|medizinal|britannica|engraving|illustration|\bNGM\b|\b1[5-8]\d\d\b|\bL\.?,", re.I)
 # No photo: abstract accords, synthetics, animal materials and descriptions.
-SKIP = {"amber", "ambergris", "ambroxan", "amberever", "cinnamon liqueur", "iso e super", "hedione", "cashmeran", "aldehydes", "musk", "white musk",
-        "civet", "castoreum", "ozonic", "marine", "solar notes", "mineral", "smoke", "resin", "toffee", "caramel",
-        "sweet", "spicy", "oriental", "woody", "aromatic", "floral", "fruity", "powdery", "fresh", "citrus", "aquatic",
+SKIP = {"amber", "ambroxan", "amberever", "cinnamon liqueur", "iso e super", "hedione", "cashmeran", "aldehydes", "musk", "white musk",
+        "civet", "castoreum", "ozonic", "solar notes", "resin", "toffee",
+        "sweet", "oriental", "aromatic", "floral", "fruity", "powdery", "fresh", "citrus",
         "green", "gourmand", "chypre", "fougere", "musky", "cypriol"}
 
 
@@ -85,18 +91,45 @@ def plain_text(s, n=120):
     return re.sub(r"\s+", " ", s).strip()[:n]
 
 
+# Files in an article that are no photo of the thing itself: maps, diagrams, molecules, logos, herbarium sheets.
+NOT_PHOTO = re.compile(r"\b(?:map|range|distribution|locator|structure|formula|molecule|skeletal|ball.and.stick|diagram|"
+                       r"chart|graph|logo|icon|symbol|flag|coat of arms|stamp|herbarium|specimen|label|seal|"
+                       r"cross.section|microscop|sem image|chromosome|plate|tafel|drawing|sketch|painting|poster|"
+                       r"satellite|goes-?\d+|nasa|modis|\d+\.\d+[NSEW])\b", re.I)   # also satellite views ("Sea")
+MAX_CANDIDATES = 6   # files tried per note and run, after the main image
+
+
+def article_images(title, opener=urllib.request.urlopen):
+    """(main image, [other images in the article]) of an English Wikipedia article, as file names."""
+    q = urllib.parse.urlencode({"action": "query", "prop": "pageimages|images", "piprop": "name", "imlimit": 50,
+                                "redirects": 1, "format": "json", "titles": title})
+    pages = json.loads(_get(f"https://en.wikipedia.org/w/api.php?{q}", opener))["query"].get("pages", {})
+    main = next((pg.get("pageimage") for pg in pages.values() if pg.get("pageimage")), None)
+    others = [i["title"].split(":", 1)[1] for pg in pages.values() for i in pg.get("images", [])]
+    return main, others
+
+
+def usable(name):
+    """A file name that can be a photo of the note: a JPG, no drawing, map, diagram or the like."""
+    n = name.replace("_", " ")
+    return bool(re.search(r"\.jpe?g$", n, re.I)) and not DRAWING.search(n) and not NOT_PHOTO.search(n)
+
+
 def lookup(key, opener=urllib.request.urlopen):
-    """(image bytes, info dict) for a note, or None when there's no free photo."""
+    """(image bytes, info dict) for a note, or None when there's no free photo. The article's main image first; when
+    that one isn't free or isn't a photo, the other photos in the article, in order."""
     if key in FILES:
         return commons_file(FILES[key], opener)
     title = TITLES.get(key, key[:1].upper() + key[1:])
-    q = urllib.parse.urlencode({"action": "query", "prop": "pageimages", "piprop": "name", "redirects": 1,
-                                "format": "json", "titles": title})
-    pages = json.loads(_get(f"https://en.wikipedia.org/w/api.php?{q}", opener))["query"].get("pages", {})
-    name = next((pg.get("pageimage") for pg in pages.values() if pg.get("pageimage")), None)
-    if not name or DRAWING.search(name.replace("_", " ")):
-        return None
-    return commons_file(name, opener)
+    main, others = article_images(title, opener)
+    plain_main = (main or "").replace("_", " ")
+    names = ([main] if main and not DRAWING.search(plain_main) and not NOT_PHOTO.search(plain_main) else []) + \
+            [n for n in others if n != main and usable(n)][:MAX_CANDIDATES]
+    for name in names:
+        found = commons_file(name, opener)
+        if found:
+            return found
+    return None
 
 
 def commons_info(names, opener=urllib.request.urlopen):
