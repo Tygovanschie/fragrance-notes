@@ -530,8 +530,16 @@ BASE_ACCORDS = {"woody", "amber", "vanilla", "musky", "balsamic", "leather", "go
                 "nutty", "powdery"}
 
 
+# Notes whose main accord points to the wrong tier: oakmoss is "green" but a base note (Tom Ford's site only
+# mentions it in the text, and it landed in the top notes of Grey Vetiver and Taormina Orange).
+USUAL_TIER = {"oakmoss": "base", "moss": "base", "hay": "base", "lavender": "heart", "clary sage": "heart",
+              "plum": "heart", "fig": "heart", "tea": "heart", "iris": "heart", "elemi": "heart"}
+
+
 def usual_tier(key):
     import accords   # here: accords is only needed for this tie-break
+    if key in USUAL_TIER:
+        return USUAL_TIER[key]
     m = accords.NOTES.get(key)
     if not m:
         return "heart"

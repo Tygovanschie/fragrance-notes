@@ -299,6 +299,8 @@ class Build(unittest.TestCase):
                     seen[v] = canon
         self.assertEqual(set(catalog.NOTE_PARENTS) - catalog.NOTE_EN, set())
         self.assertEqual(set(catalog.NOTE_PARENTS.values()) - catalog.NOTE_EN, set())
+        self.assertEqual(set(catalog.USUAL_TIER) - catalog.NOTE_EN, set())
+        self.assertEqual(catalog.usual_tier("oakmoss"), "base")    # its main accord is green, but it is a base note
 
     def test_note_names_shops_use(self):
         for raw, key in [("Tuberoos (Nachthyacint)", "tuberose"), ("Indiase Patchouli", "patchouli"),

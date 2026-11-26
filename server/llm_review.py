@@ -298,7 +298,11 @@ WIKI_TITLES = {"sage": "Salvia officinalis", "cedar": "Cedrus", "juniper": "Juni
                "vetiver": "Chrysopogon zizanioides", "bergamot": "Bergamot orange", "mandarin": "Mandarin orange",
                "orange blossom": "Neroli", "neroli": "Neroli", "tuberose": "Polianthes tuberosa", "jasmine": "Jasmine",
                "rose": "Rose oil", "sandalwood": "Sandalwood", "tonka bean": "Tonka bean", "vanilla": "Vanilla",
-               "cinnamon": "Cinnamon", "leather": "Leather", "ambroxan": "Ambroxide", "guaiac wood": "Guaiacum"}
+               "cinnamon": "Cinnamon", "leather": "Leather", "ambroxan": "Ambroxide", "guaiac wood": "Guaiacum",
+               # Perfumery uses another part or plant than the general article: birch = birch tar (smoky, leathery),
+               # geranium = Pelargonium (not the Geranium genus), lavandin = the lavender hybrid.
+               "birch": "Birch tar", "geranium": "Pelargonium graveolens", "lavandin": "Lavandula × intermedia",
+               "rum": "Rum"}
 TEXT_PROMPT = """You write short descriptions of perfume notes for a perfume website. Plain, friendly English for
 shoppers. No marketing words, no brand or perfume names, no lists.
 
@@ -388,6 +392,38 @@ Reply in JSON: {{"smell": ...}}
 ACCORD_ORIGIN = "In today's perfumes this note isn't taken from one natural material: perfumers build it from several other ingredients."
 TRIES_PER_NIGHT = 3        # differently worded attempts per note and night before it waits for the next night
 TODO_AFTER = 5             # nights in a row without a passing text before a note shows up in the email
+
+# A second, separate question: the model reads the finished text as a checker and says what is wrong. It caught what
+# the word checks can't, like "black pepper can remind of dark chocolate" or birch described as a spring forest
+# (in perfumes birch is smoky birch tar). Style is not judged here: "cozy" is fine when the smell is cozy.
+FACT_PROMPT = """You check a short description of a perfume note for a perfume website. Look only for facts that
+are wrong: a smell the note does not have in perfumes, a comparison that doesn't fit it, the wrong plant, part or
+material, a place it is not from, or a sentence that says nothing about it at all. Do not judge the style or the
+choice of words.
+
+Note: {note}
+Smells like: "{smell}"
+Comes from: "{origin}"
+
+Reply in JSON: {{"smell_ok": true or false, "smell_problem": "what is wrong, or null",
+"origin_ok": true or false, "origin_problem": "what is wrong, or null"}}"""
+
+
+def fact_check(k, smell, origin, accord):
+    """(smell problems, []) the checker found. Only the smell is judged: the origin comes from the source and is
+    checked against it, and the checker's own memory is less reliable than Wikipedia (it called saffron's Khorasan
+    origin wrong). A smell only fails when the checker objects twice, asked in two ways: once it called saffron's
+    well-known hay note wrong."""
+    problems = []
+    for attempt in (0, 1):
+        try:
+            a = ask(FACT_PROMPT.format(note=k, smell=smell, origin="(not checked here)"), attempt=attempt)
+        except Exception:
+            return [], []
+        if a.get("smell_ok") is not False:
+            return [], []
+        problems.append(str(a.get("smell_problem") or "wrong")[:150])
+    return [f"fact check: {problems[0]}"], []
 
 
 def tier_words(counts):
@@ -484,16 +520,22 @@ def job_texts(con, seen):
         with_ = ", ".join(sorted(pairs.get(k, {}), key=lambda x: -pairs[k][x])[:6]) or "none yet"
         prompt = (ACCORD_PROMPT if accord else TEXT_PROMPT).format(
             note=k, tier=tier, tier_short=tier_short, pairs=with_, source=source or "(none found: leave origin empty)")
-        best = None
+        best, feedback = None, ""
         for attempt in range(TRIES_PER_NIGHT):
             try:
-                a = ask(prompt, attempt=attempt)
+                a = ask(prompt + feedback, attempt=attempt)
             except Exception as err:   # the model server failed once (HTTP 500): next attempt, or next night
                 print(f"llm review texts: {k} attempt {attempt} failed ({err})", flush=True)
                 continue
             smell = str(a.get("smell") or "").strip()
             origin = ACCORD_ORIGIN if accord else str(a.get("origin") or "").strip()
             s, o = text_checks(k, smell, origin, source, a, tiers.get(k), accord)
+            if not s:   # only a text that passed the simple checks is worth the extra question
+                fs, fo = fact_check(k, smell, origin if not o else "", accord)
+                s, o = s + fs, o + fo
+            # The next attempt hears what was wrong with this one.
+            feedback = ("\n\nA checker found problems in an earlier answer: " + "; ".join(s + o)[:400]
+                        + ". Write it again without those mistakes.") if s or o else ""
             score = (not s, not o)
             if best is None or score > best[0]:
                 best = (score, smell, origin, s, o)
