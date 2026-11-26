@@ -583,6 +583,18 @@ class PagesTest(unittest.TestCase):
                 self.assertIn("Warm, sweet and almondy.", body)
                 self.assertIn("checked against it automatically", body)          # honest: not checked by hand
                 self.assertNotIn("Warm, sweet and almondy.", get("/note/tonka-bean")[1] or "")   # hand-made text wins
+                # A text without an origin (it failed its checks) or a source: only the smell, and an honest credit.
+                con = maintenance.open_rw()
+                con.execute("UPDATE note_text SET origin='', source='' WHERE key='juniper'")
+                con.commit()
+                con.close()
+                pages._auto.update(mtime=None, texts={})
+                pages._cache["stamp"] = None
+                _, body, _ = get("/note/juniper")
+                self.assertIn("Warm, sweet and almondy.", body)
+                self.assertNotIn("Seeds of a tree.", body)
+                self.assertNotIn(pages.T["en"]["comesFrom"], body)
+                self.assertIn("checked automatically against our perfume data", body)
                 with urllib.request.urlopen(BASE + "/maintenance/week", timeout=5) as r:
                     w = json.loads(r.read())
                 self.assertEqual([c["item"] for c in w["changes"]], ["Kardemonn"])

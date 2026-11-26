@@ -265,6 +265,16 @@ AI_AUTO = {"en": "Written by our own AI model from the source text and checked a
            "it": "Scritto dal nostro modello di IA a partire dal testo della fonte e confrontato automaticamente con esso.",
            "pt": "Escrito pelo nosso próprio modelo de IA a partir do texto da fonte e verificado automaticamente com ele.",
            "pl": "Napisane przez nasz własny model AI na podstawie tekstu źródłowego i automatycznie z nim porównane."}
+# The same for a text without a source (accords, or a note Wikipedia has no article for): only the smell, checked
+# against where the note sits in our perfumes.
+AI_AUTO_NOSRC = {"en": "Written by our own AI model and checked automatically against our perfume data.",
+                 "nl": "Geschreven door ons eigen AI-model en automatisch gecontroleerd met onze parfumgegevens.",
+                 "de": "Von unserem eigenen KI-Modell geschrieben und automatisch mit unseren Parfumdaten abgeglichen.",
+                 "fr": "Écrit par notre propre modèle d’IA et vérifié automatiquement avec nos données de parfums.",
+                 "es": "Escrito por nuestro propio modelo de IA y comprobado automáticamente con nuestros datos de perfumes.",
+                 "it": "Scritto dal nostro modello di IA e controllato automaticamente con i nostri dati sui profumi.",
+                 "pt": "Escrito pelo nosso próprio modelo de IA e verificado automaticamente com os nossos dados de perfumes.",
+                 "pl": "Napisane przez nasz własny model AI i automatycznie sprawdzone z naszymi danymi o perfumach."}
 
 
 def auto_texts():
@@ -1247,8 +1257,8 @@ def note_page(con, slug_, lang="en"):
         english = lang != "en" and not text.get(f"smell_{lang}")
         src = text.get("source", "")
         about = f"""<section class="card"{' lang="en"' if english else ""}><h2>{t["smellsLike"]}</h2><p>{e(smell)}</p>
-<h2 style="margin-top:26px">{t["comesFrom"]}</h2><p>{e(origin)}</p>
-<p class="src">{AI_AUTO[lang] if text.get("auto") else t["aiNote"]}
+{f'<h2 style="margin-top:26px">{t["comesFrom"]}</h2><p>{e(origin)}</p>' if origin else ""}
+<p class="src">{(AI_AUTO if src else AI_AUTO_NOSRC)[lang] if text.get("auto") else t["aiNote"]}
 {f'{t["sourceWord"]}: <a href="{e(src)}" rel="nofollow">{e(text.get("sourceName", "source"))}</a> ({e(text.get("license", ""))}).' if src else ""}</p></section>"""
     items = []
     for p, shops in sorted(x["perfumes"], key=lambda q: (-q[1], q[0]["name"])):

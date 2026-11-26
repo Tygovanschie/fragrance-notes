@@ -48,7 +48,7 @@ import catalog  # noqa: E402  (NOTE_EN, brand_key, name_key, plain)
 DB = os.environ.get("DB_PATH", os.path.join(BASE, "data", "prices.db"))
 OUT = os.environ.get("REVIEW_DIR", os.path.join(BASE, "review"))
 OLLAMA = os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434")
-MODEL = os.environ.get("LLM_MODEL", "qwen2.5:7b")
+MODEL = os.environ.get("LLM_MODEL", "qwen2.5:14b")   # slower than 7b (partly on the CPU), but knows more and guesses less
 MAX_ITEMS = int(os.environ.get("LLM_MAX_ITEMS", "500"))   # per job and night
 DAY = datetime.date.today().isoformat()
 import maintenance  # noqa: E402  (data/auto.db: what the job fixes itself)
@@ -68,11 +68,15 @@ def todo(kind, item, detail):
 
 
 
-def ask(prompt):
-    body = json.dumps({"model": MODEL, "prompt": prompt, "format": "json", "stream": False,
-                       "options": {"temperature": 0}}).encode()
+def ask(prompt, model=None, attempt=0):
+    """The model's JSON answer. attempt 0 is the steady answer (temperature 0); a later attempt asks again with some
+    variation, so a note that failed a check gets a different text instead of the same one every night."""
+    opts = {"temperature": 0} if not attempt else {"temperature": 0.6, "seed": attempt}
+    opts["num_ctx"] = 8192   # the prompts are short; a smaller context keeps the 14b model in memory
+    body = json.dumps({"model": model or MODEL, "prompt": prompt, "format": "json", "stream": False,
+                       "options": opts}).encode()
     req = urllib.request.Request(f"{OLLAMA}/api/generate", body, {"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=180) as r:
+    with urllib.request.urlopen(req, timeout=900) as r:   # the bigger model is slow on this GPU, which is fine at night
         return json.loads(json.loads(r.read())["response"])
 
 
@@ -299,14 +303,16 @@ TEXT_PROMPT = """You write short descriptions of perfume notes for a perfume web
 shoppers. No marketing words, no brand or perfume names, no lists.
 
 Note: {note}
+Where it sits: {tier}
+Notes it is often paired with on our site: {pairs}
 Source text (from Wikipedia):
 \"\"\"{source}\"\"\"
 
 Reply in JSON: {{"smell": ..., "origin": ..., "from_source": ...}}
 - "smell": 2 sentences. First: what it smells like, compared with things people know (fruits, spices, wood,
-  sweets, the outdoors), as concrete as you can. Second: what it does in a perfume and whether it is usually a
-  top, heart or base note. Keep to what is common knowledge in perfumery. Avoid empty phrases such as "adds depth
-  and longevity", "depth and complexity", "evokes", "invigorating", "a popular choice".
+  sweets, the outdoors), as concrete as you can. Second: what it does in a perfume, and that it is {tier_short}
+  (use exactly that; never another tier). Keep to what is common knowledge in perfumery. Avoid empty phrases such
+  as "adds depth and longevity", "depth and complexity", "evokes", "invigorating", "a popular choice".
 - "origin": 1 sentence on what it is: the plant (or material), the part that is used, and where it is native, as
   far as the source text says. Use ONLY facts in the source. Never claim how much or where most of it comes from:
   no "primarily", "mainly", "mostly", "most", "largest", "main producer", "commonly produced in". If the source
@@ -365,97 +371,163 @@ def unsupported(origin, source):
     return sorted({w for w in words if w.lower() not in source.lower()})
 
 
+# Accords and abstract notes have no single material behind them, so Wikipedia's article (about animal hides for
+# leather, the sea for aquatic) is the wrong source. For these the model writes only how the note smells, from
+# common perfumery knowledge, and "comes from" is this fixed sentence, which is true for all of them.
+ACCORD_PROMPT = """You write short descriptions of perfume notes for a perfume website. Plain, friendly English for
+shoppers. No marketing words, no brand or perfume names, no lists.
+
+Note: {note} (an accord or a family: perfumers build it from several ingredients, it is not one material)
+Where it sits: {tier}
+Notes it is often paired with on our site: {pairs}
+
+Reply in JSON: {{"smell": ...}}
+- "smell": 2 sentences. First: what it smells like, compared with things people know, as concrete as you can.
+  Second: what it does in a perfume, and that it is {tier_short} (use exactly that; never another tier). Avoid
+  empty phrases such as "adds depth and longevity", "depth and complexity", "evokes", "invigorating"."""
+ACCORD_ORIGIN = "In today's perfumes this note isn't taken from one natural material: perfumers build it from several other ingredients."
+TRIES_PER_NIGHT = 3        # differently worded attempts per note and night before it waits for the next night
+TODO_AFTER = 5             # nights in a row without a passing text before a note shows up in the email
+
+
+def tier_words(counts):
+    """("mostly a base note in the perfumes on our site", "usually a base note") from where the note sits in our
+    perfumes; two tiers when both hold at least a third ("a top or heart note")."""
+    if not counts:
+        return "unknown", "a top, heart or base note"
+    total = sum(counts.values())
+    order = [t for t in ("top", "heart", "base") if counts.get(t, 0) / total >= 1 / 3] or [max(counts, key=counts.get)]
+    t = " or ".join(order)
+    return f"mostly a {t} note in the perfumes on our site", f"usually a {t} note"
+
+
+def text_checks(k, smell, origin, source, a, counts, accord):
+    """(problems with smell, problems with origin): a text goes online when smell has none; origin is shown only
+    when it has none either (otherwise the page shows the smell alone, and the note is tried again for an origin)."""
+    s, o = [], []
+    if not smell or len(smell) > 400:
+        s.append("empty or too long")
+    if (m := FILLER.search(smell)):
+        s.append(f"empty phrase: \"{m.group(0)}\"")
+    if not re.search(r"\b(top|heart|middle|base)\b", smell, re.I):
+        s.append("doesn't say top, heart or base")
+    elif (why := wrong_tier(smell, counts)):
+        s.append(why)
+    if not accord:
+        if not source:
+            o.append("no source found")
+        if a.get("from_source") is not True:
+            o.append("model: origin not fully from the source")
+        if (extra := unsupported(origin, source or "")):
+            o.append("not in source: " + ", ".join(extra))
+        if not origin or len(origin) > 700:
+            o.append("empty or too long")
+        if (m := CLAIM.search(origin)):
+            o.append(f"claim about quantity: \"{m.group(0)}\"")
+    return s, o
+
+
 def job_texts(con, seen):
+    """Every note with a page gets a text by itself: tried every night until one passes the checks (new notes
+    included), with the tier taken from our own data. Never waits for a person; only a note that failed TODO_AFTER
+    nights in a row is mentioned in the email."""
+    import accords
     try:
         with open(os.path.join(BASE, "note_texts.json"), encoding="utf-8") as f:
             done = set(json.load(f))
     except FileNotFoundError:
         done = set()
-    want, tiers = {}, {}
+    AUTO.execute("CREATE TABLE IF NOT EXISTS text_tries (key TEXT PRIMARY KEY, nights INTEGER NOT NULL, last TEXT NOT NULL)")
+    want, tiers, pairs = {}, {}, {}
     for (data,) in con.execute("SELECT data FROM catalog WHERE confirmed >= ?", (PAGE_MIN_CONFIRMED,)):
-        for tier, ns in json.loads(data)["notes"].items():
+        notes = json.loads(data)["notes"]
+        here = [n["en"] for ns in notes.values() for n in ns if n.get("en") and n["confirmed"]]
+        for tier, ns in notes.items():
             for n in ns:
                 if n.get("en") and n["confirmed"]:
                     want[n["en"]] = want.get(n["en"], 0) + 1
                     tiers.setdefault(n["en"], {}).setdefault(tier, 0)
                     tiers[n["en"]][tier] += 1
+                    for other in here:
+                        if other != n["en"]:
+                            pairs.setdefault(n["en"], {}).setdefault(other, 0)
+                            pairs[n["en"]][other] += 1
     # Texts already online that say another tier than where the note sits in our perfumes: taken back (every night,
-    # also when the data changes).
+    # also when the data changes), and written again below.
+    online = {k: o for k, s, o in AUTO.execute("SELECT key, smell, origin FROM note_text").fetchall()}
     for k, smell in AUTO.execute("SELECT key, smell FROM note_text").fetchall():
         why = wrong_tier(smell, tiers.get(k))
         if why:
             AUTO.execute("DELETE FROM note_text WHERE key=?", (k,))
-            changed("note text taken back", k, why)
-            todo("note text", k, why)
+            changed("note text taken back", k, why + " (written again)")
+            online.pop(k)
     AUTO.commit()
-    new = sorted((k for k in want if k not in done and k not in seen), key=lambda k: (-want[k], k))[:TEXTS_PER_NIGHT]
+    accord_keys = ACCORD_NOTES | set(accords.FAMILIES)
+    # Without a text, or online with the smell only (no origin yet, and one could exist).
+    new = [k for k in want if k not in done and (k not in online or (not online[k] and k not in accord_keys))]
+    new = sorted(new, key=lambda k: (k in online, -want[k], k))[:TEXTS_PER_NIGHT]
     if not new:
-        return f"texts: nothing new ({len(want)} notes with a page, {len(done & set(want))} have a text)", []
-    rows, drafts, asked = [], {}, []
+        return f"texts: nothing new ({len(want)} notes with a page, {len(done & set(want)) + len(online)} have a text)", []
+    rows, drafts, wrote = [], {}, 0
     for k in new:
-        try:
-            src = wiki_intro(WIKI_TITLES.get(k, k[:1].upper() + k[1:]))
-        except Exception as err:   # Wikipedia not reachable: this note again next night, the others go on
-            print(f"llm review texts: {k} skipped ({err})", flush=True)
-            continue
-        asked.append(k)
-        if not src:
-            rows.append([k, "—", "—", "no source found: no text (the page shows facts only)", ""])
-            continue
-        title, url, text = src
-        try:
-            a = ask(TEXT_PROMPT.format(note=k, source=text))
-        except Exception as err:   # the model server failed once (HTTP 500): skip this note, try it next night
-            asked.remove(k)
-            print(f"llm review texts: {k} skipped ({err})", flush=True)
-            continue
-        # One more try when it only used an empty phrase or a claim: tell the model what to leave out.
-        for _ in range(1):
-            bad = [m.group(0) for m in (FILLER.search(str(a.get("smell") or "")), CLAIM.search(str(a.get("origin") or ""))) if m]
-            if not bad:
-                break
+        accord = k in accord_keys
+        source, url = "", ""
+        if not accord:
             try:
-                a = ask(TEXT_PROMPT.format(note=k, source=text) + "\n\nYour first answer used " + ", ".join(f'"{b}"' for b in bad)
-                        + ". Write it again without those words.")
-            except Exception:   # keep the first answer; the checks below decide
+                src = wiki_intro(WIKI_TITLES.get(k, k[:1].upper() + k[1:]))
+            except Exception as err:   # Wikipedia not reachable: this note again next night, the others go on
+                print(f"llm review texts: {k} skipped ({err})", flush=True)
+                continue
+            if src:
+                _, url, source = src
+        tier, tier_short = tier_words(tiers.get(k))
+        with_ = ", ".join(sorted(pairs.get(k, {}), key=lambda x: -pairs[k][x])[:6]) or "none yet"
+        prompt = (ACCORD_PROMPT if accord else TEXT_PROMPT).format(
+            note=k, tier=tier, tier_short=tier_short, pairs=with_, source=source or "(none found: leave origin empty)")
+        best = None
+        for attempt in range(TRIES_PER_NIGHT):
+            try:
+                a = ask(prompt, attempt=attempt)
+            except Exception as err:   # the model server failed once (HTTP 500): next attempt, or next night
+                print(f"llm review texts: {k} attempt {attempt} failed ({err})", flush=True)
+                continue
+            smell = str(a.get("smell") or "").strip()
+            origin = ACCORD_ORIGIN if accord else str(a.get("origin") or "").strip()
+            s, o = text_checks(k, smell, origin, source, a, tiers.get(k), accord)
+            score = (not s, not o)
+            if best is None or score > best[0]:
+                best = (score, smell, origin, s, o)
+            if not s and not o:
+                break
+        if best is None:
+            continue
+        _, smell, origin, s, o = best
+        drafts[k] = {"smell": smell, "origin": origin, "source": url, "problems": s + o}
+        if not s:
+            if o and k in online:   # it had the smell already and still no good origin: nothing new to save
                 pass
-        smell, origin = str(a.get("smell") or "").strip(), str(a.get("origin") or "").strip()
-        checks = []
-        if a.get("from_source") is not True:
-            checks.append("model: origin not fully from the source")
-        if (extra := unsupported(origin, text)):
-            checks.append("not in source: " + ", ".join(extra))
-        if not smell or not origin or len(smell) > 400 or len(origin) > 700:
-            checks.append("empty or too long")
-        if (m := CLAIM.search(origin)):
-            checks.append(f"claim about quantity: \"{m.group(0)}\"")
-        if (m := FILLER.search(smell)):
-            checks.append(f"empty phrase: \"{m.group(0)}\"")
-        if not re.search(r"\b(top|heart|middle|base)\b", smell, re.I):
-            checks.append("doesn't say top, heart or base")
-        elif (why := wrong_tier(smell, tiers.get(k))):
-            checks.append(why)
-        if k in ACCORD_NOTES:
-            checks.append("an accord: the source is about the material, not how perfumers make the note")
-        drafts[k] = {"smell": smell, "origin": origin, "source": url, "sourceName": "Wikipedia", "license": "CC BY-SA 4.0"}
-        # Online by itself only when every check passes: the model says it only used the source, and it added no
-        # names or numbers the source doesn't have. Otherwise it waits for a person.
-        if not checks:
-            AUTO.execute("INSERT OR REPLACE INTO note_text (key, smell, origin, source, night) VALUES (?,?,?,?,?)",
-                         (k, smell, origin, url, DAY))
-            changed("note text", k, smell[:100])
-            AUTO.commit()   # saved per note: a long night that stops halfway keeps what it wrote
+            else:
+                AUTO.execute("INSERT OR REPLACE INTO note_text (key, smell, origin, source, night) VALUES (?,?,?,?,?)",
+                             (k, smell, "" if o else origin, url if not o else "", DAY))
+                changed("note text", k, smell[:100] + (" (without origin: " + "; ".join(o) + ")" if o else ""))
+                wrote += 1
+        if s or (o and not accord):
+            n = AUTO.execute("SELECT nights FROM text_tries WHERE key=?", (k,)).fetchone()
+            n = (n[0] if n else 0) + 1
+            AUTO.execute("INSERT OR REPLACE INTO text_tries (key, nights, last) VALUES (?,?,?)", (k, n, DAY))
+            if s and n >= TODO_AFTER:
+                todo("note text", k, f"no good text after {n} nights: " + "; ".join(s))
         else:
-            todo("note text", k, "; ".join(checks))
-        rows.append([k, smell, origin, "; ".join(checks) or "ok", f"[{title}]({url})"])
-    path = write_list("texts", "Note descriptions to review",
-                      "Drafts only: nothing is online. Check each text against the source (the model sometimes gets facts\n"
-                      "wrong), fix it if needed, and copy the good ones from texts-" + DAY + ".json into server/note_texts.json.",
-                      ["Note", "Smells like (draft)", "Comes from (draft)", "Checks", "Source"], rows)
+            AUTO.execute("DELETE FROM text_tries WHERE key=?", (k,))
+        AUTO.commit()   # saved per note: a long night that stops halfway keeps what it wrote
+        rows.append([k, smell, origin, "; ".join(s + o) or "ok", url])
+    path = write_list("texts", "Note descriptions written tonight",
+                      "Online by themselves when the smell text passed every check; the origin only when it passed too.",
+                      ["Note", "Smells like", "Comes from", "Problems", "Source"], rows)
     with open(os.path.join(OUT, f"texts-{DAY}.json"), "w", encoding="utf-8") as f:
         json.dump(drafts, f, ensure_ascii=False, indent=2)
     os.chmod(os.path.join(OUT, f"texts-{DAY}.json"), 0o600)
-    return f"texts: {len(drafts)} drafts, {len(rows) - len(drafts)} without a source -> {path}", asked
+    return f"texts: {len(rows)} notes tried, {wrote} texts online -> {path}", []
 
 
 # ---------- 6. bottle photos from Wikimedia Commons ----------
