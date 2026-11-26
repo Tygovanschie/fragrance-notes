@@ -42,7 +42,7 @@ BRAND_ALIASES = {
     "boss": "hugo boss", "hugo": "hugo boss",
     "maison francis kurkdjian": "mfk", "francis kurkdjian": "mfk",
     "dolce gabbana": "dolce gabbana", "d g": "dolce gabbana",
-    "jean paul gaultier": "jpg", "gaultier": "jpg",
+    "jean paul gaultier": "jpg", "gaultier": "jpg", "j p gaultier": "jpg", "jp gaultier": "jpg",
     "calvin klein": "ck",
     "viktor rolf": "viktor rolf",
     "by kilian": "kilian", "kilian paris": "kilian",
@@ -74,7 +74,17 @@ NAME_FILLER = {"pour", "for", "voor", "fur", "per", "para", "spray", "vapo", "va
 PROMO_TAIL = re.compile(r"[\s,]*[-–(\[/]?\s*\b(?:summer deal|winter deal|black friday deal|deal|actie|aanbieding|"
                         r"rechargeable|refillable|refill|recharge|navulbaar|nachfullbar|nachfüllbar|"
                         r"travel(?: size| spray| edition)?|new in box|brand new|tester|gift ?set|coffret|"
-                        r"parf[uü]m(?:[uü])? seti|seti)\b\s*[)\]]?\s*$", re.I)
+                        r"parf[uü]m(?:[uü])? seti|seti|verstuiver|kopen)\b\s*[)\]]?\s*$", re.I)
+# Collection names that some shops put in front of the name and others leave out ("Signature Fragrances Ombré
+# Leather" at Douglas, "Ombré Leather" at Tom Ford): name_key and the displayed name leave them out.
+LINE_PREFIX = {"tom ford": re.compile(r"^\s*(?:signature fragrances?|signature collection|private blend)\b[\s:–-]*", re.I)}
+
+
+def strip_line(name, bkey):
+    """"Signature Fragrances Ombré Leather" -> "Ombré Leather" (Tom Ford); never empties a name."""
+    rx = LINE_PREFIX.get(bkey)
+    rest = rx.sub("", str(name or "")) if rx else str(name or "")
+    return rest if re.search(r"\w", rest) else str(name or "")
 # Sub-brand words that shops leave in front of the name without the house itself ("Emporio Stronger With You",
 # "Giorgio Stronger With You", "EA STRONGER WITH YOU"); the displayed name leaves them out. Only these: in
 # "Armani Code", "Narciso Poudrée" or "Cerruti 1881 Black" the house word is part of the perfume's name.
@@ -320,7 +330,7 @@ lavandin: lavandin
 peppermint: pepermunt | peppermint | pfefferminze | pfefferminz | menthe poivree | menta piperita
 sichuan pepper: sichuan peper | szechuan peper | sichuan pepper | szechuan pepper | sichuanpfeffer | poivre de sichuan
 white pepper: witte peper | white pepper | weisser pfeffer | poivre blanc | pimienta blanca | pepe bianco
-chili pepper: chilipeper | chili peper | chili | chili pepper | chilischote | piment
+chili pepper: chilipeper | chili peper | chili | chili pepper | chilischote | piment | rode peper | red pepper | roter pfeffer | poivre rouge
 jasmine sambac: sambac | jasmijn sambac | sambac jasmijn | jasmine sambac | sambac jasmine | jasmin sambac
 green apple: groene appel | green apple | gruner apfel | pomme verte | manzana verde | mela verde
 green mandarin: groene mandarijn | green mandarin | grune mandarine | mandarine verte | mandarina verde
@@ -337,6 +347,10 @@ cade: cade | cade olie | cade oil
 chinotto: chinotto
 styrax: styrax | storax
 plum blossom: pruimenbloesem | plum blossom | pflaumenblute | fleur de prunier
+amberever: amberever | ambrever | amberever neo
+berries: bessen | bes | berries | berry | beeren | baies
+allspice: pimentbes | pimentbessen | piment bes | pimento bes | permento bes | pimento | allspice | piment de la jamaique | jamaica pepper | nelkenpfeffer
+cinnamon liqueur: kaneellikeur | kaneel likeur | cinnamon liqueur | zimtlikor | liqueur de cannelle
 """
 NOTE_CANON = {v.strip(): canon.strip() for line in NOTE_WORDS.strip().splitlines()
               for canon, variants in [line.split(":", 1)] for v in variants.split("|") if v.strip()}
@@ -373,7 +387,7 @@ def name_key(name, bkey, promo=True):
     names had before PROMO_TAIL, see build)."""
     drop = brand_words(bkey)
     out = []
-    for w in plain(strip_promo(name) if promo else name).split():
+    for w in plain(strip_promo(strip_line(name, bkey)) if promo else name).split():
         if w in drop or w in NAME_FILLER:
             continue
         w = "homme" if w in MALE_WORDS else "femme" if w in FEMALE_WORDS else w
@@ -493,6 +507,7 @@ NOTE_PARENTS = {
     "pink pepper": "pepper", "black pepper": "pepper", "glazed chestnut": "chestnut", "bourbon vanilla": "vanilla",
     "blood mandarin": "mandarin", "blood orange": "orange", "bitter orange": "orange", "white musk": "musk",
     "clary sage": "sage", "star anise": "anise", "frankincense": "incense", "ambergris": "amber",
+    "blackcurrant": "berries", "cinnamon liqueur": "cinnamon",
 }
 
 
@@ -636,7 +651,7 @@ SHOP_GENDER_TAIL = re.compile(r"(?:\s+(?:voor|fur|für))?\s+(?:mannen|vrouwen|he
 def display_name(name, bkey=""):
     """The name as shown: without shop gender tails ("… Mannen"), promotion words ("- Summer Deal") and the
     house's words in front ("Emporio", "Giorgio", "EA" for Armani), as long as a real name is left."""
-    rest = strip_promo(SHOP_GENDER_TAIL.sub("", name).strip())
+    rest = strip_promo(strip_line(SHOP_GENDER_TAIL.sub("", name).strip(), bkey))
     orphans = ORPHAN_PREFIX.get(bkey)
     if orphans:
         tokens = list(re.finditer(r"[^\W_]+", rest))

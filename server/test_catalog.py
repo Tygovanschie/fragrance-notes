@@ -261,6 +261,20 @@ class Build(unittest.TestCase):
                            ("Libre Refillable - Summer Deal", "Libre"), ("Sunset", "Sunset"), ("Jet Set", "Jet Set")]:
             self.assertEqual(catalog.strip_promo(raw), clean, raw)
 
+    def test_shop_words_and_collection_names_tygo_picked(self):
+        # From the maintenance email of 2026-11-26: VERSTUIVER and "kopen" are shop words, "Signature Fragrances"
+        # a Tom Ford collection label, "J.P. Gaultier" the house; "Absolutely" is part of the name.
+        for raw, clean in [("ALLURE HOMME SPORT VERSTUIVER", "ALLURE HOMME SPORT"), ("I (1) - kopen", "I (1)"),
+                           ("Stronger With You Absolutely", "Stronger With You Absolutely")]:
+            self.assertEqual(catalog.strip_promo(raw), clean, raw)
+        self.assertEqual(catalog.display_name("Signature Fragrances Ombré Leather", "tom ford"), "Ombré Leather")
+        self.assertEqual(catalog.name_key("Signature Fragrances Ombré Leather", "tom ford"), catalog.name_key("Ombré Leather", "tom ford"))
+        self.assertEqual(catalog.name_key("J.P. Gaultier Le Male", catalog.brand_key("Jean Paul Gaultier")), "le male")
+        self.assertEqual(catalog.display_name("Private Blend", "tom ford"), "Private Blend")   # nothing left: unchanged
+        for spelling, note in [("Rode Peper", "chili pepper"), ("Permento Bes", "allspice"), ("Bes", "berries"),
+                               ("Exclusief Kaneellikeur Akkoord", "cinnamon liqueur"), ("Amberever", "amberever")]:
+            self.assertEqual(catalog.NOTE_CANON.get(catalog.note_key(spelling)), note, spelling)
+
     def test_house_words_in_front_of_the_name(self):
         for name, brand, shown in [("Emporio Stronger With You", "armani", "Stronger With You"),
                                    ("Giorgio Stronger With You", "armani", "Stronger With You"),

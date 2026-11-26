@@ -36,7 +36,7 @@ TITLES = {
     "oakmoss": "Evernia prunastri", "moss": "Moss", "pine": "Pine", "fir": "Fir", "oak": "Oak", "birch": "Birch",
     "clary sage": "Salvia sclarea", "tarragon": "Tarragon", "bay leaf": "Bay leaf", "fig": "Common fig",
     "blood orange": "Blood orange", "bitter orange": "Bitter orange", "blood mandarin": "Mandarin orange",
-    "lime": "Lime (fruit)", "red berries": "Redcurrant", "water lily": "Nymphaeaceae", "lily": "Lilium",
+    "lime": "Lime (fruit)", "red berries": "Redcurrant", "berries": "Berry", "water lily": "Nymphaeaceae", "lily": "Lilium",
     "lily of the valley": "Convallaria majalis", "olive tree": "Olive", "rosewood": "Dalbergia", "ebony": "Ebony",
     "mahogany": "Mahogany", "salt": "Sea salt", "maple syrup": "Maple syrup", "sugar": "Sugar", "milk": "Milk",
     "cream": "Cream", "rum": "Rum", "wine": "Wine", "hay": "Hay", "grass": "Poaceae", "praline": "Praline (nut confection)",
@@ -58,7 +58,7 @@ FILES = {
 # As a small square that's a blur of lines: rather no photo (the note's colour) than that.
 DRAWING = re.compile(r"k[öo]hler|medizinal|britannica|engraving|illustration|\bNGM\b|\b1[5-8]\d\d\b|\bL\.?,", re.I)
 # No photo: abstract accords, synthetics, animal materials and descriptions.
-SKIP = {"amber", "ambergris", "ambroxan", "iso e super", "hedione", "cashmeran", "aldehydes", "musk", "white musk",
+SKIP = {"amber", "ambergris", "ambroxan", "amberever", "cinnamon liqueur", "iso e super", "hedione", "cashmeran", "aldehydes", "musk", "white musk",
         "civet", "castoreum", "ozonic", "marine", "solar notes", "mineral", "smoke", "resin", "toffee", "caramel",
         "sweet", "spicy", "oriental", "woody", "aromatic", "floral", "fruity", "powdery", "fresh", "citrus", "aquatic",
         "green", "gourmand", "chypre", "fougere", "musky", "cypriol"}

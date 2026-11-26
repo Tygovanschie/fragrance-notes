@@ -103,6 +103,8 @@ NOTES.update({
     "smoke": {"smoky": 1}, "salt": {"aquatic": .7, "fresh": .4}, "mineral": {"fresh": .6, "aquatic": .4, "earthy": .3},
     "ozonic": {"fresh": .9, "aquatic": .6}, "marine": {"aquatic": 1, "fresh": .5}, "solar notes": {"white floral": .5, "sweet": .4, "aquatic": .3},
     "caviar": {"aquatic": .7, "fresh": .3}, "monoi": {"white floral": .8, "sweet": .4, "gourmand": .3},
+    "amberever": {"woody": .9, "amber": .8}, "berries": {"fruity": 1, "sweet": .4},
+    "allspice": {"warm spicy": 1, "sweet": .2}, "cinnamon liqueur": {"warm spicy": .9, "sweet": .6, "gourmand": .4},
 })
 FAMILIES = {
     "spicy": {"warm spicy": .6, "fresh spicy": .3}, "oriental": {"amber": .8, "warm spicy": .3, "sweet": .3},
