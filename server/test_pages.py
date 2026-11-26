@@ -221,8 +221,19 @@ class PagesTest(unittest.TestCase):
         self.assertEqual(code, 200)
         self.assertIn("Stronger With You Intensely", body)
         self.assertIn("noindex", body)
+        self.assertIn("Results for “stronger”", body)
+        self.assertIn('class="pcard"', body)                                     # results as cards, with their square
+        self.assertEqual(body.count('class="pcard"'), body.count('<div class="pimg">'))
         code, body, _ = get("/database/search?q=guilty")
-        self.assertIn("1 more perfume", body)
+        self.assertIn("In the database, no page yet", body)                      # no page yet: to its rating page
+        self.assertIn(f'href="/perfume/{self.pid("Guilty")}/rate"', body)
+        self.assertIn("Rate it →", body)
+        _, body, _ = get("/database/search?q=tonka")
+        self.assertIn('href="/note/tonka-bean"', body)                           # the note as a tile
+        self.assertIn("Stronger With You Intensely", body)                       # and the perfumes that have it
+        _, body, _ = get("/database/search?q=zzzz")
+        self.assertIn("Nothing matches “zzzz” yet", body)
+        self.assertIn('class="tries"', body)
         _, body, _ = get("/database/search?q=%3Cscript%3E")
         self.assertNotIn("<script>", body)
         code, body, h = get("/sitemap.xml")

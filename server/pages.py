@@ -772,6 +772,7 @@ section.part.first .parthead{margin-bottom:22px}.showsel ul,.regsel ul{min-width
 .extband .btn.quiet{background:transparent;color:var(--white);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55)}.extband .btn.quiet:hover{background:rgba(255,255,255,.12)}
 @media (max-width:900px){.homehero{grid-template-columns:minmax(0,1fr);gap:28px;padding-bottom:36px}.mosaic{max-width:520px}.doors{grid-template-columns:1fr 1fr}.hp .notegrid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .extband{grid-template-columns:1fr;padding:34px 22px 0;gap:28px}.extband>div{padding-bottom:0}.extband img{order:2;max-width:260px;justify-self:center}}
+.sh1{font-size:clamp(2rem,4.4vw,3.2rem);margin:0 0 20px}.sres{padding-top:44px}.listsearch+.sres{padding-top:24px}.sres h2 small{font:600 1rem/1 var(--text);color:var(--ink-soft);margin-left:6px;vertical-align:middle}.pcard .rate{color:var(--plum)}
 @media (max-width:430px){.top .wrap{gap:10px 8px}.brand{font-size:1rem;gap:8px}.brand img{width:26px;height:26px}.langsel summary{padding:0 11px}}
 @media (max-width:560px){.doors{grid-template-columns:1fr}.hp .notegrid{grid-template-columns:repeat(3,minmax(0,1fr))}.mosaic{gap:8px}.mosaic a{border-radius:16px}.mosaic span{font-size:.8125rem;padding:20px 8px 7px}}
 """
@@ -1437,10 +1438,13 @@ def brand_page(con, slug_, lang="en"):
 
 # ---------- /database and /database/search ----------
 
-def card(con, p, prices=None, lang="en"):
+def card(con, p, prices=None, lang="en", href=None, rate=""):
+    """A perfume card. Without a page of its own (search results), href is its rating page and rate the link text
+    at the bottom; its notes are then all the ones shops name, as few are confirmed yet."""
     t = T[lang]
-    conf = [note_name(n["en"], lang) if n.get("en") else n["name"] for tr in p["notes"].values() for n in tr if n["confirmed"]]
-    tail = ""
+    conf = [note_name(n["en"], lang) if n.get("en") else n["name"] for tr in p["notes"].values() for n in tr
+            if n["confirmed"] or href]
+    tail = f'<p class="p"><span></span><b class="rate">{e(rate)}</b></p>' if rate else ""
     st = prices(p["fragrantica"][0]) if prices and p.get("fragrantica") else None
     rows = best_prices(st)
     if rows:
@@ -1456,7 +1460,7 @@ def card(con, p, prices=None, lang="en"):
         cols = cols * 2 if len(cols) == 1 else cols
         ph = (f'<span class="ph" style="background:linear-gradient(140deg,{",".join(cols)})" aria-hidden="true">'
               f'{e(p["name"][:1].upper())}</span>')
-    return (f'<a class="pcard" href="{P(lang, perfume_path(p))}"><div class="ptop"><div class="pt">'
+    return (f'<a class="pcard" href="{href or P(lang, perfume_path(p))}"><div class="ptop"><div class="pt">'
             f'<p class="h">{e(p["brand"])}</p><p class="n">{e(p["name"])}</p><p class="c">{e(" · ".join(b for b in bits if b))}</p>'
             f'</div><div class="pimg">{ph}</div></div>'
             f'{accord_strip(acc, "mini") if acc else "<div class=" + chr(34) + "astrip mini none" + chr(34) + "></div>"}'
@@ -1579,22 +1583,52 @@ def database_page(con, prices=None, lang="en", show=24, page=1, q=""):
                  search=False, script=True)
 
 
-def search_page(con, q, lang="en"):
-    t = T[lang]
-    q = (q or "")[:100]
+def search_page(con, q, lang="en", prices=None):
+    """Search results in the site's own shapes: perfume cards with their photo (or accord-coloured placeholder),
+    note tiles with their photo, brand chips, and the matching perfumes without a page yet (to their rating page)."""
+    t, h = T[lang], HOME[lang]
+    q = " ".join(str(q or "").split())[:100]
     idx = index(con)
     words = catalog.plain(q).split()
-    hits = [p for p in idx["perfumes"] if words and all(f" {w}" in " " + catalog.plain(p["brand"] + " " + p["name"]) for w in words)]
-    notes = [k for k in idx["notes"] if words and all(w in k or w in catalog.plain(note_name(k, lang)) for w in words)]
-    others = sum(1 for r in catalog.search(con, q) if r["id"] not in idx["byId"]) if words else 0
-    lis = "".join(f'<li><a href="{P(lang, perfume_path(p))}"><b>{e(p["name"])}</b></a> <span class="muted">{e(p["brand"])} · {e(conc_name(p) or t["perfume"])}</span></li>' for p in hits)
-    lis += "".join(f'<li><a href="{P(lang, note_path(k))}"><b>{e(note_name(k, lang))}</b></a> <span class="muted">{t["perfumeNote"].lower()}</span></li>' for k in notes)
-    none = "" if lis else f"<p>{t['noMatch']}</p>"
-    more = f'<p class="muted">{t["moreMatch"](others)}</p>' if others else ""
-    body = f"""{back(lang)}<h1 style="font-size:clamp(2rem,4vw,3rem)">{t["search"]}</h1>
-<form class="search" role="search" action="{P(lang, '/database/search')}" style="margin-bottom:28px"><input type="search" name="q" value="{e(q)}" aria-label="{t["searchPh"]}" required maxlength="100"><button class="btn" type="submit">{t["search"]}</button></form>
-<section class="card"><ul class="results">{lis}</ul>{none}{more}</section>"""
-    return frame(lang, f'{t["search"]}: {q} | Fragrance Notes', t["dbDesc"], "/database/search", body, noindex=True)
+    # By name first, then perfumes that only match through a note ("vanilla" also finds perfumes with vanilla).
+    by_name = [p for p in popular(idx) if words and all(f" {w}" in " " + catalog.plain(p["brand"] + " " + p["name"]) for w in words)]
+    by_note = [p for p in popular(idx) if words and p not in by_name and matches(p, words, lang)]
+    hits = by_name + by_note
+    notes = sorted((k for k in idx["notes"] if words and all(w in k or w in catalog.plain(note_name(k, lang)) for w in words)),
+                   key=lambda k: -len(idx["notes"][k]["perfumes"]))
+    brands = [b for b in idx["brands"].values() if words and all(f" {w}" in " " + catalog.plain(b["name"]) for w in words)]
+    others = [catalog.perfume(con, r["id"]) for r in catalog.search(con, q) if r["id"] not in idx["byId"]] if words else []
+    others = [p for p in others if p][:12]
+    parts = []
+    if hits:
+        parts.append(f'<section class="part hp sres"><div class="parthead"><h2>{h["navPerfumes"]} <small>{len(hits)}</small></h2></div>'
+                     f'<div class="cards">{"".join(card(con, p, prices, lang) for p in hits[:24])}</div></section>')
+    if notes:
+        parts.append(f'<section class="part hp sres"><div class="parthead"><h2>{h["navNotes"]} <small>{len(notes)}</small></h2></div>'
+                     f'<ul class="tiles notegrid">{"".join(note_tile(con, idx, k, lang) for k in notes[:18])}</ul></section>')
+    if brands:
+        parts.append(f'<section class="part hp sres"><div class="parthead"><h2>{h["navBrands"]} <small>{len(brands)}</small></h2></div><ul class="chips">'
+                     + "".join(f'<li><a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}<small>{len(b["perfumes"])}</small></a></li>'
+                               for b in brands) + "</ul></section>")
+    if others:
+        parts.append(f'<section class="part hp sres"><div class="parthead"><h2>{h["notYetH"]} <small>{len(others)}</small></h2></div>'
+                     f'<p class="intro">{h["notYetD"].format(n=PAGE_MIN_CONFIRMED)}</p><div class="cards">'
+                     + "".join(card(con, p, None, lang, P(lang, f"/perfume/{p['id']}/rate"), h["rateIt"]) for p in others)
+                     + "</div></section>")
+    if notes and not by_name and hits:   # a note ("vanilla"): the note itself first, then the perfumes with it
+        parts[0], parts[1] = parts[1], parts[0]
+    if not parts:
+        top = sorted(idx["notes"], key=lambda k: -len(idx["notes"][k]["perfumes"]))[:4]
+        sugg = "".join(f'<a href="{P(lang, note_path(k))}">{e(note_name(k, lang))}</a>' for k in top)
+        sugg += "".join(f'<a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}</a>'
+                        for b in sorted(idx["brands"].values(), key=lambda b: -len(b["perfumes"]))[:2])
+        parts.append(f'<p class="nomatch">{h["nothingFor"].format(q=e(q)) if q else t["noMatch"]}</p>'
+                     f'<p class="tries"><span>{h["try"]}:</span>{sugg}</p>')
+    title = h["resultsFor"].format(q=q) if q else t["search"]
+    body = f"""{back(lang)}<h1 class="sh1">{e(title)}</h1>
+{search_form(lang, "listsearch bigsearch", P(lang, "/database/search"), q)}
+{"".join(parts)}"""
+    return frame(lang, f'{title} | Fragrance Notes', t["dbDesc"], "/database/search", body, noindex=True, search=False)
 
 
 def not_found(lang="en"):
@@ -1615,6 +1649,12 @@ def shop_count():
             return sum(1 for line in f if line.strip() and not line.lstrip().startswith("#"))
     except OSError:
         return 0
+
+
+def popular(idx):
+    """The published perfumes, most popular first: sold by the most shops, then the most prices shared for it."""
+    return sorted(idx["perfumes"], key=lambda p: (-(p.get("shops") or 0), -(p.get("reports") or 0),
+                                                  -(p.get("confirmedNotes") or 0), p["name"]))
 
 
 def home_page(con, prices=None, lang="en"):
@@ -1645,7 +1685,7 @@ def home_page(con, prices=None, lang="en"):
     doors_html = "".join(f'<li><a class="door" href="{e(u)}"><b>{e(name)}</b><span class="dn">{e(count)}</span>'
                          f'<span class="dd">{e(d)}</span><span class="go" aria-hidden="true">→</span></a></li>'
                          for u, name, count, d in doors)
-    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][:6])
+    cards = "".join(card(con, p, prices, lang) for p in popular(idx)[:6])
     tiles = "".join(note_tile(con, idx, k, lang) for k in notes[:12])
     body = f"""<section class="homehero">
 <div class="hh">
@@ -1658,7 +1698,7 @@ def home_page(con, prices=None, lang="en"):
 {f'<div class="mosaic">{"".join(mosaic)}</div>' if len(mosaic) >= 4 else ""}
 </section>
 <ul class="doors">{doors_html}</ul>
-{f'''<section class="part hp"><div class="parthead"><h2>{h["topH"]}</h2><a class="more" href="{P(lang, "/database")}">{h["allPerfumes"]} →</a></div>
+{f'''<section class="part hp"><div class="parthead"><h2>{h["popularH"]}</h2><a class="more" href="{P(lang, "/database")}">{h["allPerfumes"]} →</a></div>
 <div class="cards">{cards}</div></section>''' if cards else ""}
 {f'''<section class="part hp"><div class="parthead"><h2>{h["notesH"]}</h2><a class="more" href="{P(lang, "/notes")}">{t["allNotes"]} →</a></div>
 <p class="intro">{h["notesD"]}</p><ul class="tiles notegrid">{tiles}</ul></section>''' if tiles else ""}
@@ -1738,7 +1778,7 @@ def route(con, path, query, prices, voter=None):
                                   (qs.get("q") or [""])[0]), None
     if path == "/database/search":
         q = (urllib.parse.parse_qs(query).get("q") or [""])[0]
-        return 200, search_page(con, q, lang), None
+        return 200, search_page(con, q, lang, prices), None
     if path in ("/notes", "/notes/"):
         return 200, notes_page(con, lang), None
     m = re.fullmatch(r"/perfume/([0-9a-f]{12})(?:-[a-z0-9-]*)?", path)

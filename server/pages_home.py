@@ -194,3 +194,41 @@ HOME = {
         "allBrands": "Wszystkie marki", "allPerfumes": "Wszystkie perfumy",
     },
 }
+
+# The home page's perfume list and the search page (/database/search).
+MORE = {
+    "en": {"popularH": "Most popular perfumes", "resultsFor": "Results for “{q}”",
+           "notYetH": "In the database, no page yet",
+           "notYetD": "Fewer than {n} of their notes are confirmed so far, so they don't have a full page yet. You can already rate them.",
+           "nothingFor": "Nothing matches “{q}” yet. Try a brand, a perfume name or a note.", "rateIt": "Rate it →"},
+    "nl": {"popularH": "Populairste parfums", "resultsFor": "Resultaten voor “{q}”",
+           "notYetH": "In de database, nog geen pagina",
+           "notYetD": "Hiervan zijn nog minder dan {n} noten bevestigd, dus ze hebben nog geen volledige pagina. Je kunt ze wel al beoordelen.",
+           "nothingFor": "Nog niets gevonden voor “{q}”. Probeer een merk, een parfumnaam of een geurnoot.", "rateIt": "Beoordeel →"},
+    "de": {"popularH": "Beliebteste Düfte", "resultsFor": "Ergebnisse für „{q}“",
+           "notYetH": "In der Datenbank, noch ohne Seite",
+           "notYetD": "Bisher sind weniger als {n} ihrer Noten bestätigt, deshalb haben sie noch keine eigene Seite. Bewerten kannst du sie schon.",
+           "nothingFor": "Zu „{q}“ gibt es noch nichts. Versuch es mit einer Marke, einem Duftnamen oder einer Note.", "rateIt": "Bewerten →"},
+    "fr": {"popularH": "Les parfums les plus populaires", "resultsFor": "Résultats pour « {q} »",
+           "notYetH": "Dans la base, pas encore de page",
+           "notYetD": "Moins de {n} de leurs notes sont confirmées pour l’instant, ils n’ont donc pas encore de page complète. Vous pouvez déjà les noter.",
+           "nothingFor": "Rien ne correspond encore à « {q} ». Essayez une marque, un nom de parfum ou une note.", "rateIt": "Noter →"},
+    "es": {"popularH": "Perfumes más populares", "resultsFor": "Resultados para «{q}»",
+           "notYetH": "En la base de datos, aún sin página",
+           "notYetD": "Por ahora tienen menos de {n} notas confirmadas, así que aún no tienen página completa. Ya puedes valorarlos.",
+           "nothingFor": "Todavía nada coincide con «{q}». Prueba con una marca, un nombre de perfume o una nota.", "rateIt": "Valorar →"},
+    "it": {"popularH": "I profumi più popolari", "resultsFor": "Risultati per «{q}»",
+           "notYetH": "Nel database, ancora senza pagina",
+           "notYetD": "Finora hanno meno di {n} note confermate, quindi non hanno ancora una pagina completa. Puoi già valutarli.",
+           "nothingFor": "Ancora nessun risultato per «{q}». Prova con un marchio, il nome di un profumo o una nota.", "rateIt": "Valuta →"},
+    "pt": {"popularH": "Perfumes mais populares", "resultsFor": "Resultados para “{q}”",
+           "notYetH": "Na base de dados, ainda sem página",
+           "notYetD": "Por enquanto têm menos de {n} notas confirmadas, por isso ainda não têm página completa. Já os pode avaliar.",
+           "nothingFor": "Ainda nada corresponde a “{q}”. Experimente uma marca, o nome de um perfume ou uma nota.", "rateIt": "Avaliar →"},
+    "pl": {"popularH": "Najpopularniejsze perfumy", "resultsFor": "Wyniki dla „{q}”",
+           "notYetH": "W bazie, jeszcze bez strony",
+           "notYetD": "Mają na razie mniej niż {n} potwierdzone nuty, więc nie mają jeszcze pełnej strony. Możesz je już ocenić.",
+           "nothingFor": "Na razie nic nie pasuje do „{q}”. Spróbuj marki, nazwy perfum lub nuty.", "rateIt": "Oceń →"},
+}
+for _l, _d in MORE.items():
+    HOME[_l].update(_d)
