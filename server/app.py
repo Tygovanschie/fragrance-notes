@@ -641,7 +641,8 @@ class Handler(BaseHTTPRequestHandler):
         u = urlsplit(self.path)
         if u.path == "/maintenance/week":
             # What the nightly job fixed and left for a person (note and perfume names, counts): the Worker mails it weekly.
-            return self.reply(200, maintenance.week())
+            d = (parse_qs(u.query).get("days") or ["7"])[0]
+            return self.reply(200, maintenance.week(days=int(d) if d in ("1", "2", "3", "7") else 7))
         if u.path == "/health":
             return self.reply(200, {"ok": True})
         if u.path == "/facts/mine":

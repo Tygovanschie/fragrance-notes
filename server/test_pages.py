@@ -454,8 +454,12 @@ class PagesTest(unittest.TestCase):
         _, body, _ = get(page)
         self.assertIn('<span class="big">4.0</span>', body)
         self.assertIn('<label for="sillage2">Moderate</label>', body)          # one word per sillage step
-        self.assertIn('<span class="l" title="Moderate">Moderate</span><span class="track"><span class="fill" style="width:100%"></span></span><span class="n">2</span>', body)
-        self.assertIn('class="vgrid"', body)
+        self.assertIn('<div class="vcell best"><span class="vcol" aria-hidden="true"><i style="--h:100%"></i></span>'
+                      '<b>2</b><span class="l" title="Moderate">Moderate</span></div>', body)
+        self.assertIn('class="vlist"', body)
+        # The answers from least to most, left to right: Intimate first, Scent trail last.
+        row = re.search(r'<h3>Sillage</h3><div class="vrow">(.*?)</div></div>', body).group(1)
+        self.assertEqual(re.findall(r'title="([^"]+)"', row), ["Intimate", "Moderate", "Enveloping", "Room-filling", "Scent trail"])
         self.assertIn("<h3>Sillage</h3>", body)
         self.assertIn('"aggregateRating"', body)
         # Dutch page, other origin, unknown perfume.

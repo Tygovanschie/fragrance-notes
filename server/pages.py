@@ -648,18 +648,20 @@ footer{padding:36px 0 56px;color:var(--ink-soft);font-size:.875rem;border-top:1p
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
 .chips a{display:inline-block;padding:8px 14px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:.9688rem}
 .chips a:hover{box-shadow:0 0 0 2px var(--plum)}.chips small{color:var(--ink-soft);margin-left:4px}
-.letter{font:750 1.25rem/1 var(--display);margin:26px 0 10px;color:var(--plum)}
+.letter{font:750 1.25rem/1 var(--display);margin:26px 0 12px;color:var(--plum)}.card h2.letter:first-child{margin-top:0}
+.notegrid{grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:18px 12px}.notegrid .nimg{width:96px;height:96px;border-radius:22px;font-size:2rem}
+.notegrid .tile small{color:var(--ink-soft);font-size:.8125rem;margin-top:-4px}
 .sr{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}.sr-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .score{display:flex;align-items:baseline;gap:10px;margin:4px 0 6px}.score .big{font:800 2.4rem/1 var(--display)}.score .st{color:var(--plum);font-size:1.3rem;letter-spacing:2px}
 form.vote{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}form.vote h3{margin:0 0 2px;font:700 1.05rem/1.2 var(--display)}form.vote .sub{margin:0 0 12px;font-size:.875rem}
-form.vote fieldset{border:0;padding:0;margin:12px 0 0;min-width:0}form.vote legend{font:600 .875rem/1.3 var(--text);margin-bottom:6px;padding:0}.qgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 24px}
+form.vote fieldset{border:0;padding:0;margin:12px 0 0;min-width:0}form.vote legend{font:600 .875rem/1.3 var(--text);margin-bottom:6px;padding:0}.qgrid{display:grid;grid-template-columns:1fr;gap:4px}
 .own{display:flex;gap:10px;align-items:center;padding:9px 12px;background:var(--paper);border-radius:12px;font-weight:600;font-size:.9375rem;cursor:pointer}
 .own input{width:20px;height:20px;accent-color:var(--plum)}
 .stars .opts{display:inline-flex;flex-direction:row-reverse;gap:2px}
 .stars label{cursor:pointer;font-size:1.6rem;line-height:1;color:var(--line);padding:0 2px}.stars label::before{content:"\\2605"}
 .stars label:hover,.stars label:hover~label,.stars input:checked~label{color:var(--plum)}
-.scale .opts{display:flex;flex-wrap:wrap;gap:6px}
-.scale label{padding:5px 11px;border-radius:999px;border:1.5px solid var(--line);background:var(--white);cursor:pointer;font-size:.8438rem}
+.scale .opts{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scale label{display:grid;place-items:center;text-align:center;min-height:40px;padding:6px 8px;border-radius:14px;border:1.5px solid var(--line);background:var(--white);cursor:pointer;font-size:.8438rem;line-height:1.2}
 .scale label:hover{border-color:var(--mauve)}.scale input:checked+label{background:var(--plum);border-color:var(--plum);color:var(--white)}
 form.vote input:focus-visible+label{outline:3px solid var(--plum);outline-offset:2px}
 form.vote .btn{margin-top:16px;padding:11px 20px;font-size:.9375rem}form.vote .muted{margin-top:10px;font-size:.8125rem}form.vote .vmsg{margin:4px 0 12px;padding:9px 14px;font-size:.9375rem}
@@ -681,12 +683,15 @@ details.single li{font-size:.9063rem;padding:3px 0;break-inside:avoid}details.si
 .achips li i{width:12px;height:12px;border-radius:50%;flex:none;background:var(--c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
 .achips small{color:var(--ink-soft);font-size:.8125rem;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:no-preference){.astrip i{animation:grow .9s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 70ms + 150ms);transform-origin:left}@keyframes grow{from{transform:scaleX(0)}}}
-.vgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px;margin:14px 0 4px}.vgrid h3{margin:0 0 6px;font:700 .9375rem/1.2 var(--display)}
+.vlist{display:grid;gap:18px;margin:14px 0 4px}.vq h3{margin:0 0 8px;font:700 .9375rem/1.2 var(--display)}
+.vrow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.vcell{display:grid;justify-items:center;align-content:start;gap:4px;text-align:center;font-size:.8125rem;line-height:1.2;color:var(--ink-soft)}
+.vcol{width:100%;height:44px;background:var(--paper);border-radius:10px;display:flex;align-items:flex-end;overflow:hidden}.vcol i{display:block;width:100%;height:var(--h);min-height:3px;background:var(--mauve)}
+.vcell b{font:700 .875rem/1 var(--text);color:var(--ink)}.vcell.best i{background:var(--plum)}.vcell.best .l{color:var(--ink);font-weight:600}
 .vbar{display:grid;grid-template-columns:8.5em minmax(48px,1fr) 1.6em;gap:10px;align-items:center;font-size:.8125rem;line-height:1.5;color:var(--ink-soft)}
 .vbar .l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vbar .track{height:8px}.vbar .n{text-align:right;font-variant-numeric:tabular-nums}
 .vbar.best{color:var(--ink)}.vbar.best .fill{background:var(--plum)}.vbar.best .n{font-weight:700}
 .score{margin:2px 0 4px}.score .big{font-size:2rem}
-@media (max-width:560px){.vgrid,.qgrid{grid-template-columns:1fr}.astrip{height:32px;border-radius:10px}}
+@media (max-width:560px){.scale label,.vcell{font-size:.75rem}.scale label{padding:6px 4px}.astrip{height:32px;border-radius:10px}}
 .sizes{margin-top:24px}.szpick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .szpick label{padding:8px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--white);font:600 .875rem/1 var(--text);color:var(--ink-soft);cursor:pointer}
 .szpick label:hover{border-color:var(--mauve);color:var(--ink)}.szp{display:none}.sizes .bars{margin-top:18px}
@@ -943,18 +948,20 @@ def vote_results(s, t):
                    f' <span class="muted">{t["votedBy"](s["voters"])}</span></p>')
     else:
         out.append(f'<p class="score"><span class="muted">{t["votedBy"](s["voters"])}</span></p>')
+    # The questions below each other; each one a row of its 5 answers from left (least) to right (most), the same
+    # order as the voting form, with a column showing how many people chose it.
     blocks = []
     for f, labels in t["scale"].items():
         x = s[f]
         if not x["n"]:
             continue
         top = max(x["dist"]) or 1
-        rows = "".join(
-            f'<div class="vbar{" best" if c == top else ""}"><span class="l" title="{e(lab)}">{e(lab.split(" (")[0])}</span><span class="track"><span class="fill" style="width:{c / top * 100:.0f}%"></span></span>'
-            f'<span class="n">{c}</span></div>' for lab, c in zip(labels, x["dist"]))
-        blocks.append(f'<div><h3>{t["r"][f]}</h3>{rows}</div>')
+        cells = "".join(
+            f'<div class="vcell{" best" if c == top else ""}"><span class="vcol" aria-hidden="true"><i style="--h:{c / top * 100:.0f}%"></i></span>'
+            f'<b>{c}</b><span class="l" title="{e(lab)}">{e(lab.split(" (")[0])}</span></div>' for lab, c in zip(labels, x["dist"]))
+        blocks.append(f'<div class="vq"><h3>{t["r"][f]}</h3><div class="vrow">{cells}</div></div>')
     if blocks:
-        out.append(f'<div class="vgrid">{"".join(blocks)}</div>')
+        out.append(f'<div class="vlist">{"".join(blocks)}</div>')
     return "".join(out)
 
 
@@ -1292,10 +1299,20 @@ def notes_page(con, lang="en"):
     groups = defaultdict(list)
     for k in keys:
         groups[catalog.plain(note_name(k, lang))[:1].upper() or "#"].append(k)
-    blocks = "".join(
-        f'<p class="letter">{e(letter)}</p><ul class="chips">'
-        + "".join(f'<li><a href="{P(lang, note_path(k))}">{e(note_name(k, lang))}<small>{len(idx["notes"][k]["perfumes"])}</small></a></li>' for k in ks)
-        + "</ul>" for letter, ks in groups.items())
+    def tile(k):   # the note's photo, or a square in its main accord's colour (as in the pyramid on perfume pages)
+        name = note_name(k, lang)
+        ph = notephotos.get(con, k)
+        if ph:
+            img = f'<span class="nimg"><img src="{e(ph["url"])}" alt="" width="96" height="96" loading="lazy"></span>'
+        else:
+            acc = accords.NOTES.get(k)
+            bg, fg = accords.COLOURS[max(acc, key=acc.get)] if acc else ("var(--paper)", "var(--ink-soft)")
+            img = f'<span class="nimg" style="--c:{bg};--f:{fg}" aria-hidden="true">{e(name[:1].upper())}</span>'
+        n = len(idx["notes"][k]["perfumes"])
+        return f'<li><a class="tile" href="{P(lang, note_path(k))}">{img}<span>{e(name)}</span><small>{n}</small></a></li>'
+
+    blocks = "".join(f'<h2 class="letter">{e(letter)}</h2><ul class="tiles notegrid">{"".join(tile(k) for k in ks)}</ul>'
+                     for letter, ks in groups.items())
     body = f"""{back(lang)}<h1>{t["allNotes"]}</h1><p class="lead">{t["notesLead"]}</p>
 <section class="card">{blocks or f"<p>{t['nothingYet']}</p>"}</section>"""
     return frame(lang, t["notesTitle"], t["notesLead"], "/notes", body)

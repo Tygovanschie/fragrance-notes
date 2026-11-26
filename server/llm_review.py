@@ -284,7 +284,7 @@ def job_names(con, seen):
 
 # ---------- 4. descriptions for the note pages ----------
 PAGE_MIN_CONFIRMED = int(os.environ.get("PAGE_MIN_CONFIRMED", "3"))   # as in pages.py
-TEXTS_PER_NIGHT = int(os.environ.get("LLM_TEXTS", "10"))
+TEXTS_PER_NIGHT = int(os.environ.get("LLM_TEXTS", "100"))   # every note with a page gets a turn in one night
 WIKI = "https://en.wikipedia.org/w/api.php"
 # Notes whose Wikipedia article has another title than the note's name (the plant or material itself).
 WIKI_TITLES = {"sage": "Salvia officinalis", "cedar": "Cedrus", "juniper": "Juniperus communis", "pink pepper": "Schinus molle",
@@ -402,6 +402,7 @@ def job_texts(con, seen):
             AUTO.execute("INSERT OR REPLACE INTO note_text (key, smell, origin, source, night) VALUES (?,?,?,?,?)",
                          (k, smell, origin, url, DAY))
             changed("note text", k, smell[:100])
+            AUTO.commit()   # saved per note: a long night that stops halfway keeps what it wrote
         else:
             todo("note text", k, "; ".join(checks))
         rows.append([k, smell, origin, "; ".join(checks) or "ok", f"[{title}]({url})"])

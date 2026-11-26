@@ -69,11 +69,11 @@ def texts(path=None):
         con.close()
 
 
-def week(path=None, today=None):
+def week(path=None, today=None, days=7):
     """What the job did in the last 7 nights and what it left for a person: for GET /maintenance/week (the
     Worker's weekly email)."""
     today = today or datetime.date.today()
-    since = (today - datetime.timedelta(days=7)).isoformat()
+    since = (today - datetime.timedelta(days=days - 1)).isoformat()   # days=1: only last night's run
     out = {"since": since, "changes": [], "todo": []}
     con = _ro(path)
     if not con:
