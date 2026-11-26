@@ -14,6 +14,8 @@ Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenote
   GET  /catalog/lookup?gtin=&brand=&name=&conc=&gender=   the perfume on a shop page (anonymous, query not logged)
   GET  /health
   GET  /maintenance/week   what the nightly job fixed and left for a person (maintenance.py), for the weekly email
+  GET  /review?key=        the private review page: what the gate (gate.py) held, with Approve / Reject (POST /review)
+  GET  /review/status      {brake, waiting}: for the Worker's alert when the safety brake is on
 
   Web pages (pages.py), for fragrancenotes.app: /database, /database/search?q=, /perfume/{id}-{slug},
   /note/{slug}, /photo/{barcode}.jpg, /assets/pages.css, /sitemap.xml
@@ -33,6 +35,9 @@ import time
 
 import accords
 import catalog
+import gate
+import hmac
+import html
 import maintenance
 import regions
 import pages
@@ -125,6 +130,66 @@ def load_salt():
 
 SALT = b""
 
+# The private review page (/review?key=…) where Tygo approves or rejects what the gate held (gate.py). The key is made
+# once and kept next to the database; the Worker's daily email links to the page with it.
+REVIEW_KEY_PATH = os.environ.get("REVIEW_KEY_PATH", os.path.join(os.path.dirname(DB_PATH), "review.key"))
+REVIEW_KEY = ""
+
+
+def load_review_key():
+    try:
+        with open(REVIEW_KEY_PATH) as f:
+            k = f.read().strip()
+        if len(k) >= 24:
+            return k
+    except FileNotFoundError:
+        pass
+    k = secrets.token_urlsafe(24)
+    with os.fdopen(os.open(REVIEW_KEY_PATH, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as f:   # owner only
+        f.write(k)
+    return k
+
+
+def review_key_ok(k):
+    return bool(REVIEW_KEY) and hmac.compare_digest(str(k or "").encode(), REVIEW_KEY.encode())
+
+
+def review_html(items, key, brake, done=""):
+    """The review page: every held item with Approve and Reject (forms, no script)."""
+    E = html.escape
+    groups = {}
+    for it in items:
+        groups.setdefault(it["kind"], []).append(it)
+    blocks = []
+    for kind in sorted(groups, key=lambda k: list(gate.KINDS).index(k) if k in gate.KINDS else 99):
+        rows = []
+        for it in groups[kind]:
+            links = "" if it["id"] == "*" else (
+                f' <a href="https://fragrancenotes.app/perfume/{E(it["id"])}">page</a>'
+                f' · <a href="/catalog/perfume/{E(it["id"])}">data</a>')
+            form = lambda d, label: (f'<form method="post" action="/review"><input type="hidden" name="key" value="{E(key)}">'
+                                     f'<input type="hidden" name="id" value="{E(it["id"])}"><input type="hidden" name="kind" value="{E(it["kind"])}">'
+                                     f'<input type="hidden" name="value" value="{E(it["value"])}"><input type="hidden" name="decision" value="{d}">'
+                                     f'<button class="{d}">{label}</button></form>')
+            buttons = form("approve", "Approve") + ("" if kind == "brake" else form("reject", "Reject"))
+            rows.append(f'<li><p>{E(it["detail"])}{links}</p><div class="b">{buttons}</div></li>')
+        blocks.append(f'<h2>{E(gate.KINDS.get(kind, kind))} ({len(groups[kind])})</h2><ul>{"".join(rows)}</ul>')
+    body = "".join(blocks) or "<p>Nothing is waiting. Everything on the website passed the checks.</p>"
+    head = f'<p class="brake">Safety brake is on: {E(brake)}. Nothing changes on the website until you approve it below.</p>' if brake else ""
+    note = f'<p class="done">{E(done)}</p>' if done else ""
+    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex"><title>Review | Fragrance Notes</title><style>
+body{{margin:0;background:#f4eef3;color:#2b1426;font:16px/1.5 system-ui,sans-serif}}main{{max-width:860px;margin:0 auto;padding:24px 16px 60px}}
+h1{{font-size:1.8rem;margin:0 0 4px}}h2{{font-size:1.15rem;margin:28px 0 10px}}ul{{list-style:none;margin:0;padding:0}}
+li{{background:#fff;border:1px solid #e3d6e0;border-radius:14px;padding:12px 14px;margin:0 0 10px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}}
+li p{{margin:0;flex:1 1 380px}}.b{{display:flex;gap:8px}}form{{margin:0}}button{{border:0;border-radius:999px;padding:9px 16px;font:600 .95rem system-ui;cursor:pointer}}
+.approve{{background:#2f7a4f;color:#fff}}.reject{{background:#f4eef3;color:#7e2f63;box-shadow:inset 0 0 0 1.5px #c58bb0}}a{{color:#7e2f63}}
+.brake{{background:#fdf0e6;color:#6b3a12;padding:12px 14px;border-radius:12px}}.done{{background:#e6f2ea;color:#173f28;padding:10px 14px;border-radius:12px}}
+.muted{{color:#5e4a59;font-size:.9rem}}</style></head><body><main>
+<h1>Waiting for your OK</h1><p class="muted">Approve: the change goes online at once and this exact change is never asked again.
+Reject: the page keeps its current version (a new perfume stays without a page) until the data changes.</p>
+{note}{head}{body}</main></body></html>"""
+
 
 def db():
     con = sqlite3.connect(DB_PATH, timeout=5)
@@ -135,6 +200,7 @@ def db():
 def init_db():
     with db() as con:
         con.execute("PRAGMA journal_mode=WAL")
+        gate.init(con)
         con.execute("""CREATE TABLE IF NOT EXISTS reports (
             perfume_id INTEGER NOT NULL, ml REAL NOT NULL, price REAL NOT NULL, currency TEXT NOT NULL,
             per_ml REAL NOT NULL, shop TEXT NOT NULL, install TEXT NOT NULL, t INTEGER NOT NULL,
@@ -646,9 +712,25 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urlsplit(self.path)
         if u.path == "/maintenance/week":
-            # What the nightly job fixed and left for a person (note and perfume names, counts): the Worker mails it weekly.
+            # What the nightly job fixed and left for a person (note and perfume names, counts): the Worker mails it.
+            # Also what the gate holds for review (perfume names only; the review page itself needs the key).
             d = (parse_qs(u.query).get("days") or ["7"])[0]
-            return self.reply(200, maintenance.week(days=int(d) if d in ("1", "2", "3", "7") else 7))
+            out = maintenance.week(days=int(d) if d in ("1", "2", "3", "7") else 7)
+            with db() as con:
+                out["review"] = [{k: it[k] for k in ("kind", "detail")} for it in gate.open_items(con)[:60]]
+                out["brake"] = gate.status(con)["brake"]
+            return self.reply(200, out)
+        if u.path == "/review/status":
+            with db() as con:
+                return self.reply(200, gate.status(con), [("Cache-Control", "no-store")])
+        if u.path == "/review":
+            q = parse_qs(u.query)
+            if not review_key_ok((q.get("key") or [""])[0]):
+                return self.send(404, "not found", "text/plain; charset=utf-8", "no-store")
+            with db() as con:
+                items, brake = gate.open_items(con), gate.status(con)["brake"]
+            return self.send(200, review_html(items, REVIEW_KEY, brake, (q.get("done") or [""])[0][:80]),
+                             "text/html; charset=utf-8", "no-store", [("Referrer-Policy", "no-referrer")])
         if u.path == "/health":
             return self.reply(200, {"ok": True})
         if u.path == "/facts/mine":
@@ -824,6 +906,17 @@ class Handler(BaseHTTPRequestHandler):
         limit = MAX_FACTS_BODY if path == "/facts" else MAX_BODY
         if not (0 < length <= limit):
             return self.reply(413 if length > limit else 400, {"error": f"body must be 1-{limit} bytes"})
+        if path == "/review":   # a decision from the review page (form, needs the key)
+            f = parse_qs(raw.decode("utf-8", "replace"), keep_blank_values=True)
+            one = lambda k: (f.get(k) or [""])[0]
+            if not review_key_ok(one("key")):
+                return self.send(404, "not found", "text/plain; charset=utf-8", "no-store")
+            with db() as con:
+                ok = gate.decide(con, one("id")[:20], one("kind")[:20], one("value")[:400], one("decision"))
+            done = ("Approved" if one("decision") == "approve" else "Rejected") if ok else "That item was already decided"
+            from urllib.parse import quote
+            return self.send(303, "", "text/plain; charset=utf-8", "no-store",
+                             [("Location", f"/review?key={quote(REVIEW_KEY)}&done={quote(done)}")])
         m = VOTE_PATH.fullmatch(path)
         if m:
             return self.vote_post(m.group(1) or "", m.group(2), raw)
@@ -898,7 +991,8 @@ def obf_loop():
                 with db() as con:
                     lines, kept = catalog.obf.run(con)
                     n = catalog.build(con)
-                print(f"open beauty facts: {kept} perfumes from {lines} products; catalog {n} perfumes", flush=True)
+                    line = gate.run(con)
+                print(f"open beauty facts: {kept} perfumes from {lines} products; catalog {n} perfumes; {line}", flush=True)
         except Exception as e:  # keep serving; obf.due waits a day before the next download
             print("open beauty facts import failed:", e, flush=True)
         time.sleep(3600)
@@ -911,7 +1005,9 @@ def catalog_loop():
         try:
             with db() as con:
                 n = catalog.build(con)
-            print(f"catalog rebuilt: {n} perfumes", flush=True)
+                # What the website shows: only what passed the checks (gate.py).
+                line = gate.run(con)
+            print(f"catalog rebuilt: {n} perfumes; {line}", flush=True)
             if os.environ.get("PAGE_IMAGES", "1") != "0":
                 with db() as con:
                     got = pages.refresh_images(con)
@@ -928,8 +1024,9 @@ def catalog_loop():
 
 
 def make_server(port=PORT):
-    global SALT
+    global SALT, REVIEW_KEY
     SALT = load_salt()
+    REVIEW_KEY = load_review_key()
     init_db()
     purge_old()
     return ThreadingHTTPServer(("0.0.0.0", port), Handler)

@@ -17,6 +17,6 @@
   "kv_namespaces": [{ "binding": "STATE", "id": "__STATE_KV_ID__" }],
   // Through Cloudflare Email Routing; the address must be a verified destination there.
   "send_email": [{ "name": "ALERT", "destination_address": "__ALERT_EMAIL__" }],
-  "vars": { "ALERT_TO": "__ALERT_EMAIL__" },
+  "vars": { "ALERT_TO": "__ALERT_EMAIL__", "REVIEW_KEY": "__REVIEW_KEY__" },
   "observability": { "enabled": false }
 }

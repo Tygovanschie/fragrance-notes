@@ -30,6 +30,7 @@ from collections import Counter, defaultdict
 from datetime import date
 
 import catalog
+import gate
 import obf
 import accords
 import maintenance
@@ -356,14 +357,15 @@ _cache = {"stamp": None, "index": None}
 def index(con):
     """Published perfumes and the note index, rebuilt only when the catalog changes (hourly at most)."""
     con.row_factory = sqlite3.Row
-    stamp = tuple(con.execute("SELECT MAX(updated), COUNT(*) FROM catalog").fetchone())
+    # What the gate (gate.py) approved; before its first run, the catalog as it is.
+    stamp = (gate.version(con),) + tuple(con.execute("SELECT MAX(updated), COUNT(*) FROM catalog").fetchone())
     if _cache["stamp"] == stamp:
         return _cache["index"]
-    perfumes = []
-    for r in con.execute("SELECT * FROM catalog WHERE confirmed >= ? ORDER BY confirmed DESC, shops DESC, name",
-                         (PAGE_MIN_CONFIRMED,)):
-        p = catalog.row_out(r, full=True)
-        perfumes.append(p)
+    perfumes = gate.published(con)
+    if perfumes is None:
+        perfumes = [catalog.row_out(r, full=True) for r in
+                    con.execute("SELECT * FROM catalog WHERE confirmed >= ?", (PAGE_MIN_CONFIRMED,))]
+    perfumes.sort(key=lambda p: (-(p.get("confirmedNotes") or 0), -(p.get("shops") or 0), p["name"]))
     notes = defaultdict(lambda: {"perfumes": [], "tiers": Counter(), "names": Counter(), "pairs": Counter()})
     for p in perfumes:
         en = {n["en"] for t in p["notes"].values() for n in t if n.get("en") and n["confirmed"]}

@@ -5,6 +5,8 @@ The job writes data/auto.db; the API only reads it:
   does know ("kardemon" -> cardamom). Only ever to an existing note; catalog.note_key uses them.
 - note_text:  a description for a note page, written from the Wikipedia intro and checked against it; note_texts.json
   (reviewed by hand) wins over it.
+- name_fix:   a cleaner displayed name for a perfume the gate (gate.py) held, with words left out only
+  ("Olfactories - Compulsion - Neutral" -> "Olfactories Compulsion"); the gate checks it again before using it.
 - changes:    a log of every change, per night (llm_review.py --undo NIGHT takes a night back).
 - todo:       what the job didn't dare to fix itself (possible duplicates, possible non-perfumes), for the weekly email.
 Nothing here is personal: note names, perfume names and counts.
@@ -20,6 +22,7 @@ CREATE TABLE IF NOT EXISTS note_alias (word TEXT PRIMARY KEY, canon TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS note_text (key TEXT PRIMARY KEY, smell TEXT NOT NULL, origin TEXT NOT NULL,
     source TEXT NOT NULL, night TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS changes (night TEXT NOT NULL, kind TEXT NOT NULL, item TEXT NOT NULL, detail TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS name_fix (id TEXT PRIMARY KEY, name TEXT NOT NULL, before TEXT NOT NULL, night TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS todo (night TEXT NOT NULL, kind TEXT NOT NULL, item TEXT NOT NULL, detail TEXT NOT NULL,
     PRIMARY KEY (kind, item));
 """
@@ -49,6 +52,19 @@ def aliases(path=None):
         return {}
     try:
         return dict(con.execute("SELECT word, canon FROM note_alias"))
+    except sqlite3.Error:
+        return {}
+    finally:
+        con.close()
+
+
+def name_fixes(path=None):
+    """{perfume id: cleaner name} from the job; gate.py only uses one that leaves words out and passes its checks."""
+    con = _ro(path)
+    if not con:
+        return {}
+    try:
+        return dict(con.execute("SELECT id, name FROM name_fix"))
     except sqlite3.Error:
         return {}
     finally:

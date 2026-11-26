@@ -459,5 +459,137 @@ class Build(unittest.TestCase):
         self.assertEqual(catalog.search(con, "aventus"), [])
 
 
+class Gate(unittest.TestCase):
+    """gate.py: what the website shows after a rebuild."""
+    NOTES = (["Bergamot", "Pepper"], ["Lavender"], ["Ambroxan"])
+
+    def perfume(self, con, brand, name, install="a", gender="m", conc="edt"):
+        top, heart, base = self.NOTES
+        for shop in ("douglas.nl", "notino.nl"):
+            add(con, shop, brand, name, conc, gender, top=top, heart=heart, base=base, install=install + shop)
+
+    def setUp(self):
+        import gate
+        self.gate = gate
+        self.con = db()
+        self.perfume(self.con, "Dior", "Sauvage")
+        self.perfume(self.con, "Armani", "Stronger With You", install="b")
+        catalog.build(self.con)
+        self.run_gate()
+
+    def run_gate(self, now=None, fixes=None):
+        return self.gate.run(self.con, now=now, fixes=fixes or {})
+
+    def shown(self):
+        return {p["id"]: p for p in self.gate.published(self.con)}
+
+    def pid(self, name):
+        return self.con.execute("SELECT id FROM catalog WHERE name=?", (name,)).fetchone()[0]
+
+    def test_first_run_keeps_what_is_online(self):
+        self.assertEqual(sorted(p["name"] for p in self.shown().values()), ["Sauvage", "Stronger With You"])
+        self.assertEqual(self.gate.open_items(self.con), [])
+
+    def test_growth_goes_through_by_itself(self):
+        add(self.con, "iciparisxl.nl", "Dior", "Sauvage", "edt", "m", top=["Bergamot", "Pepper", "Elemi"], heart=["Lavender"],
+            base=["Ambroxan"], install="z")
+        catalog.build(self.con)
+        self.run_gate()
+        self.assertEqual(self.shown()[self.pid("Sauvage")]["shops"], 3)
+        self.assertEqual(self.gate.open_items(self.con), [])
+
+    def test_a_rename_is_held_until_approved(self):
+        pid = self.pid("Sauvage")
+        self.con.execute("UPDATE catalog SET name='Sauvage - Summer Box' WHERE id=?", (pid,))
+        self.run_gate()
+        self.assertEqual(self.shown()[pid]["name"], "Sauvage")                 # the page keeps its approved name
+        item = self.gate.open_items(self.con)[0]
+        self.assertEqual((item["id"], item["kind"]), (pid, "name"))
+        self.assertTrue(self.gate.decide(self.con, pid, "name", item["value"], "approve"))
+        self.assertEqual(self.shown()[pid]["name"], "Sauvage - Summer Box")
+        self.assertEqual(self.gate.open_items(self.con), [])
+        self.run_gate()
+        self.assertEqual(self.gate.open_items(self.con), [])                   # never asked again
+
+    def test_rejected_change_keeps_the_page_and_is_not_asked_again(self):
+        pid = self.pid("Sauvage")
+        self.con.execute("UPDATE catalog SET gender='f' WHERE id=?", (pid,))
+        self.run_gate()
+        item = self.gate.open_items(self.con)[0]
+        self.assertEqual(item["kind"], "gender")
+        self.gate.decide(self.con, pid, "gender", item["value"], "reject")
+        self.run_gate()
+        self.assertEqual(self.shown()[pid]["gender"], "m")
+        self.assertEqual(self.gate.open_items(self.con), [])
+
+    def test_new_perfumes_need_a_clean_name(self):
+        self.perfume(self.con, "Prada", "Olfactories - Compulsion - ( )", install="c", gender="u", conc="edp")
+        self.perfume(self.con, "Prada", "Luna Rossa Ocean", install="d")
+        catalog.build(self.con)
+        self.run_gate()
+        names = sorted(p["name"] for p in self.shown().values())
+        self.assertIn("Luna Rossa Ocean", names)
+        held = self.gate.open_items(self.con)
+        self.assertEqual([i["kind"] for i in held], [])  # catalog.tidy_name already cleans this title
+        self.assertIn("Olfactories Compulsion", names)
+
+    def test_new_perfume_with_a_problem_waits(self):
+        self.perfume(self.con, "Hugo Boss", "BOTTLED NIGHT", install="c")
+        catalog.build(self.con)
+        self.run_gate()
+        self.assertNotIn("BOTTLED NIGHT", [p["name"] for p in self.shown().values()])
+        item = self.gate.open_items(self.con)[0]
+        self.assertEqual(item["kind"], "new")
+        self.assertIn("capitals", item["detail"])
+        self.gate.decide(self.con, item["id"], "new", item["value"], "approve")
+        self.assertIn("BOTTLED NIGHT", [p["name"] for p in self.shown().values()])
+
+    def test_page_that_would_disappear_stays(self):
+        pid = self.pid("Sauvage")
+        self.con.execute("DELETE FROM catalog WHERE id=?", (pid,))
+        self.run_gate()
+        self.assertIn(pid, self.shown())
+        self.assertEqual(self.gate.open_items(self.con)[0]["kind"], "gone")
+
+    def test_safety_brake(self):
+        for i in range(12):
+            self.perfume(self.con, "Brand", f"Perfume {chr(65 + i)}", install=f"x{i}")
+        catalog.build(self.con)
+        self.run_gate()
+        self.assertEqual(len(self.shown()), 14)
+        # A broken rebuild renames all of them at once: nothing at all changes on the website.
+        self.con.execute("UPDATE catalog SET name = name || ' Wrong'")
+        self.perfume(self.con, "Prada", "Luna Rossa Ocean", install="new")
+        catalog.build(self.con)
+        self.con.execute("UPDATE catalog SET name = name || ' Wrong'")
+        line = self.run_gate(now=1000)
+        self.assertIn("BRAKE", line)
+        self.assertEqual(len(self.shown()), 14)                               # not even the new perfume
+        self.assertTrue(self.gate.status(self.con)["brake"])
+        self.con.execute("UPDATE catalog SET name = replace(name, ' Wrong', '')")
+        self.assertIn("BRAKE", self.run_gate(now=2000))                         # stays on until approved
+        self.gate.decide(self.con, "*", "brake", "", "reject")
+        self.assertIn("BRAKE", self.run_gate(now=3000))
+        self.assertTrue(self.gate.decide(self.con, "*", "brake", "", "approve", now=4000))
+        self.assertIsNone(self.gate.status(self.con)["brake"])
+        self.assertIn("Luna Rossa Ocean", [p["name"] for p in self.shown().values()])
+
+    def test_nightly_name_fix_only_removes_words(self):
+        self.perfume(self.con, "Hugo Boss", "Bottled Parfum (Neutral Box)", install="c")
+        catalog.build(self.con)
+        self.run_gate()
+        pid = self.gate.open_items(self.con)[0]["id"]
+        self.run_gate(fixes={pid: "Bottled Something Else"})                    # adds words: ignored
+        self.assertNotIn(pid, self.shown())
+        self.run_gate(fixes={pid: "Bottled Parfum"})
+        self.assertEqual(self.shown()[pid]["name"], "Bottled Parfum")
+        self.assertEqual(self.gate.keep_words("Olfactories - Compulsion - Neutral", "olfactories compulsion"),
+                         "Olfactories Compulsion")
+        self.assertEqual(self.gate.keep_words("Acqua di Giò (100 ml)", "Acqua di Gio"), "Acqua di Giò")
+        self.assertEqual(self.gate.keep_words("Sauvage", "Sauvage Elixir"), "")
+        self.assertTrue(self.gate.deletion_only("Bottled Parfum (Neutral Box)", "Bottled Parfum"))
+        self.assertFalse(self.gate.deletion_only("Bottled", "Bottled Intense"))
+
+
 if __name__ == "__main__":
     unittest.main()

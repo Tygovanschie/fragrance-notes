@@ -74,6 +74,45 @@ class ApiTest(unittest.TestCase):
     def test_health(self):
         self.assertEqual(call("GET", "/health")[0], 200)
 
+    def test_review_page_needs_the_key(self):
+        import gate
+        page = lambda path: urllib.request.urlopen(BASE + path, timeout=5)
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            page("/review")
+        self.assertEqual(e.exception.code, 404)
+        with self.assertRaises(urllib.error.HTTPError):
+            page("/review?key=wrong")
+        key = urllib.parse.quote(app.REVIEW_KEY)
+        with page(f"/review?key={key}") as r:
+            body = r.read().decode()
+            self.assertEqual(r.headers["Cache-Control"], "no-store")
+        self.assertIn("Waiting for your OK", body)
+        # A held item, decided through the form.
+        with app.db() as con:
+            gate.init(con)
+            con.execute("INSERT OR REPLACE INTO gate_meta (k, v) VALUES ('seeded', '1')")
+            con.execute("INSERT INTO gate_review (id, kind, value, detail, first) VALUES ('abc123abc123', 'new', 'X | y', 'Brand X: y', 1)")
+        with page(f"/review?key={key}") as r:
+            self.assertIn("Brand X: y", r.read().decode())
+        self.assertEqual(call("GET", "/review/status")[1]["waiting"], 1)
+        self.assertIn({"kind": "new", "detail": "Brand X: y"}, call("GET", "/maintenance/week?days=1")[1]["review"])
+        form = lambda k: urllib.parse.urlencode({"key": k, "id": "abc123abc123", "kind": "new", "value": "X | y",
+                                                  "decision": "reject"}).encode()
+        req = urllib.request.Request(BASE + "/review", data=form("wrong"), method="POST",
+                                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(req, timeout=5)
+        self.assertEqual(e.exception.code, 404)
+        req = urllib.request.Request(BASE + "/review", data=form(app.REVIEW_KEY), method="POST",
+                                     headers={"Content-Type": "application/x-www-form-urlencoded"})
+        with urllib.request.urlopen(req, timeout=5) as r:     # 303 back to the page
+            self.assertIn("Rejected", r.read().decode())
+        with app.db() as con:
+            self.assertEqual(con.execute("SELECT decision FROM gate_decision WHERE id='abc123abc123'").fetchone()[0], "reject")
+            con.execute("DELETE FROM gate_decision")
+            con.execute("DELETE FROM gate_review")
+            con.execute("DELETE FROM gate_meta")
+
     def test_report_and_stats(self):
         self.assertEqual(report(price=300, shop="douglas.nl")[0], 201)
         self.assertEqual(report(price=250, shop="www.notino.nl")[0], 201)

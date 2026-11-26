@@ -147,6 +147,33 @@ async function mail(env, subject, text) {
 // (GET /maintenance/week?days=1, see server/maintenance.py). Nothing to report: no email. The day that was sent is
 // kept in STATE. (Daily for now while it settles; change DIGEST_DAYS to 7 and check getUTCDay() for weekly again.)
 const DIGEST_DAYS = 1;
+// The private review page (gate.py on the server): the key is filled in at deploy time from the server's
+// data/review.key (worker/deploy.sh), so it is never in this public repo.
+function reviewUrl(env) {
+  return env.REVIEW_KEY && !env.REVIEW_KEY.startsWith("__")
+    ? `${API}/review?key=${encodeURIComponent(env.REVIEW_KEY)}` : `${API}/review`;
+}
+
+// One email as soon as the safety brake turns on (nothing changes on the website until it is approved).
+async function brakeAlert(env) {
+  let st;
+  try {
+    const r = await fetch(`${API}/review/status`, { cf: { cacheTtl: 0 }, signal: AbortSignal.timeout(10000) });
+    if (!r.ok) return;
+    st = await r.json();
+  } catch (err) { return; }
+  const sent = await env.STATE.get("brakeSent");
+  if (st.brake && sent !== st.brake) {
+    await mail(env, "Fragrance Notes: safety brake is on",
+      `The hourly rebuild was stopped before it reached the website: ${st.brake}.\n\n` +
+      "The website keeps showing the last approved version of every page. Look at what changed and approve or " +
+      `reject it here:\n${reviewUrl(env)}\n\nIf it looks like a mistake in the code, tell Claude.`);
+    await env.STATE.put("brakeSent", st.brake);
+  } else if (!st.brake && sent) {
+    await env.STATE.delete("brakeSent");
+  }
+}
+
 async function digest(env) {
   const now = new Date();
   if (now.getUTCHours() < 7) return;
@@ -158,8 +185,8 @@ async function digest(env) {
     if (!r.ok) return;
     d = await r.json();
   } catch (err) { return; }   // the server is down: the down-alert covers that; try again in 5 minutes
-  const changes = d.changes || [], todo = d.todo || [];
-  if (!changes.length && !todo.length) { await env.STATE.put("digestSent", today); return; }
+  const changes = d.changes || [], todo = d.todo || [], review = d.review || [];
+  if (!changes.length && !todo.length && !review.length) { await env.STATE.put("digestSent", today); return; }
   const byKind = (list) => list.reduce((m, x) => ((m[x.kind] ||= []).push(x), m), {});
   const block = (list, empty) => {
     const groups = byKind(list);
@@ -173,10 +200,12 @@ async function digest(env) {
     "",
     "FIXED BY ITSELF (take a night back on the server with: python3 llm_review.py --undo YYYY-MM-DD)",
     block(changes, "Nothing."),
+    `WAITING FOR YOUR OK (approve or reject: ${reviewUrl(env)})` + (d.brake ? `\nSAFETY BRAKE IS ON: ${d.brake}` : ""),
+    block(review, "Nothing: everything on the website passed the checks."),
     "FOR YOU TO DECIDE (tell Claude which ones are right)",
     block(todo, "Nothing."),
   ].join("\n");
-  await mail(env, `Fragrance Notes: last night's maintenance (${changes.length} fixed, ${todo.length} to check)`, text);
+  await mail(env, `Fragrance Notes: ${review.length} waiting for your OK, ${changes.length} fixed, ${todo.length} to check`, text);
   await env.STATE.put("digestSent", today);
 }
 export default {
@@ -197,6 +226,7 @@ export default {
   async scheduled(event, env, ctx) {
     if (!env.STATE) return;
     ctx.waitUntil(digest(env));
+    ctx.waitUntil(brakeAlert(env));
     const ok = await healthy();
     const downSince = await env.STATE.get("downSince");
     const now = new Date().toISOString();

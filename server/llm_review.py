@@ -25,6 +25,9 @@ todo list for the weekly email (GET /maintenance/week, sent by the Worker). `--u
 5. shops-DATE.md   Shops users added themselves (domain only, opt-in), with how many installs: candidates for
                   the built-in list. No model involved.
 
+7. (no list)      Names the gate (gate.py) held: the model may only leave words out, and the result must pass the
+                  gate's own name check; it goes into auto.db name_fix (undo with --undo NIGHT), the rest to the todo list.
+
 6. photos-DATE.md  Free bottle photos on Wikimedia Commons for published perfumes without one; good ones go into
                   server/perfume_photos.json by hand. No model involved.
 
@@ -674,17 +677,61 @@ def job_shops(con, seen):
     return f"shops: {len(new)} new or grown -> {path}", [f"{d}:{n}" for d, n in new]
 
 
+# ---------- 7. names the gate held (gate.py) ----------
+GATE_NAME_PROMPT = """A perfume name taken from a web shop's product title still has leftovers that are not part of
+the perfume's own name: a colour or size option, packaging words, brackets, loose dashes, or the brand repeated.
+Brand: "{brand}". What our check found: {problems}.
+Remove only those leftovers. Never add, translate, respell or reorder words. Keep versions such as "Intense",
+"Elixir", "Absolu", "Le Parfum", "Pour Homme", "Night". If nothing should be removed, return the name unchanged.
+Reply in JSON: {{"clean": "the name without the leftovers"}}
+
+Name: "{name}\""""
+
+
+def job_gate(con, seen):
+    """Names the gate held: the model may leave words out (never others), and the result must pass the gate's own
+    name check. Stored in auto.db name_fix; the gate checks it again before a page uses it."""
+    import gate
+    try:
+        items = con.execute("SELECT id, kind, value FROM gate_review WHERE kind IN ('new', 'name')").fetchall()
+    except sqlite3.Error:
+        return "gate names: no review list yet", []
+    done = dict(AUTO.execute("SELECT id, before FROM name_fix"))
+    asked, fixed = [], 0
+    for pid, kind, value in items[:MAX_ITEMS]:
+        row = con.execute("SELECT brand, name FROM catalog WHERE id=?", (pid,)).fetchone()
+        if not row:
+            continue
+        brand, name = row
+        problems = gate.name_problems(name, brand)
+        if not problems or done.get(pid) == name or f"gate:{pid}:{name}" in seen:
+            continue
+        asked.append(f"gate:{pid}:{name}")
+        a = ask(GATE_NAME_PROMPT.format(brand=brand, problems="; ".join(problems), name=name))
+        clean = gate.keep_words(name, str(a.get("clean") or ""))
+        removed = set(catalog.plain(name).split()) - set(catalog.plain(clean).split())
+        if (not clean or not gate.deletion_only(name, clean) or gate.name_problems(clean, brand)
+                or removed & VERSION_WORDS):
+            todo("name the gate held", f"{brand} {name}", "; ".join(problems) + (f" (the model suggested “{clean}”, not safe)" if clean else ""))
+            continue
+        AUTO.execute("INSERT OR REPLACE INTO name_fix (id, name, before, night) VALUES (?,?,?,?)", (pid, clean, name, DAY))
+        changed("name cleaned", f"{brand} {name}", f"→ {clean}")
+        fixed += 1
+    return f"gate names: {len(asked)} held names asked, {fixed} cleaned", asked
+
+
 def undo(night):
     """Take back what the job fixed itself in one night: `python3 llm_review.py --undo 2026-11-26`. The catalog
     follows at its next hourly rebuild."""
     con = maintenance.open_rw(os.path.join(os.path.dirname(DB), "auto.db"))
     n = con.execute("DELETE FROM note_alias WHERE night=?", (night,)).rowcount
     t = con.execute("DELETE FROM note_text WHERE night=?", (night,)).rowcount
+    f = con.execute("DELETE FROM name_fix WHERE night=?", (night,)).rowcount
     con.execute("INSERT INTO changes (night, kind, item, detail) VALUES (?,?,?,?)",
-                (DAY, "undo", night, f"{n} note names and {t} note texts taken back"))
+                (DAY, "undo", night, f"{n} note names, {t} note texts and {f} perfume names taken back"))
     con.commit()
     con.close()
-    print(f"llm review undo {night}: {n} note names and {t} note texts taken back", flush=True)
+    print(f"llm review undo {night}: {n} note names, {t} note texts and {f} perfume names taken back", flush=True)
 
 
 def main():
@@ -702,7 +749,7 @@ def main():
     con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
     failed = []
     try:
-        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts), ("shops", job_shops), ("photos", job_photos)):
+        for name, job in (("notes", job_notes), ("obf", job_obf), ("names", job_names), ("texts", job_texts), ("shops", job_shops), ("photos", job_photos), ("gate", job_gate)):
             try:
                 line, asked = job(con, set(seen.get(name, [])))
             except Exception as e:   # one job failing doesn't stop the others (what it fixed so far is kept)
