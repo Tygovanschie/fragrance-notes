@@ -39,9 +39,18 @@ Right-click the icon → *Options*, or use the gear in the panel or menu.
 
 ## Privacy
 
-The extension reads the perfume name and prices on shop product pages, looks the perfume up on Bing and Fragrantica, and saves results locally for 14 days. There is no account, tracking or advertising.
+The extension reads the perfume name and prices on shop product pages, looks the perfume up on Bing and Fragrantica, and saves results locally for 14 days. It also asks the Fragrance Notes database about the perfume and about notes you click, anonymously: no install ID, nothing stored, and the question is not logged. There is no account, tracking or advertising.
 
 Price sharing is off until you turn it on. Then only the perfume, size, price and shop are sent to the Fragrance Notes price server, with a random install ID and nothing about you. See the [privacy policy](PRIVACY.md).
+
+## What's new in 1.4
+
+- **Own database first:** the panel asks the open [Fragrance Notes database](https://fragrancenotes.app) about the perfume on the page (anonymously: no install ID, nothing stored). Notes confirmed by two or more shops get a ✓, and when it knows enough notes the accord line comes from the database, in the panel's language.
+- **Notes explained:** click any note for a one-line description of how it smells, with a link to its page on fragrancenotes.app.
+- **Rate it:** "Own it? Rate it" under the perfume's name takes you to its rating page (no account).
+- **447 shops and brand websites**, up from about 350, including brand sites such as Tom Ford, whose own note lists count as confirmed.
+- Gift sets are recognised, price alerts on favourites, and "notes you helped confirm" in the settings.
+- The panel hides at once when you leave a perfume page, and comes back when you open the next one.
 
 ## What's new in 1.3
 
