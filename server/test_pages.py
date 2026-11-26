@@ -168,7 +168,7 @@ class PagesTest(unittest.TestCase):
         self.assertIn(f"/perfume/{pid}-", body)
         code, body, _ = get("/note/juniper")
         self.assertEqual(code, 200)
-        self.assertNotIn("What it smells like", body)     # no reviewed text: facts only
+        self.assertNotIn("notelead", body)     # no reviewed text: facts only
         self.assertEqual(get("/note/vanilla")[0], 404)
         self.assertEqual(get("/note/mandarin")[0], 404)   # only in an unpublished perfume
 
@@ -343,7 +343,7 @@ class PagesTest(unittest.TestCase):
         self.assertEqual((code, h["Location"]), (301, f"/nl/perfume/{pid}-armani-stronger-with-you-intensely"))
         code, body, _ = get("/nl/note/tonka-bean")
         self.assertEqual(code, 200)
-        self.assertIn("Hoe het ruikt", body)
+        self.assertIn("<p class=\"notelead\">Warm en zoet", body)   # how it smells: the intro under the name
         self.assertIn("cumaruboom", body)                      # the Dutch text from note_texts.json
         self.assertEqual(get("/nl/database")[0], 200)
         self.assertIn("← Alle parfums", get("/nl/notes")[1])
