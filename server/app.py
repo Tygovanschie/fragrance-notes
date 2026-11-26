@@ -661,7 +661,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, facts_stats(), [("Cache-Control", "public, max-age=60")])
         if u.path.startswith("/catalog/"):
             return self.catalog_get(u)
-        if u.path.split("/")[1] in ("database", "perfume", "note", "notes", "brand", "photo", "assets", "sitemap.xml") or u.path.split("/")[1] in pages.LANGS:
+        if u.path.split("/")[1] in ("", "database", "perfume", "note", "notes", "brand", "brands", "photo", "assets", "sitemap.xml") or u.path.split("/")[1] in pages.LANGS:
             return self.page_get(u)
         m = re.fullmatch(r"/prices/([0-9]+)", u.path)
         if not m or not ID_RE.match(m.group(1)):

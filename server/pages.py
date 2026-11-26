@@ -230,6 +230,7 @@ T = {
 
 # German, French, Spanish, Italian, Portuguese and Polish (pages_i18n.py); missing texts fall back to English.
 from pages_i18n import EXTRA, SCALES as SCALE_TEXT  # noqa: E402
+from pages_home import HOME  # noqa: E402
 for _l, _d in EXTRA.items():
     T[_l] = {**T["en"], **_d}
 # The answers of the voting questions, for every language (one list in pages_i18n.SCALES).
@@ -739,6 +740,40 @@ section.part.first .parthead{margin-bottom:22px}.showsel ul,.regsel ul{min-width
 .astrip.mini{height:12px;border-radius:6px;gap:2px;margin:0 0 14px}.astrip.mini.none{background:var(--paper)}
 .official{margin:-12px 0 18px;font-size:.875rem;font-weight:600;color:var(--plum)}.astrip.big{height:150px;border-radius:22px;gap:4px;margin:0}
 @media (max-width:900px){.dbhero{grid-template-columns:1fr;gap:12px}.astrip.big{height:90px}}
+.top .mainnav{display:flex;gap:2px}.mainnav a{padding:10px 14px;border-radius:999px;font:600 .9688rem/1 var(--text);color:var(--ink);text-decoration:none;white-space:nowrap}
+.mainnav a:hover{background:var(--white);color:var(--plum)}.mainnav a[aria-current]{background:var(--white);color:var(--plum);box-shadow:inset 0 0 0 1.5px var(--line)}
+@media (max-width:1060px){.top .wrap{flex-wrap:wrap}.hsearch{order:3;flex-basis:100%;max-width:none}}
+@media (max-width:700px){.top .mainnav{order:2;flex-basis:100%;overflow-x:auto;margin:0 -6px;scrollbar-width:none}.mainnav a{padding:9px 12px}}
+.kicker{font:700 .8125rem/1.2 var(--text);letter-spacing:.09em;text-transform:uppercase;color:var(--plum);margin:0 0 14px}
+.homehero{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:56px;align-items:center;padding:28px 0 56px}
+.homehero h1{font-size:clamp(2.4rem,5.2vw,4.2rem);line-height:.98;max-width:13ch}.homehero .lead{font-size:1.125rem}
+.bigsearch{margin:0 0 16px}.bigsearch input{font-size:1.0625rem;padding:12px 0}.bigsearch button{width:46px;height:46px}
+.tries{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0;font-size:.9375rem;color:var(--ink-soft)}
+.tries a{padding:6px 13px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);text-decoration:none}.tries a:hover{border-color:var(--mauve);color:var(--plum)}
+.hp .notegrid{grid-template-columns:repeat(6,minmax(0,1fr))}.mosaic a,.mosaic img{min-width:0}
+.mosaic{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding-bottom:26px}
+.mosaic a{position:relative;display:block;aspect-ratio:1;border-radius:22px;overflow:hidden;background:var(--line);color:#fff;text-decoration:none}
+.mosaic a:nth-child(3n+2){transform:translateY(26px)}.mosaic img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.mosaic span{position:absolute;inset:auto 0 0 0;padding:26px 12px 10px;font:600 .875rem/1.2 var(--text);background:linear-gradient(transparent,rgba(43,20,38,.72))}
+.mosaic a:hover img{transform:scale(1.05)}
+.doors{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:0;padding:0;list-style:none}
+.door{position:relative;display:flex;flex-direction:column;gap:6px;height:100%;background:var(--white);border:1px solid var(--line);border-radius:22px;padding:22px;color:var(--ink);text-decoration:none}
+.door b{font:750 1.375rem/1.1 var(--display);letter-spacing:-.01em}.door .dn{font:600 .9375rem/1.2 var(--text);color:var(--plum)}
+.door .dd{margin-top:4px;color:var(--ink-soft);font-size:.9375rem;line-height:1.45}
+.door .go{position:absolute;top:22px;right:22px;font:700 1.25rem/1 var(--display);color:var(--plum);transition:transform .2s ease}
+.door:hover{color:var(--ink);border-color:var(--mauve);box-shadow:0 18px 40px -22px rgba(74,26,59,.45)}.door:hover .go{transform:translateX(4px)}
+.hp .parthead{margin-bottom:18px}.hp .parthead+.intro{margin:-6px 0 22px}.parthead .more{font:600 .9688rem/1 var(--text);text-decoration:none}.parthead .more:hover{text-decoration:underline}
+.extband{margin:80px 0 0;background:var(--plum);color:var(--white);border-radius:28px;padding:48px 56px 0;display:grid;grid-template-columns:280px minmax(0,1fr);gap:56px;overflow:hidden}
+.extband img{width:100%;height:auto;align-self:end;display:block;border-radius:22px 22px 0 0;box-shadow:0 -12px 40px -16px rgba(0,0,0,.45)}
+.extband>div{align-self:center;padding-bottom:48px}.extband .kicker{color:#f3c6e2}
+.extband h2{color:var(--white);font-size:clamp(1.8rem,3.4vw,2.5rem);margin:0 0 12px}.extband p{color:#f3dcea;margin:0 0 16px;max-width:34em}
+.extband ul{margin:0 0 26px;padding:0;list-style:none;display:grid;gap:10px}.extband li{display:flex;gap:10px}.extband li::before{content:"\\2713";font-weight:700}
+.extband .acts{display:flex;flex-wrap:wrap;gap:12px;margin:0}.extband .btn{background:var(--white);color:var(--plum-deep)}
+.extband .btn.quiet{background:transparent;color:var(--white);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55)}.extband .btn.quiet:hover{background:rgba(255,255,255,.12)}
+@media (max-width:900px){.homehero{grid-template-columns:minmax(0,1fr);gap:28px;padding-bottom:36px}.mosaic{max-width:520px}.doors{grid-template-columns:1fr 1fr}.hp .notegrid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.extband{grid-template-columns:1fr;padding:34px 22px 0;gap:28px}.extband>div{padding-bottom:0}.extband img{order:2;max-width:260px;justify-self:center}}
+@media (max-width:430px){.top .wrap{gap:10px 8px}.brand{font-size:1rem;gap:8px}.brand img{width:26px;height:26px}.langsel summary{padding:0 11px}}
+@media (max-width:560px){.doors{grid-template-columns:1fr}.hp .notegrid{grid-template-columns:repeat(3,minmax(0,1fr))}.mosaic{gap:8px}.mosaic a{border-radius:16px}.mosaic span{font-size:.8125rem;padding:20px 8px 7px}}
 """
 # The size picker of the price card (no script): the n-th radio shows the n-th panel and marks the n-th button.
 MAX_SIZES = 8
@@ -765,6 +800,19 @@ def search_form(lang, cls, action, value="", hidden=""):
             f'<button type="submit" aria-label="{t["search"]}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" '
             f'stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/>'
             f'<path d="m20 20-3.5-3.5"/></svg></button></form>')
+
+
+def main_nav(lang, path):
+    """The site menu in the header: the parts of the database, then the extension (an English page for now).
+    The part the page belongs to is marked."""
+    h = HOME[lang]
+    here = ("perfumes" if path.startswith(("/database", "/perfume")) else "notes" if path.startswith(("/note", "/notes"))
+            else "brands" if path.startswith(("/brand", "/brands")) else "")
+    items = (("perfumes", P(lang, "/database"), h["navPerfumes"]), ("notes", P(lang, "/notes"), h["navNotes"]),
+             ("brands", P(lang, "/brands"), h["navBrands"]), ("ext", "/extension", h["navExt"]))
+    links = "".join(f'<a href="{e(u)}"{" aria-current=" + chr(34) + "page" + chr(34) if k == here else ""}>{e(label)}</a>'
+                    for k, u, label in items)
+    return f'<nav class="mainnav" aria-label="Menu">{links}</nav>'
 
 
 def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None, foot="", search=True, script=False):
@@ -803,7 +851,8 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None,
 </head>
 <body>
 <header class="top"><div class="wrap">
-<a class="brand" href="{SITE}"><img src="{SITE}img/icon.png" alt="">Fragrance Notes</a>
+<a class="brand" href="{P(lang, '/')}"><img src="{SITE}img/icon.png" alt="">Fragrance Notes</a>
+{main_nav(lang, path)}
 {search_form(lang, "hsearch", P(lang, "/database/search")) if search else ""}
 <nav>{menu}
 <a class="btn small" href="{STORE}">{t["getExt"]}</a></nav>
@@ -815,7 +864,7 @@ def frame(lang, title, desc, path, body, noindex=False, image=None, jsonld=None,
 <p>{t["footData"]}</p>
 <p>{t["footNot"]}</p>
 {foot}
-<p><a href="{P(lang, '/database')}">{t["theDb"]}</a> · <a href="{P(lang, '/notes')}">{t["allNotes"]}</a> · <a href="{SITE}privacy.html">{t["privacy"]}</a> · <a href="https://github.com/Tygovanschie/fragrance-notes">{t["source"]}</a></p>
+<p><a href="{P(lang, '/database')}">{t["theDb"]}</a> · <a href="{P(lang, '/notes')}">{t["allNotes"]}</a> · <a href="{P(lang, '/brands')}">{HOME[lang]["allBrands"]}</a> · <a href="/extension">{HOME[lang]["navExt"]}</a> · <a href="{SITE}privacy">{t["privacy"]}</a> · <a href="https://github.com/Tygovanschie/fragrance-notes">{t["source"]}</a></p>
 </div></footer>
 </body>
 </html>"""
@@ -1328,6 +1377,20 @@ def note_info(con, key, lang="en"):
             "url": "https://fragrancenotes.app" + P(lang, note_path(key))}
 
 
+def note_tile(con, idx, k, lang):
+    """A note in the grid: its photo, or a square in its main accord's colour (as in the pyramid on perfume pages)."""
+    name = note_name(k, lang)
+    ph = notephotos.get(con, k)
+    if ph:
+        img = f'<span class="nimg"><img src="{e(ph["url"])}" alt="" width="96" height="96" loading="lazy"></span>'
+    else:
+        acc = accords.NOTES.get(k)
+        bg, fg = accords.COLOURS[max(acc, key=acc.get)] if acc else ("var(--paper)", "var(--ink-soft)")
+        img = f'<span class="nimg" style="--c:{bg};--f:{fg}" aria-hidden="true">{e(name[:1].upper())}</span>'
+    n = len(idx["notes"][k]["perfumes"])
+    return f'<li><a class="tile" href="{P(lang, note_path(k))}">{img}<span>{e(name)}</span><small>{n}</small></a></li>'
+
+
 def notes_page(con, lang="en"):
     t = T[lang]
     idx = index(con)
@@ -1335,17 +1398,8 @@ def notes_page(con, lang="en"):
     groups = defaultdict(list)
     for k in keys:
         groups[catalog.plain(note_name(k, lang))[:1].upper() or "#"].append(k)
-    def tile(k):   # the note's photo, or a square in its main accord's colour (as in the pyramid on perfume pages)
-        name = note_name(k, lang)
-        ph = notephotos.get(con, k)
-        if ph:
-            img = f'<span class="nimg"><img src="{e(ph["url"])}" alt="" width="96" height="96" loading="lazy"></span>'
-        else:
-            acc = accords.NOTES.get(k)
-            bg, fg = accords.COLOURS[max(acc, key=acc.get)] if acc else ("var(--paper)", "var(--ink-soft)")
-            img = f'<span class="nimg" style="--c:{bg};--f:{fg}" aria-hidden="true">{e(name[:1].upper())}</span>'
-        n = len(idx["notes"][k]["perfumes"])
-        return f'<li><a class="tile" href="{P(lang, note_path(k))}">{img}<span>{e(name)}</span><small>{n}</small></a></li>'
+    def tile(k):
+        return note_tile(con, idx, k, lang)
 
     blocks = "".join(f'<h2 class="letter">{e(letter)}</h2><ul class="tiles notegrid">{"".join(tile(k) for k in ks)}</ul>'
                      for letter, ks in groups.items())
@@ -1549,9 +1603,103 @@ def not_found(lang="en"):
     return frame(lang, "Not found | Fragrance Notes", t["nfH"], "/database", body, noindex=True)
 
 
+# ---------- / (home) and /brands ----------
+
+SHOPS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "shops.txt")
+
+
+def shop_count():
+    """How many shops the extension works on (shops.txt, the same list as the manifest)."""
+    try:
+        with open(SHOPS_FILE, encoding="utf-8") as f:
+            return sum(1 for line in f if line.strip() and not line.lstrip().startswith("#"))
+    except OSError:
+        return 0
+
+
+def home_page(con, prices=None, lang="en"):
+    """The front page: what the site is, a search, the parts of the database, the best-documented perfumes, notes to
+    explore and the extension."""
+    t, h = T[lang], HOME[lang]
+    idx = index(con)
+    notes = sorted(idx["notes"], key=lambda k: (-len(idx["notes"][k]["perfumes"]), k))
+    brands = sorted(idx["brands"].values(), key=lambda b: (-len(b["perfumes"]), catalog.plain(b["name"])))
+    shops = shop_count()
+    # The hero's picture: the photos of the most used notes, each a link to its page.
+    mosaic = []
+    for k in notes:
+        ph = notephotos.get(con, k)
+        if ph:
+            mosaic.append(f'<a href="{P(lang, note_path(k))}"><img src="{e(ph["url"])}" alt="" width="200" height="200">'
+                          f'<span>{e(note_name(k, lang))}</span></a>')
+        if len(mosaic) == 6:
+            break
+    tries = [(P(lang, note_path(k)), note_name(k, lang)) for k in notes[:3]]
+    tries += [(P(lang, brand_path(b["name"])), b["name"]) for b in brands[:1]]
+    try_html = (f'<p class="tries"><span>{h["try"]}:</span>'
+                + "".join(f'<a href="{e(u)}">{e(n)}</a>' for u, n in tries) + "</p>") if tries else ""
+    doors = [(P(lang, "/database"), h["navPerfumes"], h["nPerfumes"].format(n=num(len(idx["perfumes"]), lang)), h["doorPerfumes"]),
+             (P(lang, "/notes"), h["navNotes"], h["nNotes"].format(n=num(len(notes), lang)), h["doorNotes"]),
+             (P(lang, "/brands"), h["navBrands"], h["nBrands"].format(n=num(len(brands), lang)), h["doorBrands"]),
+             ("/extension", h["navExt"], h["nShops"].format(n=num(shops, lang)) if shops else "Chrome", h["doorExt"])]
+    doors_html = "".join(f'<li><a class="door" href="{e(u)}"><b>{e(name)}</b><span class="dn">{e(count)}</span>'
+                         f'<span class="dd">{e(d)}</span><span class="go" aria-hidden="true">→</span></a></li>'
+                         for u, name, count, d in doors)
+    cards = "".join(card(con, p, prices, lang) for p in idx["perfumes"][:6])
+    tiles = "".join(note_tile(con, idx, k, lang) for k in notes[:12])
+    body = f"""<section class="homehero">
+<div class="hh">
+<p class="kicker">{h["kicker"]}</p>
+<h1>{h["h1"]}</h1>
+<p class="lead">{h["lead"]}</p>
+{search_form(lang, "listsearch bigsearch", P(lang, "/database/search"))}
+{try_html}
+</div>
+{f'<div class="mosaic">{"".join(mosaic)}</div>' if len(mosaic) >= 4 else ""}
+</section>
+<ul class="doors">{doors_html}</ul>
+{f'''<section class="part hp"><div class="parthead"><h2>{h["topH"]}</h2><a class="more" href="{P(lang, "/database")}">{h["allPerfumes"]} →</a></div>
+<div class="cards">{cards}</div></section>''' if cards else ""}
+{f'''<section class="part hp"><div class="parthead"><h2>{h["notesH"]}</h2><a class="more" href="{P(lang, "/notes")}">{t["allNotes"]} →</a></div>
+<p class="intro">{h["notesD"]}</p><ul class="tiles notegrid">{tiles}</ul></section>''' if tiles else ""}
+<section class="extband">
+<img src="{SITE}img/1-overview.webp" width="360" height="590" loading="lazy" alt="">
+<div><p class="kicker">{h["extKicker"]}</p><h2>{h["extH"]}</h2><p>{h["extD"]}</p>
+<ul><li>{h["ext1"]}</li><li>{h["ext2"]}</li><li>{h["ext3"]}</li><li>{h["ext4"]}</li></ul>
+<p class="acts"><a class="btn" href="{STORE}">{h["extAdd"]}</a><a class="btn quiet" href="/extension">{h["extMore"]}</a></p></div>
+</section>
+<section class="part how"><h2>{t["howH"]}</h2>
+<p class="intro">{t["howIntro"]}</p>
+<ol class="steps">
+<li><h3>{t["step1T"]}</h3><p>{t["step1D"]}</p></li>
+<li><h3>{t["step2T"]}</h3><p>{t["step2D"]}</p></li>
+<li><h3>{t["step3T"]}</h3><p>{t["step3D"]}</p></li>
+</ol></section>"""
+    ld = {"@context": "https://schema.org", "@type": "WebSite", "name": "Fragrance Notes", "url": BASE + P(lang, "/"),
+          "inLanguage": lang,
+          "potentialAction": {"@type": "SearchAction", "target": BASE + P(lang, "/database/search") + "?q={q}",
+                              "query-input": "required name=q"}}
+    return frame(lang, h["homeTitle"], h["homeDesc"], "/", body, jsonld=ld, search=False)
+
+
+def brands_page(con, lang="en"):
+    t, h = T[lang], HOME[lang]
+    idx = index(con)
+    brands = sorted(idx["brands"].values(), key=lambda b: catalog.plain(b["name"]))
+    groups = defaultdict(list)
+    for b in brands:
+        groups[catalog.plain(b["name"])[:1].upper() or "#"].append(b)
+    blocks = "".join(f'<h2 class="letter">{e(letter)}</h2><ul class="chips">'
+                     + "".join(f'<li><a href="{P(lang, brand_path(b["name"]))}">{e(b["name"])}<small>{len(b["perfumes"])}</small></a></li>'
+                               for b in bs) + "</ul>" for letter, bs in groups.items())
+    body = f"""{back(lang)}<h1>{h["allBrands"]}</h1><p class="lead">{h["brandsLead"]}</p>
+<section class="card">{blocks or f"<p>{t['nothingYet']}</p>"}</section>"""
+    return frame(lang, h["brandsTitle"], h["brandsLead"], "/brands", body)
+
+
 def sitemap(con):
     idx = index(con)
-    paths = (["/database", "/notes"] + [perfume_path(p) for p in idx["perfumes"]]
+    paths = (["/", "/database", "/notes", "/brands"] + [perfume_path(p) for p in idx["perfumes"]]
              + [note_path(k) for k in sorted(idx["notes"])] + [brand_path(b["name"]) for b in idx["brands"].values()])
     urls = "".join(
         f"<url><loc>{e(BASE + P(l, u))}</loc>"
@@ -1575,7 +1723,9 @@ def route(con, path, query, prices, voter=None):
             return 404, not_found(lang), None
         return (301, None, P(lang, r[0])) if r[0] else (200, r[1], None)
     if path in ("/", ""):
-        return 301, None, P(lang, "/database")
+        return 200, home_page(con, prices, lang), None
+    if path in ("/brands", "/brands/"):
+        return 200, brands_page(con, lang), None
     if path in ("/database", "/database/"):
         qs = urllib.parse.parse_qs(query)
 

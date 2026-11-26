@@ -11,12 +11,12 @@
 import { EmailMessage } from "cloudflare:email";
 
 const API = "https://api.fragrancenotes.app";
-// The database pages in English and under a language prefix (pages.LANGS), plus the photos, the stylesheet and
+// The home page (/), the database pages in English and under a language prefix (pages.LANGS), plus the photos, the stylesheet and
 // the sitemap. /perfume/<id>/rate is the rating page the extension links to.
 const LANG = "(?:nl|de|fr|es|it|pt|pl)";
 const PAGES = new RegExp(
-  `^(?:/${LANG})?/(?:database(?:/.*)?|perfume/[^/]+(?:/rate)?|note/[^/]+|notes|brand/[^/]+)$` +
-  `|^/${LANG}/?$` +
+  `^(?:/${LANG})?/(?:database(?:/.*)?|perfume/[^/]+(?:/rate)?|note/[^/]+|notes|brands|brand/[^/]+)$` +
+  `|^/(?:${LANG}/?)?$` +
   "|^/(?:photo/(?:n/)?[^/]+|assets/pages\\.css|assets/live\\.js|sitemap\\.xml)$");   // photo/n/: note photos
 const STALE_DAYS = 14;
 const FROM = "alerts@fragrancenotes.app";

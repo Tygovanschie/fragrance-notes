@@ -351,7 +351,7 @@ class PagesTest(unittest.TestCase):
         self.assertIn("cumaruboom", body)                      # the Dutch text from note_texts.json
         self.assertEqual(get("/nl/database")[0], 200)
         self.assertIn("← Alle parfums", get("/nl/notes")[1])
-        self.assertEqual(get("/nl")[0], 301)
+        self.assertEqual(get("/nl")[0], 200)                  # the Dutch home page
         self.assertEqual(get("/nl/nothing")[0], 404)
         # The other languages, and the language menu on every page.
         for lang, word in (("de", "Duftnoten"), ("fr", "Notes"), ("es", "Notas"), ("it", "Note"), ("pt", "Notas"), ("pl", "Nuty")):
@@ -382,6 +382,37 @@ class PagesTest(unittest.TestCase):
         self.assertIn("/nl/perfume/", body)
         self.assertIn("/brand/armani", body)
         self.assertIn('hreflang="nl"', body)
+
+
+    def test_home_and_brands_pages(self):
+        code, body, _ = get("/")
+        self.assertEqual(code, 200)
+        self.assertIn('<nav class="mainnav" aria-label="Menu">', body)
+        self.assertIn('<form class="listsearch bigsearch" role="search" action="/database/search">', body)
+        self.assertNotIn('class="hsearch"', body)                       # the big search only, not twice
+        self.assertIn('class="doors"', body)
+        self.assertIn('href="/brands"', body)
+        self.assertIn('href="/extension"', body)
+        self.assertIn("Stronger With You Intensely", body)             # the best-documented perfumes
+        self.assertIn('href="/note/tonka-bean"', body)                 # notes to explore
+        self.assertIn('"@type": "WebSite"', body)
+        self.assertIn(f'{pages.shop_count()} shops', body)
+        self.assertGreater(pages.shop_count(), 400)
+        self.assertEqual(re.findall(r'<script(?! type="application/ld\+json")', body), [])
+        code, body, _ = get("/nl/")
+        self.assertEqual(code, 200)
+        self.assertIn('<html lang="nl">', body)
+        self.assertIn(">Merken<", body)
+        self.assertIn('href="/nl/brands"', body)
+        self.assertIn('<link rel="canonical" href="https://fragrancenotes.app/nl/">', body)
+        _, body, _ = get("/note/tonka-bean")
+        self.assertIn('<a href="/notes" aria-current="page">Notes</a>', body)   # the menu marks where you are
+        code, body, _ = get("/brands")
+        self.assertEqual(code, 200)
+        self.assertIn('href="/brand/armani"', body)
+        self.assertIn('<a href="/brands" aria-current="page">Brands</a>', body)
+        self.assertEqual(get("/de/brands")[0], 200)
+        self.assertIn("<loc>https://fragrancenotes.app/brands</loc>", get("/sitemap.xml")[1])
 
     def test_price_chart(self):
         now = int(time.time() * 1000)
