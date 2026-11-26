@@ -303,12 +303,30 @@ Source text (from Wikipedia):
 \"\"\"{source}\"\"\"
 
 Reply in JSON: {{"smell": ..., "origin": ..., "from_source": ...}}
-- "smell": 2 sentences: what this note smells like in a perfume and how it feels (for example warm, fresh,
-  powdery), and whether it is usually a top, heart or base note. Keep to what is common knowledge in perfumery.
-- "origin": 1 or 2 sentences on where it comes from. Use ONLY facts that are in the source text above (plant,
-  part used, region, main substance). Do not add anything that isn't in the source. If the source says nothing
-  useful about it, write "".
-- "from_source": true if every fact in "origin" is in the source text."""
+- "smell": 2 sentences. First: what it smells like, compared with things people know (fruits, spices, wood,
+  sweets, the outdoors), as concrete as you can. Second: what it does in a perfume and whether it is usually a
+  top, heart or base note. Keep to what is common knowledge in perfumery. Avoid empty phrases such as "adds depth
+  and longevity", "depth and complexity", "evokes", "invigorating", "a popular choice".
+- "origin": 1 sentence on what it is: the plant (or material), the part that is used, and where it is native, as
+  far as the source text says. Use ONLY facts in the source. Never claim how much or where most of it comes from:
+  no "primarily", "mainly", "mostly", "most", "largest", "main producer", "commonly produced in". If the source
+  says nothing useful, write "".
+- "from_source": true if every fact in "origin" is in the source text.
+
+An example of the tone we want (cardamom):
+{{"smell": "Fresh and spicy at the same time, with hints of eucalyptus, citrus and a little sweetness. It's usually
+a top note that gives a perfume a cool, aromatic start.", "origin": "The seeds of plants of the ginger family, from
+the genera Elettaria and Amomum, native to the Indian subcontinent and Indonesia.", "from_source": true}}"""
+
+# Words that mark a text as not good enough to go online by itself: claims about quantity or the main producer in
+# "origin", and filler in "smell" (both seen in the first night's drafts, 2026-11-26).
+CLAIM = re.compile(r"\b(primarily|mainly|mostly|most|largest|main|leading|majority|chiefly|predominantly|commonly "
+                   r"produced|best[- ]known)\b", re.I)
+FILLER = re.compile(r"depth and (longevity|complexity)|adds? depth|evok|invigorat|popular choice|complexity", re.I)
+# Notes perfumers build from other materials: Wikipedia's article is about the real thing (animal hides for
+# leather), so a text for these always waits for a person.
+ACCORD_NOTES = {"leather", "suede", "amber", "musk", "white musk", "aquatic", "marine", "ozonic", "ambergris", "civet",
+                "castoreum", "smoke", "mineral", "salt", "toffee", "caramel", "praline", "cotton candy"}
 
 
 def wiki_intro(title):
@@ -354,6 +372,13 @@ def job_texts(con, seen):
             continue
         title, url, text = src
         a = ask(TEXT_PROMPT.format(note=k, source=text))
+        # One more try when it only used an empty phrase or a claim: tell the model what to leave out.
+        for _ in range(1):
+            bad = [m.group(0) for m in (FILLER.search(str(a.get("smell") or "")), CLAIM.search(str(a.get("origin") or ""))) if m]
+            if not bad:
+                break
+            a = ask(TEXT_PROMPT.format(note=k, source=text) + "\n\nYour first answer used " + ", ".join(f'"{b}"' for b in bad)
+                    + ". Write it again without those words.")
         smell, origin = str(a.get("smell") or "").strip(), str(a.get("origin") or "").strip()
         checks = []
         if a.get("from_source") is not True:
@@ -362,6 +387,14 @@ def job_texts(con, seen):
             checks.append("not in source: " + ", ".join(extra))
         if not smell or not origin or len(smell) > 400 or len(origin) > 700:
             checks.append("empty or too long")
+        if (m := CLAIM.search(origin)):
+            checks.append(f"claim about quantity: \"{m.group(0)}\"")
+        if (m := FILLER.search(smell)):
+            checks.append(f"empty phrase: \"{m.group(0)}\"")
+        if not re.search(r"\b(top|heart|middle|base)\b", smell, re.I):
+            checks.append("doesn't say top, heart or base")
+        if k in ACCORD_NOTES:
+            checks.append("an accord: the source is about the material, not how perfumers make the note")
         drafts[k] = {"smell": smell, "origin": origin, "source": url, "sourceName": "Wikipedia", "license": "CC BY-SA 4.0"}
         # Online by itself only when every check passes: the model says it only used the source, and it added no
         # names or numbers the source doesn't have. Otherwise it waits for a person.
