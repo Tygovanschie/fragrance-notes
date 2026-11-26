@@ -177,9 +177,9 @@ vetiver: vetiver | vetivert | vetyver
 sandalwood: sandelhout | sandalwood | sandelholz | bois de santal | santal | sandalo
 cedar: ceder | cederhout | cedar | cedarwood | zeder | zedernholz | cedre | bois de cedre | cedro
 oud: oud | oudh | agarwood | oudhout | adlerholz | bois d oud
-amber: amber | barnsteen | ambra | ambre | ambar
+amber: amber | barnsteen | ambra | ambre | ambar | amberachtig | amberachtige | ambery | ambrato
 musk: muskus | musk | moschus | musc | almizcle | muschio
-leather: leer | leren | leather | leder | cuir | cuero | cuoio
+leather: leer | leren | leather | leder | cuir | cuero | cuoio | leerachtig | leerachtige | leathery | ledrig
 tobacco: tabak | tabaksbladeren | tabaksblad | tobacco | tabac | tabaco | tabacco
 honey: honing | honey | honig | miel | miele
 caramel: karamel | caramel | karamell | caramelo | caramello
@@ -257,7 +257,7 @@ praline: praline | pralines | pralinee
 marshmallow: marshmallow | spekje | spekjes | guimauve
 sugar: suiker | sugar | zucker | azucar | zucchero
 milk: melk | milk | milch | lait | leche | latte
-cream: room | slagroom | cream | sahne | creme | crema | panna
+cream: room | slagroom | cream | sahne | creme | crema | panna | romig | romige | creamy | cremig | cremeux | cremoso
 licorice: drop | zoethout | licorice | liquorice | lakritz | reglisse | regaliz | liquirizia
 rum: rum | rhum | ron
 cognac: cognac | brandy
@@ -299,7 +299,7 @@ rosewood: palissander | rozenhout | rosewood | rosenholz | bois de rose | palisa
 ebony: ebbenhout | ebbehout | ebony | ebenholz | ebene | ebano
 olive tree: olijfboom | olijf | olijfhout | olive | olive tree | olivenbaum | olivier | olivo
 papyrus: papyrus | papiro
-moss: mos | moss | moos | mousse | musgo
+moss: mos | moss | moos | mousse | musgo | mossig | mossige | mossy | moosig
 hay: hooi | hay | heu | foin | heno | fieno
 grass: gras | grass | herbe | hierba | erba
 smoke: rook | rokerig | smoke | rauch | fumee | humo | fumo
@@ -326,6 +326,8 @@ gourmand: gourmand
 chypre: chypre
 fougere: fougere | fougeres | fern | varen | farn
 musky: muskusachtig | musky | moschusartig | musque | almizclado | muschiato
+earthy: aards | aardse | earthy | erdig | terreux | terroso
+belambre: belambre | belambra | belambre hout | belambra hout | belambre wood
 lavandin: lavandin
 peppermint: pepermunt | peppermint | pfefferminze | pfefferminz | menthe poivree | menta piperita
 sichuan pepper: sichuan peper | szechuan peper | sichuan pepper | szechuan pepper | sichuanpfeffer | poivre de sichuan
@@ -507,7 +509,7 @@ NOTE_PARENTS = {
     "pink pepper": "pepper", "black pepper": "pepper", "glazed chestnut": "chestnut", "bourbon vanilla": "vanilla",
     "blood mandarin": "mandarin", "blood orange": "orange", "bitter orange": "orange", "white musk": "musk",
     "clary sage": "sage", "star anise": "anise", "frankincense": "incense", "ambergris": "amber",
-    "blackcurrant": "berries", "cinnamon liqueur": "cinnamon",
+    "blackcurrant": "berries", "cinnamon liqueur": "cinnamon", "sichuan pepper": "pepper", "peppermint": "mint",
 }
 
 

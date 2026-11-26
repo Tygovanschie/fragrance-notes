@@ -106,45 +106,72 @@ NOTES.update({
     "amberever": {"woody": .9, "amber": .8}, "berries": {"fruity": 1, "sweet": .4},
     "allspice": {"warm spicy": 1, "sweet": .2}, "cinnamon liqueur": {"warm spicy": .9, "sweet": .6, "gourmand": .4},
 })
+
+# Notes found without accords in the catalog on 2026-11-26.
+NOTES.update({
+    "lavandin": {"aromatic": 1, "fresh": .4, "powdery": .1}, "peppermint": {"fresh": 1, "aromatic": .6},
+    "sichuan pepper": {"fresh spicy": 1, "citrus": .4}, "calone": {"aquatic": 1, "fresh": .5, "fruity": .2},
+    "calypsone": {"aquatic": .8, "fruity": .4, "fresh": .3}, "meringue": {"sweet": 1, "gourmand": .6, "vanilla": .3},
+    "kulfi": {"sweet": .7, "gourmand": .6, "nutty": .4, "warm spicy": .2}, "belambre": {"woody": 1, "amber": .5},
+})
 FAMILIES = {
     "spicy": {"warm spicy": .6, "fresh spicy": .3}, "oriental": {"amber": .8, "warm spicy": .3, "sweet": .3},
     "woody": {"woody": 1}, "aromatic": {"aromatic": 1}, "floral": {"floral": 1}, "fruity": {"fruity": 1},
     "sweet": {"sweet": 1}, "powdery": {"powdery": 1}, "fresh": {"fresh": 1}, "citrus": {"citrus": 1},
     "aquatic": {"aquatic": 1}, "green": {"green": 1}, "gourmand": {"gourmand": 1, "sweet": .5},
     "chypre": {"earthy": .5, "citrus": .4, "woody": .4}, "fougere": {"aromatic": .8, "green": .3, "woody": .3},
-    "musky": {"musky": 1},
+    "musky": {"musky": 1}, "earthy": {"earthy": 1}, "amber": {"amber": 1}, "leather": {"leather": 1},
+    "cream": {"sweet": .5, "vanilla": .3, "musky": .2}, "moss": {"earthy": .6, "green": .5},
 }
 
-TIER = {"top": .8, "heart": 1.0, "base": 1.2}
+TIER = {"top": 1.0, "heart": 1.0, "base": 1.1}   # base notes last longest, so a little more
+DECAY = .6          # per accord, the strongest note counts fully, the next .6, then .36…: five woods aren't five times woody
+IN_NAME = 2.0       # a note the perfume is named after (Ombré Leather, Grey Vetiver) counts double
 MIN_SHOWN = 30      # accords below this (with the strongest at 100) aren't shown
 MAX_SHOWN = 8
 MIN_NOTES = 3       # known notes needed before accords are shown at all
 
 
+def weights(key):
+    """The accords of one note. A shop may list a family as a note ("Houtachtige noten" = woody): then the family's
+    accords. A note the table doesn't know: the accords of the general note it is a form of (catalog.NOTE_PARENTS)."""
+    if key in NOTES:
+        return NOTES[key]
+    if key in FAMILIES:
+        return FAMILIES[key]
+    import catalog   # here, not at the top: catalog is the bigger module and doesn't need accords
+    return NOTES.get(catalog.NOTE_PARENTS.get(key, ""))
+
+
 def main_accords(p):
     """[(accord, strength 1-100)] strongest first, or [] when too few known notes. With MIN_NOTES or more confirmed
     known notes, only those count: a note one shop names (often from a different note list) shouldn't colour the
-    accords."""
-    score, known = {}, 0
+    accords. Each accord adds up its notes with diminishing returns (DECAY), so the accords that make a perfume
+    stand out (the pepper in Sauvage) aren't buried under the ones many notes share (woody, earthy)."""
+    import catalog
+    parts, known = {}, 0
+    name = f" {catalog.plain(p.get('name', ''))} "
     all_notes = [n for tier in TIER for n in p.get("notes", {}).get(tier, [])]
-    only_confirmed = sum(1 for n in all_notes if n.get("confirmed") and NOTES.get(n.get("en") or n.get("key"))) >= MIN_NOTES
+    only_confirmed = sum(1 for n in all_notes if n.get("confirmed") and weights(n.get("en") or n.get("key"))) >= MIN_NOTES
     for tier, w in TIER.items():
         for n in p.get("notes", {}).get(tier, []):
-            m = NOTES.get(n.get("en") or n.get("key"))
+            k = n.get("en") or n.get("key")
+            m = weights(k)
             if not m or (only_confirmed and not n.get("confirmed")):
                 continue
             known += 1
-            sure = 1.0 if n.get("confirmed") else 0.4
+            sure = (1.0 if n.get("confirmed") else 0.4) * (IN_NAME if k and f" {k} " in name else 1)
             for a, x in m.items():
-                score[a] = score.get(a, 0) + x * w * sure
+                parts.setdefault(a, []).append(x * w * sure)
     if known < MIN_NOTES:
         return []
     for f in p.get("families", []):
-        m = FAMILIES.get(f.get("key"))
+        m = FAMILIES.get(f.get("key")) or NOTES.get(f.get("key"))   # "Amberachtig" is the amber family
         if m:
-            sure = 1.5 if f.get("confirmed") else 0.6
+            sure = 1.0 if f.get("confirmed") else 0.4
             for a, x in m.items():
-                score[a] = score.get(a, 0) + x * sure
+                parts.setdefault(a, []).append(x * sure)
+    score = {a: sum(v * DECAY ** i for i, v in enumerate(sorted(vs, reverse=True))) for a, vs in parts.items()}
     top = max(score.values(), default=0)
     if not top:
         return []

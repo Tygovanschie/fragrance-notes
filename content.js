@@ -839,7 +839,7 @@
       const link = own ? `<a href="${E(own.url)}" target="_blank" rel="noopener" title="${E(FN.t(S.lang, 'moreOnSite'))}">fragrancenotes.app ↗</a>`
         : url ? `<a href="${E(url)}" target="_blank">Fragrantica ↗</a>` : '';
       const facts = own
-        ? [own.smell && { label: FN.t(S.lang, 'smellsLike'), text: own.smell }, own.origin && { label: FN.t(S.lang, 'comesFrom'), text: own.origin }].filter(Boolean)
+        ? [own.smell && { label: FN.t(S.lang, 'smellsLike'), text: FN.firstSentence(own.smell) }].filter(Boolean)   // short while shopping; the rest on the site
         : info?.facts || [];
       pop.innerHTML = `${img ? `<img src="${E(img)}" alt="">` : '<span></span>'}<div><div class="nn"><span>${E(name)}${
         !own && info?.latin ? ` <i class="lat">${E(info.latin)}</i>` : ''}</span>${link}</div>${
@@ -898,7 +898,7 @@
   // What the Fragrance Notes database knows about the perfume on this page (background.js → GET /catalog/lookup).
   const ownByPage = new WeakMap();   // Fragrantica result → database perfume
   const askOwn = prices => {
-    try { return chrome.runtime.sendMessage({ type: 'own', facts: readFacts(current, prices) }).catch(() => null); }
+    try { return chrome.runtime.sendMessage({ type: 'own', facts: readFacts(current, prices), lang: S.lang }).catch(() => null); }
     catch { return Promise.resolve(null); }
   };
   const plainName = s => String(s || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -928,6 +928,16 @@
   // "Own it? Rate it": the perfume's rating page on fragrancenotes.app (voting is on the website, no account),
   // in the panel's language when the site has it. Only when the database knows this perfume.
   const SITE_LANGS = ['nl', 'de', 'fr', 'es', 'it', 'pt', 'pl'];
+  // The accord strip from the Fragrance Notes database (worked out from the notes shops and the brand confirmed),
+  // once it knows at least FN.OWN_MIN_CONFIRMED confirmed notes of this perfume; else null and Fragrantica's.
+  const okColour = c => /^#[0-9a-f]{6}$/i.test(c || '');
+  function ownAccords(d) {
+    const p = ownByPage.get(d);
+    if (!p || (p.confirmedNotes || 0) < FN.OWN_MIN_CONFIRMED) return null;
+    const list = (p.accords || []).filter(a => a && okColour(a.bg) && okColour(a.fg) && a.width > 0)
+      .map(a => ({ name: String(a.name || a.key || '').slice(0, 40), width: +a.width, bg: a.bg, fg: a.fg }));
+    return list.length >= 2 ? list : null;
+  }
   function rateUrl(d) {
     const id = ownByPage.get(d)?.id;
     if (!/^[0-9a-f]{12}$/.test(id || '')) return null;
@@ -974,7 +984,7 @@
     const builtIn = !!FN.builtInShop(location.hostname);
     const opts = { cached, query, prices: S.sections.perMl ? prices : [], elsewhere, othersAll: false, host: location.hostname, pricesOpen, community: null,
       askShare: !S.sharePrices && !S.shareFacts && !S.shareAsked && builtIn, teaser: !S.sharePrices && builtIn,
-      own: ownChecks(d), rate: rateUrl(d) };
+      own: ownChecks(d), rate: rateUrl(d), accords: ownAccords(d) };
     opts.fav = perfumeId(d.url) ? { on: await FN.favs.has(perfumeId(d.url)) } : null;
     if (lastRender?.data !== d) return;
     const paint = () => {
@@ -1041,7 +1051,8 @@
         ownByPage.set(d, p);
         opts.own = ownChecks(d);
         opts.rate = rateUrl(d);
-        if (opts.own || opts.rate) paint();
+        opts.accords = ownAccords(d);
+        if (opts.own || opts.rate || opts.accords) paint();
       });
     }
 

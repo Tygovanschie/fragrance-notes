@@ -173,8 +173,10 @@
     .ask-no { background:none; color:var(--accent); box-shadow:inset 0 0 0 1.5px var(--soft); }
     .teaser { display:block; margin-top:6px; font-size:11.5px; }
     .own { margin-top:6px; font-size:11px; color:var(--muted); }
-    .rate { display:inline-flex; align-items:center; gap:5px; margin-top:7px; padding:4px 10px; border-radius:999px; font-size:11.5px; font-weight:600; text-decoration:none; color:var(--accent); background:var(--card); box-shadow:inset 0 0 0 1.5px var(--soft, currentColor); }
-    .rate:hover { box-shadow:inset 0 0 0 1.5px var(--accent); }
+    /* Same see-through look as the summary tiles, so it sits well on the coloured header. */
+    .rate { display:inline-flex; align-items:center; gap:5px; margin-top:7px; padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:600; text-decoration:none; color:inherit; background:color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter:blur(4px); }
+    .rate:hover { background:var(--bg); color:var(--accent); }
+    .simple .rate { background:var(--chip); backdrop-filter:none; }
     .chip .ok { font-style:normal; font-weight:700; color:var(--good); margin-inline-start:4px; }
     .sz-card { background:var(--card); border-radius:12px; padding:8px 10px; font-size:12px; }
     .sz-top { display:grid; grid-template-columns:auto auto 1fr; gap:12px; align-items:baseline; }
@@ -348,6 +350,9 @@
   // on shop pages only embedded (data:) images are used.
   function renderBody(d, S, opts = {}) {
     const on = S.sections;
+    // Accords: the Fragrance Notes database's own (worked out from the notes shops confirmed) when it knows the
+    // perfume well enough, else Fragrantica's. opts.accords comes from content.js (ownAccords).
+    const accs = opts.accords?.length ? opts.accords : d.accords || [];
     const simple = S.style === 'simple';   // same layout, but quieter: no emoji, note pictures or colour washes
     // Dark themes: tone Fragrantica's bright accord colours down by mixing them with the background.
     const isDark = !!(FN.THEMES[FN.resolveTheme ? FN.resolveTheme(S) : S.theme] || {}).dark;
@@ -427,7 +432,7 @@
     ].filter(Boolean).join('');
     const photo = on.photo && d.photo && (/^data:image\//.test(d.photo) || (opts.allowRemote && /^https:\/\/fimgs\.net\//.test(d.photo)))
       ? `<img class="photo" src="${esc(d.photo)}" alt="">` : '';
-    const maxAcc = Math.max(...(d.accords || []).map(a => a.width), 1);
+    const maxAcc = Math.max(...accs.map(a => a.width), 1);
     // badge = show a "dupe" tag (only in the general list; the dupes section's title already says it)
     const simCard = (s, badge = true) => `<a class="simc" href="${esc(s.url)}" target="_blank" title="${esc((s.brand ? s.brand + ' – ' : '') + s.name)}">${okImg(s.img) ? `<img src="${esc(s.img)}" alt="">` : ''}<span class="t"><span class="n">${esc(s.name)}</span>${s.brand || s.dupe ? `<span class="b"><span class="bn">${esc(s.brand || '')}</span>${badge && s.dupe && on.dupes ? `<span class="badge">${esc(FN.t(S.lang, 'dupe'))}</span>` : ''}</span>` : ''}</span></a>`;
 
@@ -565,7 +570,7 @@
       return h ? `rgba(${parseInt(h[1].slice(0, 2), 16)}, ${parseInt(h[1].slice(2, 4), 16)}, ${parseInt(h[1].slice(4, 6), 16)}, ${a})` : '';
     };
     const dark = isDark;
-    const accCols = (d.accords || []).slice(0, 3).map(a => tint(a.bg, dark ? 0.24 : 0.28)).filter(Boolean);
+    const accCols = accs.slice(0, 3).map(a => tint(a.bg, dark ? 0.24 : 0.28)).filter(Boolean);
     const heroBg = S.style !== 'simple' && accCols.length
       ? `background:linear-gradient(120deg, ${accCols.join(', ')}${accCols.length === 1 ? ', transparent' : ''});` : '';
 
@@ -587,11 +592,11 @@
     ].filter(Boolean).join('') : '';
 
     // 3. Accords: bars (default) or one colour strip with labelled chips underneath (no percentages: too busy here).
-    const accHtml = !(on.accords && d.accords?.length) ? '' : S.accStyle !== 'bars'
-      ? `<h3>${esc(T('accords'))}</h3><div class="astrip">${d.accords.map(a =>
+    const accHtml = !(on.accords && accs.length) ? '' : S.accStyle !== 'bars'
+      ? `<h3>${esc(T('accords'))}</h3><div class="astrip">${accs.map(a =>
           `<i title="${esc(a.name)} · ${Math.round(a.width)}%" style="flex-grow:${Math.max(4, a.width)};background:${accBg(a.bg)}"></i>`).join('')}</div>
-        <div class="achips">${d.accords.map((a, i) => `<span class="achip"><i style="background:${accBg(a.bg)}"></i>${esc(a.name)}</span>`).join('')}</div>`
-      : `<h3>${esc(T('accords'))}</h3><div class="accs">${d.accords.map(a =>
+        <div class="achips">${accs.map((a, i) => `<span class="achip"><i style="background:${accBg(a.bg)}"></i>${esc(a.name)}</span>`).join('')}</div>`
+      : `<h3>${esc(T('accords'))}</h3><div class="accs">${accs.map(a =>
           `<div class="accbar" title="${esc(a.name)} · ${Math.round(a.width)}%" style="width:${Math.max(30, Math.round(a.width / maxAcc * 100))}%;background:${accBg(a.bg)};color:${accFg(a.fg)}">${esc(a.name)}</div>`).join('')}</div>`;
 
     // 5. Notes as a pyramid: tier name in a narrow column on the left, notes on the right.

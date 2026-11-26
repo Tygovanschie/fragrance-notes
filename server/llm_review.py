@@ -314,7 +314,7 @@ Source text (from Wikipedia):
 
 Reply in JSON: {{"smell": ..., "origin": ..., "from_source": ...}}
 - "smell": 2 sentences. First: what it smells like, compared with things people know (fruits, spices, wood,
-  sweets, the outdoors), as concrete as you can. Second: what it does in a perfume, and that it is {tier_short}
+  sweets, the outdoors), as concrete as you can. {first_rule} Second: what it does in a perfume, and that it is {tier_short}
   (use exactly that; never another tier). Keep to what is common knowledge in perfumery. Avoid empty phrases such
   as "adds depth and longevity", "depth and complexity", "evokes", "invigorating", "a popular choice".
 - "origin": 1 sentence on what it is: the plant (or material), the part that is used, and where it is native, as
@@ -387,8 +387,33 @@ Notes it is often paired with on our site: {pairs}
 
 Reply in JSON: {{"smell": ...}}
 - "smell": 2 sentences. First: what it smells like, compared with things people know, as concrete as you can.
-  Second: what it does in a perfume, and that it is {tier_short} (use exactly that; never another tier). Avoid
+  {first_rule} Second: what it does in a perfume, and that it is {tier_short} (use exactly that; never another tier). Avoid
   empty phrases such as "adds depth and longevity", "depth and complexity", "evokes", "invigorating"."""
+# The browser extension shows only the first sentence (a short pop-up while shopping), so that sentence has to say
+# how the note smells by itself.
+FIRST_RULE = ("The first sentence is also shown on its own, so it must say how the note smells by itself: at most 20 "
+              "words, starting with the smell itself (\"Warm and sweet, ...\" or \"Cedar smells ...\"), never with "
+              "\"It\", and nothing in it about tiers or what the note does in a perfume.")
+FIRST_MAX_WORDS = 24
+
+
+def first_sentence(smell):
+    m = re.match(r"(.+?[.!?])(?:\s|$)", (smell or "").strip())
+    return m.group(1) if m else (smell or "").strip()
+
+
+def first_problem(smell):
+    """Why the first sentence can't stand alone as the note's smell, or "" (see FIRST_RULE)."""
+    f = first_sentence(smell)
+    if len(f.split()) > FIRST_MAX_WORDS:
+        return f"first sentence too long ({len(f.split())} words)"
+    if re.match(r"(it|this|similar to)\b", f, re.I):
+        return f"first sentence starts with \"{f.split()[0]}\" instead of the smell"
+    if re.search(r"\b(top|heart|middle|base) note|\bperfumes?\b", f, re.I):
+        return "first sentence is about the perfume, not the smell"
+    return ""
+
+
 ACCORD_ORIGIN = "In today's perfumes this note isn't taken from one natural material: perfumers build it from several other ingredients."
 TRIES_PER_NIGHT = 3        # differently worded attempts per note and night before it waits for the next night
 TODO_AFTER = 5             # nights in a row without a passing text before a note shows up in the email
@@ -398,7 +423,8 @@ TODO_AFTER = 5             # nights in a row without a passing text before a not
 # (in perfumes birch is smoky birch tar). Style is not judged here: "cozy" is fine when the smell is cozy.
 FACT_PROMPT = """You check a short description of a perfume note for a perfume website. Look only for facts that
 are wrong: a smell the note does not have in perfumes, a comparison that doesn't fit it, the wrong plant, part or
-material, a place it is not from, or a sentence that says nothing about it at all. Do not judge the style or the
+material, a place it is not from, a sentence that says nothing about it at all, or a first sentence that doesn't
+say what the note smells like. Do not judge the style or the
 choice of words.
 
 Note: {note}
@@ -445,6 +471,8 @@ def text_checks(k, smell, origin, source, a, counts, accord):
         s.append("empty or too long")
     if (m := FILLER.search(smell)):
         s.append(f"empty phrase: \"{m.group(0)}\"")
+    if smell and (why := first_problem(smell)):
+        s.append(why)
     if not re.search(r"\b(top|heart|middle|base)\b", smell, re.I):
         s.append("doesn't say top, heart or base")
     elif (why := wrong_tier(smell, counts)):
@@ -498,9 +526,12 @@ def job_texts(con, seen):
             changed("note text taken back", k, why + " (written again)")
             online.pop(k)
     AUTO.commit()
+    # Texts online whose first sentence can't stand alone (the extension shows only that): written again, and the
+    # old text stays online until a new one passes every check.
+    redo = {k for k, smell in AUTO.execute("SELECT key, smell FROM note_text").fetchall() if first_problem(smell)}
     accord_keys = ACCORD_NOTES | set(accords.FAMILIES)
     # Without a text, or online with the smell only (no origin yet, and one could exist).
-    new = [k for k in want if k not in done and (k not in online or (not online[k] and k not in accord_keys))]
+    new = [k for k in want if k not in done and (k not in online or k in redo or (not online[k] and k not in accord_keys))]
     new = sorted(new, key=lambda k: (k in online, -want[k], k))[:TEXTS_PER_NIGHT]
     if not new:
         return f"texts: nothing new ({len(want)} notes with a page, {len(done & set(want)) + len(online)} have a text)", []
@@ -519,7 +550,7 @@ def job_texts(con, seen):
         tier, tier_short = tier_words(tiers.get(k))
         with_ = ", ".join(sorted(pairs.get(k, {}), key=lambda x: -pairs[k][x])[:6]) or "none yet"
         prompt = (ACCORD_PROMPT if accord else TEXT_PROMPT).format(
-            note=k, tier=tier, tier_short=tier_short, pairs=with_, source=source or "(none found: leave origin empty)")
+            note=k, tier=tier, tier_short=tier_short, pairs=with_, first_rule=FIRST_RULE, source=source or "(none found: leave origin empty)")
         best, feedback = None, ""
         for attempt in range(TRIES_PER_NIGHT):
             try:
@@ -546,8 +577,12 @@ def job_texts(con, seen):
         _, smell, origin, s, o = best
         drafts[k] = {"smell": smell, "origin": origin, "source": url, "problems": s + o}
         if not s:
-            if o and k in online:   # it had the smell already and still no good origin: nothing new to save
+            if o and k in online and k not in redo:   # it had the smell already and still no good origin: nothing new
                 pass
+            elif o and k in redo:   # a better smell; the origin that was online stays
+                AUTO.execute("UPDATE note_text SET smell=?, night=? WHERE key=?", (smell, DAY, k))
+                changed("note text", k, smell[:100] + " (smell rewritten: first sentence)")
+                wrote += 1
             else:
                 AUTO.execute("INSERT OR REPLACE INTO note_text (key, smell, origin, source, night) VALUES (?,?,?,?,?)",
                              (k, smell, "" if o else origin, url if not o else "", DAY))

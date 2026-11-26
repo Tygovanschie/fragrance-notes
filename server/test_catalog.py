@@ -78,7 +78,8 @@ class Keys(unittest.TestCase):
         # Not the same note: glazed chestnut, pepper vs pink pepper, a word that isn't in the table.
         self.assertNotEqual(catalog.note_key("Geglazuurde kastanje"), catalog.note_key("Kastanje"))
         self.assertNotEqual(catalog.note_key("Peper"), catalog.note_key("Roze Peper"))
-        self.assertEqual(catalog.note_key("Belambra Hout"), "belambra hout")
+        self.assertEqual(catalog.note_key("Maanstof Hout"), "maanstof hout")
+        self.assertEqual(catalog.note_key("Belambra Hout"), "belambre")    # Givaudan's woody amber, as shops misspell it
 
     def test_display_name(self):
         self.assertEqual(catalog.display_name("STRONGER WITH YOU MANNEN"), "STRONGER WITH YOU")

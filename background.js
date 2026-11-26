@@ -669,7 +669,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 // For everyone, not only users who share: it's an anonymous question (brand, name, concentration, gender, barcodes;
 // no install id), the server stores nothing and doesn't log it. Remembered for an hour per perfume.
 const ownCache = new Map();
-async function ownLookup(f) {
+async function ownLookup(f, lang) {
   if (!f || typeof f !== 'object') return null;
   const q = new URLSearchParams();
   const gtins = strList(f.gtins, 8, 14).filter(g => /^\d{8,14}$/.test(g));
@@ -679,6 +679,7 @@ async function ownLookup(f) {
   if (['extrait', 'parfum', 'edp', 'edt', 'edc'].includes(f.conc)) q.set('conc', f.conc);
   if (['m', 'f'].includes(f.gender)) q.set('gender', f.gender);
   if (!gtins.length && !(f.brand && f.name)) return null;
+  if (/^[a-z]{2}$/.test(lang || '')) q.set('lang', lang);   // only for the accord names in the answer
   const key = q.toString();
   const c = ownCache.get(key);
   if (c && Date.now() - c.t < 3600e3) return c.data;
@@ -739,7 +740,7 @@ chrome.runtime.onMessage.addListener((msg, sender, send) => {
     if (msg.type === 'community') return send(await communityPrices(msg.perfumeId, msg.currency));
     if (msg.type === 'share') { sharePrices(msg.perfumeId, msg.prices, sender.url); return send({ ok: true }); }
     if (msg.type === 'facts') { shareFacts(msg.perfumeId, msg.facts, sender.url); return send({ ok: true }); }
-    if (msg.type === 'own') return send(await ownLookup(msg.facts));
+    if (msg.type === 'own') return send(await ownLookup(msg.facts, msg.lang));
     if (msg.type === 'mine') return send(await myContribution());
     if (msg.type === 'note') return send(await noteInfo(msg.url));
     if (msg.type === 'ownNote') return send(await ownNote(msg.key, msg.lang));

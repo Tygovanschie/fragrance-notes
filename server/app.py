@@ -31,6 +31,7 @@ import statistics
 import threading
 import time
 
+import accords
 import catalog
 import maintenance
 import regions
@@ -741,6 +742,10 @@ class Handler(BaseHTTPRequestHandler):
             gtins = [g for g in one("gtin", 200).split(",") if g][:8]
             with db() as con:
                 p = catalog.lookup(con, gtins, one("brand", 80), one("name", 120), one("conc", 10), one("gender", 1))
+            if p:   # our own main accords for the panel's colour strip, named in the panel's language when we can
+                lang = one("lang", 2) if one("lang", 2) in pages.LANGS else "en"
+                p["accords"] = [{"key": a, "name": accords.name(a, lang), "width": v, "bg": accords.COLOURS[a][0],
+                                 "fg": accords.COLOURS[a][1]} for a, v in pages.shares(accords.main_accords(p))]
             return self.reply(200, {"perfume": p}, cache)
         if u.path == "/catalog/note":
             # The extension's note pop-up. Anonymous like /catalog/lookup: the note is in the query, never logged.

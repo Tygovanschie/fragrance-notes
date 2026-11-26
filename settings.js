@@ -282,5 +282,7 @@
   ]);
   const officialSite = host => OFFICIAL_SITES.has(builtInShop(host));
 
-  globalThis.FN = { API_BASE, OWN_MIN_CONFIRMED, IS_FIREFOX, REVIEW_URL, favs, builtInShop, officialSite, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
+  // The first sentence of a note description (the note pop-ups show only that; the full text is on the website).
+  const firstSentence = s => (String(s || '').trim().match(/^.+?[.!?](?=\s|$)/) || [String(s || '').trim()])[0];
+  globalThis.FN = { firstSentence, API_BASE, OWN_MIN_CONFIRMED, IS_FIREFOX, REVIEW_URL, favs, builtInShop, officialSite, shopCountry, resolveTheme, detectConc, stripConc, CONC_PHRASE, cleanDomain, shopPatterns, DEFAULTS, SECTION_GROUPS, SECTION_LABELS, THEMES, LANGS, LANG_HOSTS, t, loadSettings: load };
 })();

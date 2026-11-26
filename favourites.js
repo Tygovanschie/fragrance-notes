@@ -216,7 +216,7 @@
       const link = own ? `<a href="${esc(own.url)}" target="_blank" rel="noopener">fragrancenotes.app ↗</a>`
         : url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Fragrantica ↗</a>` : '';
       const facts = own
-        ? [own.smell && { label: FN.t(S.lang, 'smellsLike'), text: own.smell }, own.origin && { label: FN.t(S.lang, 'comesFrom'), text: own.origin }].filter(Boolean)
+        ? [own.smell && { label: FN.t(S.lang, 'smellsLike'), text: FN.firstSentence(own.smell) }].filter(Boolean)   // short while shopping; the rest on the site
         : info?.facts || [];
       pop.innerHTML = `${img ? `<img src="${esc(img)}" alt="">` : '<span></span>'}<div><div class="nn"><span>${esc(name)}${
         !own && info?.latin ? ` <i class="lat">${esc(info.latin)}</i>` : ''}</span>${link}</div>${

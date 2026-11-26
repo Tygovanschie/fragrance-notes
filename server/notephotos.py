@@ -52,6 +52,7 @@ TITLES = {
 FILES = {
     "lavender": "Lavandula angustifolia in Sedovo 1.jpg", "lavandin": "DSC05621 - Lavandin (38797971360).jpg",
     "violet leaf": "Viola odorata sl20.jpg", "suede": "Modern Suede Jacket.jpg",
+    "vetiver": "Vetiveria zizanoides dsc07810.jpg",   # bundles of the roots; the old photo had a person in it
     "tonka bean": "Tonka Beans.jpg", "cedar": "Cedrus libani cone, Sète cf01.jpg", "chestnut": "Chestnuts roasted.jpg",
     "apple": "Apples in basket 2018 G1.jpg", "mint": "Mint leaves (Mentha spicata).jpg", "peppermint": "Peppermint Plant.jpg",
     "ginger": "Ginger Root.jpg", "pepper": "Black Pepper IMG 4866 - 02.jpg", "black pepper": "Black Pepper IMG 4866 - 02.jpg",
