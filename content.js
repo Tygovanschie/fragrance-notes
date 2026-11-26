@@ -1118,6 +1118,7 @@
 
   // Some shops render the product name or data a few seconds after the page loads: keep looking for a while.
   let waitTimer = null;
+  let reopen = false, leftAt = 0;   // the panel was open on the perfume page the user just left
   function waitForProduct(delays = [700, 1500, 2500, 4000, 6000, 9000]) {
     clearTimeout(waitTimer);
     const url = location.href;
@@ -1128,23 +1129,28 @@
         const d = detect();
         if (!d.show) return step(i + 1);
         current = d;
-        if (S.enabled && panel.hidden) { pill.hidden = false; prefetch(); }
+        if (S.enabled && panel.hidden && reopen && Date.now() - leftAt < 5000) open();
+        else if (S.enabled && panel.hidden) { pill.hidden = false; prefetch(); }
+        reopen = false;
       }, delays[i] - (delays[i - 1] || 0));
     };
     step(0);
   }
 
-  // Many shops are single-page apps: re-detect when the URL changes.
+  // Many shops are single-page apps: re-detect when the URL changes. The browser's back button (popstate) and
+  // the Navigation API tell us at once; the short poll catches shops that change the URL some other way.
   let lastUrl = location.href;
-  setInterval(() => {
+  let recheckTimer = 0;
+  const urlChanged = () => {
     if (location.href === lastUrl) return;
     lastUrl = location.href;
+    clearTimeout(recheckTimer);
     const prevQuery = current.query;
     let tries = 0;
     const recheck = () => {
       current = detect();
-      // Give slow pages a few more seconds to swap in the new product.
-      if (current.show && current.query === prevQuery && ++tries < 4) return setTimeout(recheck, 800);
+      // The page may still show the old product for a moment: look again a few times (about 3 seconds in all).
+      if (current.show && current.query === prevQuery && ++tries < 10) { recheckTimer = setTimeout(recheck, 300); return; }
       input.value = '';
       pendingWork = null;
       loadedFor = null;
@@ -1152,10 +1158,15 @@
       userClosed = false;
       pill.classList.remove('loading', 'ready');
       body.innerHTML = '';
-      if (!S.enabled || !current.show) { panel.hidden = true; pill.hidden = true; if (!current.show) waitForProduct(); }
+      // Leaving a perfume page: hide at once. If the next page turns out to be a perfume after all (it was still
+      // loading), the panel comes back the way it was (open or as the pill).
+      if (!S.enabled || !current.show) { reopen = !panel.hidden; leftAt = Date.now(); panel.hidden = true; pill.hidden = true; if (!current.show) waitForProduct(); }
       else if (panel.hidden) { pill.hidden = false; prefetch(); }
       else open();
     };
-    setTimeout(recheck, 1000);
-  }, 800);
+    recheckTimer = setTimeout(recheck, 120);
+  };
+  addEventListener('popstate', urlChanged);
+  try { globalThis.navigation?.addEventListener('currententrychange', () => setTimeout(urlChanged, 0)); } catch {}
+  setInterval(urlChanged, 400);
 })();
