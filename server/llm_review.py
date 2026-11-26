@@ -342,6 +342,23 @@ def wiki_intro(title):
     return pg["title"], pg.get("fullurl", ""), text[:3000]
 
 
+
+def wrong_tier(smell, counts):
+    """Why a text's top/heart/base doesn't fit where the note sits in our perfumes, or "" when it fits (or we don't
+    know). A tier counts as fitting when at least a third of the perfumes put the note there; the model guessed
+    "top note" for birch (smoky birch tar, a base note)."""
+    if not counts:
+        return ""
+    said = {("heart" if t == "middle" else t) for t in re.findall(r"\b(top|heart|middle|base)\b", smell.lower())}
+    if not said:
+        return ""
+    total = sum(counts.values())
+    fits = {t for t, c in counts.items() if c / total >= 1 / 3}
+    if said & fits:
+        return ""
+    where = max(counts, key=counts.get)
+    return f"says {'/'.join(sorted(said))} note, but in our perfumes it is mostly a {where} note"
+
 def unsupported(origin, source):
     """Names and numbers in the model's origin text that the source doesn't have (a sign it made them up)."""
     words = re.findall(r"(?<![.!?]\s)(?<!^)\b[A-Z][a-z]{2,}\b|\b\d+\b", origin)
@@ -354,31 +371,54 @@ def job_texts(con, seen):
             done = set(json.load(f))
     except FileNotFoundError:
         done = set()
-    want = {}
+    want, tiers = {}, {}
     for (data,) in con.execute("SELECT data FROM catalog WHERE confirmed >= ?", (PAGE_MIN_CONFIRMED,)):
-        for tier in json.loads(data)["notes"].values():
-            for n in tier:
+        for tier, ns in json.loads(data)["notes"].items():
+            for n in ns:
                 if n.get("en") and n["confirmed"]:
                     want[n["en"]] = want.get(n["en"], 0) + 1
+                    tiers.setdefault(n["en"], {}).setdefault(tier, 0)
+                    tiers[n["en"]][tier] += 1
+    # Texts already online that say another tier than where the note sits in our perfumes: taken back (every night,
+    # also when the data changes).
+    for k, smell in AUTO.execute("SELECT key, smell FROM note_text").fetchall():
+        why = wrong_tier(smell, tiers.get(k))
+        if why:
+            AUTO.execute("DELETE FROM note_text WHERE key=?", (k,))
+            changed("note text taken back", k, why)
+            todo("note text", k, why)
+    AUTO.commit()
     new = sorted((k for k in want if k not in done and k not in seen), key=lambda k: (-want[k], k))[:TEXTS_PER_NIGHT]
     if not new:
         return f"texts: nothing new ({len(want)} notes with a page, {len(done & set(want))} have a text)", []
     rows, drafts, asked = [], {}, []
     for k in new:
-        src = wiki_intro(WIKI_TITLES.get(k, k[:1].upper() + k[1:]))
+        try:
+            src = wiki_intro(WIKI_TITLES.get(k, k[:1].upper() + k[1:]))
+        except Exception as err:   # Wikipedia not reachable: this note again next night, the others go on
+            print(f"llm review texts: {k} skipped ({err})", flush=True)
+            continue
         asked.append(k)
         if not src:
             rows.append([k, "—", "—", "no source found: no text (the page shows facts only)", ""])
             continue
         title, url, text = src
-        a = ask(TEXT_PROMPT.format(note=k, source=text))
+        try:
+            a = ask(TEXT_PROMPT.format(note=k, source=text))
+        except Exception as err:   # the model server failed once (HTTP 500): skip this note, try it next night
+            asked.remove(k)
+            print(f"llm review texts: {k} skipped ({err})", flush=True)
+            continue
         # One more try when it only used an empty phrase or a claim: tell the model what to leave out.
         for _ in range(1):
             bad = [m.group(0) for m in (FILLER.search(str(a.get("smell") or "")), CLAIM.search(str(a.get("origin") or ""))) if m]
             if not bad:
                 break
-            a = ask(TEXT_PROMPT.format(note=k, source=text) + "\n\nYour first answer used " + ", ".join(f'"{b}"' for b in bad)
-                    + ". Write it again without those words.")
+            try:
+                a = ask(TEXT_PROMPT.format(note=k, source=text) + "\n\nYour first answer used " + ", ".join(f'"{b}"' for b in bad)
+                        + ". Write it again without those words.")
+            except Exception:   # keep the first answer; the checks below decide
+                pass
         smell, origin = str(a.get("smell") or "").strip(), str(a.get("origin") or "").strip()
         checks = []
         if a.get("from_source") is not True:
@@ -393,6 +433,8 @@ def job_texts(con, seen):
             checks.append(f"empty phrase: \"{m.group(0)}\"")
         if not re.search(r"\b(top|heart|middle|base)\b", smell, re.I):
             checks.append("doesn't say top, heart or base")
+        elif (why := wrong_tier(smell, tiers.get(k))):
+            checks.append(why)
         if k in ACCORD_NOTES:
             checks.append("an accord: the source is about the material, not how perfumers make the note")
         drafts[k] = {"smell": smell, "origin": origin, "source": url, "sourceName": "Wikipedia", "license": "CC BY-SA 4.0"}
