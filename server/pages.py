@@ -663,7 +663,7 @@ footer{padding:36px 0 56px;color:var(--ink-soft);font-size:.875rem;border-top:1p
 .chips a{display:inline-block;padding:8px 14px;border-radius:999px;background:var(--white);border:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:.9688rem}
 .chips a:hover{box-shadow:0 0 0 2px var(--plum)}.chips small{color:var(--ink-soft);margin-left:4px}
 .letter{font:750 1.25rem/1 var(--display);margin:26px 0 12px;color:var(--plum)}.card h2.letter:first-child{margin-top:0}
-.tiles.notegrid{grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:34px 22px}.notegrid .nimg{width:96px;height:96px;border-radius:22px;font-size:2rem}
+.tiles.notegrid{grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:22px 12px}.notegrid .nimg{width:96px;height:96px;border-radius:22px;font-size:2rem}
 .notegrid .tile small{color:var(--ink-soft);font-size:.8125rem;margin-top:-4px}
 .sr{position:absolute;opacity:0;width:1px;height:1px;margin:0;pointer-events:none}.sr-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .score{display:flex;align-items:baseline;gap:10px;margin:4px 0 6px}.score .big{font:800 2.4rem/1 var(--display)}.score .st{color:var(--plum);font-size:1.3rem;letter-spacing:2px}
@@ -685,8 +685,8 @@ form.vote .btn{margin-top:16px;padding:11px 20px;font-size:.9375rem}form.vote .m
 .nimg{width:72px;height:72px;border-radius:18px;overflow:hidden;display:grid;place-items:center;background:var(--c,var(--paper));color:var(--f,var(--ink-soft));font:700 1.625rem/1 var(--display);box-shadow:0 0 0 1px var(--line)}
 .nimg img{width:100%;height:100%;object-fit:cover;display:block}a.tile:hover .nimg{box-shadow:0 0 0 2px var(--mauve)}a.tile:hover{color:var(--plum)}
 .credit{margin:10px 0 0;font-size:.8125rem}
-.notehead{grid-template-columns:1fr 320px;gap:48px;align-items:center}.notehead h1{margin-bottom:0}
-.notelead{margin:18px 0 14px;font-size:1.1875rem;line-height:1.6;color:var(--ink);max-width:34em}
+.notehead{grid-template-columns:1.25fr .75fr;gap:28px;align-items:start}.notehead h1{margin-bottom:0}
+.notesmell{margin:20px 0 0}
 @media (max-width:900px){.notehead{grid-template-columns:1fr;gap:20px}.notehead>figure,.notehead>.astrip,.notehead>.swatch{order:-1;max-width:420px}}
 .notephoto{margin:0}.notephoto img{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:22px;display:block;background:var(--paper)}
 .notephoto figcaption{margin-top:6px;font-size:.75rem;color:var(--ink-soft)}.notephoto figcaption a{color:var(--ink-soft)}
@@ -1266,7 +1266,7 @@ def note_page(con, slug_, lang="en"):
         # How it smells is the intro under the name (next to the photo); where it comes from and the credit below.
         credit = (f'<p class="src">{(AI_AUTO if src else AI_AUTO_NOSRC)[lang] if text.get("auto") else t["aiNote"]}\n'
                   f'{f"""{t["sourceWord"]}: <a href="{e(src)}" rel="nofollow">{e(text.get("sourceName", "source"))}</a> ({e(text.get("license", ""))}).""" if src else ""}</p>')
-        lead = f'<p class="notelead"{" lang=en" if english else ""}>{e(smell)}</p>'
+        lead = f'<section class="card notesmell"{" lang=en" if english else ""}><h2>{t["smellsLike"]}</h2><p>{e(smell)}</p></section>'
         about = f"""<section class="card"{' lang="en"' if english else ""}>
 {f'<h2>{t["comesFrom"]}</h2><p>{e(origin)}</p>' if origin else ""}{credit}</section>"""
     items = []
