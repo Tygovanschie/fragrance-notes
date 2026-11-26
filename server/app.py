@@ -742,6 +742,13 @@ class Handler(BaseHTTPRequestHandler):
             with db() as con:
                 p = catalog.lookup(con, gtins, one("brand", 80), one("name", 120), one("conc", 10), one("gender", 1))
             return self.reply(200, {"perfume": p}, cache)
+        if u.path == "/catalog/note":
+            # The extension's note pop-up. Anonymous like /catalog/lookup: the note is in the query, never logged.
+            q = parse_qs(u.query)
+            key, lang = (q.get("key") or [""])[0][:60], (q.get("lang") or ["en"])[0][:2]
+            with db() as con:
+                n = pages.note_info(con, key, lang)
+            return self.reply(200, {"note": n}, cache)
         m = re.fullmatch(r"/catalog/perfume/([0-9a-f]{12})", u.path)
         if m:
             with db() as con:

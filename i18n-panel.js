@@ -27,3 +27,15 @@ globalThis.FN_PANEL_I18N = {
   ja: ["香りのノート","検索","ブランド + 香水名、または Fragrantica のリンク","ノート","コスパ","データ: Fragrantica","キャッシュ","更新","Fragrantica で検索中…","Fragrantica にはこの香水のノートが載っていません。違う香水ですか？上の検索を修正してください。","より安い代替品（デュープ）","デュープ","価格","他のショップのml単価","Fragranticaで完全一致が見つかりません。もしかして：","Fragranticaで見つかりませんでした。上でブランド名＋香水名だけにするか、Fragranticaのリンクを貼ってください。","良い点","気になる点","みんなの声","評価","ブランド名と香水名を入力して検索してください。","拡張機能が更新されました。このページを再読み込みしてもう一度お試しください。","Fragrantica の読み込みが完了しませんでした。確認画面が出ているかもしれません。開いてからもう一度検索してください。","Fragrantica で香水は見つかりましたが、詳細を読み取れませんでした。","問題が発生しました。少し待ってからもう一度お試しください。","Fragrantica で開く","提携なし","お買い得","適正価格","割高","他のユーザーが共有","このショップの {ml} ml：{here} · 他の {n} ショップ：通常 {p}、最安 {min}（過去30日間）","既知の最安値","最安は {shop}：{min}","{n} ショップで通常 {p}","ほかの香水ファンを手伝いませんか？","ショップが香水について表示している情報（価格、容量、ノート）を匿名で共有します。ほかのショップの価格がわかり、オープンな香水データベースづくりにも役立ちます。あなたに関する情報は送信されません。","オンにする","今はしない","プライバシー","30日間の最安値：{p}（{shop}）","最安：{shop} {min}","通常 {p}","閉じる","お気に入りに追加","お気に入りに保存済み","お気に入り","トップノート","ミドルノート","ラストノート","Fragrance Notes データベースで 2 つ以上のショップが確認済み","ほかのユーザーと価格を比較","お持ちですか？評価する"],
   ko: ["향 노트","검색","브랜드 + 향수 이름, 또는 Fragrantica 링크","노트","가성비","데이터: Fragrantica","캐시됨","새로고침","Fragrantica에서 검색 중…","Fragrantica에 이 향수의 노트가 없습니다. 다른 향수인가요? 위 검색어를 수정하세요.","더 저렴한 대안 (듀프)","듀프","가격","다른 쇼핑몰의 ml당 가격","Fragrantica에서 정확히 일치하는 항목이 없습니다. 혹시 이것인가요:","Fragrantica에서 찾을 수 없습니다. 위에 브랜드 + 향수 이름만 입력하거나 Fragrantica 링크를 붙여 넣으세요.","장점","단점","사람들의 의견","평점","브랜드와 향수 이름을 입력해 검색하세요.","확장 프로그램이 업데이트되었습니다. 이 페이지를 새로고침한 뒤 다시 시도하세요.","Fragrantica가 완전히 로드되지 않았습니다. 확인 화면이 표시될 수 있습니다. 열어 본 뒤 다시 검색하세요.","Fragrantica에서 향수를 찾았지만 세부 정보를 읽지 못했습니다.","문제가 발생했습니다. 잠시 후 다시 시도하세요.","Fragrantica에서 열기","제휴 없음","아주 좋은 가격","적정 가격","비싼 편","다른 사용자가 공유","여기 {ml} ml: {here} · 다른 쇼핑몰 {n}곳: 보통 {p}, 최저 {min} (최근 30일)","알려진 최저가","{shop} 최저: {min}","{n}곳에서 보통 {p}","다른 향수 애호가를 도와주시겠어요?","쇼핑몰이 향수에 대해 보여주는 정보(가격, 용량, 노트)를 익명으로 공유하세요. 다른 쇼핑몰의 가격을 볼 수 있고 열린 향수 데이터베이스를 만드는 데 도움이 됩니다. 사용자에 관한 정보는 전송되지 않습니다.","켜기","괜찮아요","개인정보","30일 최저가: {p} ({shop})","최저가: {shop} {min}","보통 {p}","닫기","즐겨찾기에 추가","즐겨찾기에 저장됨","즐겨찾기","탑 노트","미들 노트","베이스 노트","Fragrance Notes 데이터베이스에서 2개 이상의 쇼핑몰이 확인함","다른 사용자와 가격 비교","갖고 계신가요? 평가하기"]
 };
+// Added in 1.4: the note pop-up with the Fragrance Notes description (smellsLike, comesFrom, moreOnSite).
+// Only the website's languages; the others fall back to English, like the descriptions themselves.
+Object.entries({
+  en: ['What it smells like', 'Where it comes from', 'More on fragrancenotes.app'],
+  nl: ['Hoe het ruikt', 'Waar het vandaan komt', 'Meer op fragrancenotes.app'],
+  de: ['Wie es riecht', 'Woher es kommt', 'Mehr auf fragrancenotes.app'],
+  fr: ['Son odeur', 'Son origine', 'Plus sur fragrancenotes.app'],
+  es: ['A qué huele', 'De dónde viene', 'Más en fragrancenotes.app'],
+  it: ['Che odore ha', 'Da dove viene', 'Altro su fragrancenotes.app'],
+  pt: ['A que cheira', 'De onde vem', 'Mais em fragrancenotes.app'],
+  pl: ['Jak pachnie', 'Skąd pochodzi', 'Więcej na fragrancenotes.app']
+}).forEach(([l, a]) => globalThis.FN_PANEL_I18N[l]?.push(...a));

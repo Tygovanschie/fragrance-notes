@@ -164,6 +164,10 @@ class PagesTest(unittest.TestCase):
         self.assertIn("Tonka bean", body)
         self.assertIn("Tonkaboon", body)                  # how shops write it
         self.assertIn("Dipteryx odorata", body)           # the reviewed text from note_texts.json
+        # The extension's note pop-up: found by any spelling a shop uses, the page in the panel's language.
+        n = json.loads(get("/catalog/note?key=Tonkaboon&lang=nl")[1])["note"]
+        self.assertEqual((n["key"], n["url"]), ("tonka bean", "https://fragrancenotes.app/nl/note/tonka-bean"))
+        self.assertIn("Dipteryx odorata", n["origin"] + n["smell"])
         self.assertIn("Wikipedia", body)
         self.assertIn(f"/perfume/{pid}-", body)
         code, body, _ = get("/note/juniper")

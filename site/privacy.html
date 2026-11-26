@@ -29,7 +29,7 @@
     <div class="wrap">
       <article>
         <h1>Privacy policy</h1>
-        <p class="updated">Last updated: 25 November 2026 (version 1.4)</p>
+        <p class="updated">Last updated: 26 November 2026 (version 1.4)</p>
         <p>Fragrance Notes is a browser extension that shows information from Fragrantica about the perfume you are looking at in a web shop. This policy explains what the extension reads, where it sends it and what it stores.</p>
 <h2>What the extension reads</h2>
 <p>On perfume product pages of supported shops (and shops you add yourself), the extension reads the product name, brand, concentration, barcode, whether it is for men or women, the sizes and prices, and the notes and fragrance family the shop lists. It does not read other pages, forms, passwords or payment details.</p>
@@ -37,7 +37,7 @@
 <ul>
 <li><strong>Bing</strong> (bing.com): the perfume name is searched to find the matching Fragrantica page.</li>
 <li><strong>Fragrantica</strong> (fragrantica.com and its language sites, and fimgs.net for pictures): the perfume's page, note pages and search are opened to read the perfume's details.</li>
-<li><strong>The Fragrance Notes database</strong> (api.fragrancenotes.app): on a product page, the extension asks whether the open perfume database knows this perfume, so it can show notes that several shops confirmed. The question contains only the brand, name, concentration, men/women and barcode shown on the page; no install ID, page address or anything about you. The server answers and does not store or log the question (it passes through Cloudflare, see below).</li>
+<li><strong>The Fragrance Notes database</strong> (api.fragrancenotes.app): on a product page, the extension asks whether the open perfume database knows this perfume, so it can show notes that several shops confirmed. The question contains only the brand, name, concentration, men/women and barcode shown on the page; no install ID, page address or anything about you. The server answers and does not store or log the question (it passes through Cloudflare, see below). When you click a note, the extension asks the same server for that note's description in the same way: the question contains only the note's name and the panel's language.</li>
 </ul>
 <p>The requests to Bing and Fragrantica go directly from your browser to those websites, just as when you visit them yourself, and are covered by their own privacy policies.</p>
 <p>Apart from that anonymous question, nothing is sent to the developer of Fragrance Notes unless you turn on <strong>Help other perfume lovers</strong> (Settings → Data). That one setting covers both kinds of sharing described below: prices, and perfume facts for the open perfume database. The extension asks once, on the welcome page, whether you want to help (nothing is on until you say yes); if you never answer, it may ask once more in the panel and once in the toolbar menu.</p>

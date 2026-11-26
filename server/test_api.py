@@ -404,6 +404,16 @@ class ApiTest(unittest.TestCase):
         for secret in ("3614273642454", "Stronger", "Creed", "Aventus", "?"):
             self.assertNotIn(secret, out.getvalue())
 
+    def test_note_popup_is_anonymous(self):
+        # Found notes are tested in test_pages (a note needs a published perfume); here: unknown, and never logged.
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            s, none, _ = call("GET", "/catalog/note?key=unicorn%20tears&lang=xx")
+        self.assertEqual(s, 200)
+        self.assertIsNone(none["note"])
+        self.assertIn("GET /catalog/note 200", out.getvalue())
+        self.assertNotIn("unicorn", out.getvalue())
+
     def test_my_contribution(self):
         me, other = str(uuid.uuid4()), str(uuid.uuid4())
         fact(install=me)    # douglas.nl: Rum, Bergamot / Ceder, Davana / Lavendel, Cederhout

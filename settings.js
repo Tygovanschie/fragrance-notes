@@ -118,7 +118,7 @@
     // Edge Add-ons: add the ID and link here once the listing is live.
   })[typeof chrome !== 'undefined' && chrome.runtime?.id] || null;
 
-  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close', 'fav', 'faved', 'favs', 'tierTop', 'tierHeart', 'tierBase', 'ownNotes', 'shareTeaser', 'rateIt'];
+  const PANEL_KEYS = ['title', 'search', 'placeholder', 'notes', 'priceValue', 'data', 'cached', 'refresh', 'looking', 'noNotes', 'dupes', 'dupe', 'perMl', 'elsewhere', 'didYouMean', 'notFound', 'pros', 'cons', 'prosCons', 'rating', 'typeHint', 'reloaded', 'blocked', 'unreadable', 'failed', 'openFrag', 'notAffiliated', 'great', 'fair', 'over', 'community', 'dealTip', 'lowestKnown', 'cheapestAt', 'typicalAt', 'shareAsk', 'shareAskD', 'shareOn', 'shareNo', 'privacy', 'lowest30', 'cheapestShort', 'typicalShort', 'close', 'fav', 'faved', 'favs', 'tierTop', 'tierHeart', 'tierBase', 'ownNotes', 'shareTeaser', 'rateIt', 'smellsLike', 'comesFrom', 'moreOnSite'];
   const EN_FALLBACK = { accords: 'Main accords', wear: 'When to wear', longevity: 'Longevity', sillage: 'Sillage', gender: 'Gender', similar: 'Reminds people of' };
   const t = (lang, key) => {
     const table = globalThis.FN_PANEL_I18N || {};
@@ -226,7 +226,9 @@
     jp:'JP', kr:'KR', 'co.kr':'KR', 'com.br':'BR', br:'BR', tr:'TR', 'com.tr':'TR', mx:'MX', 'com.mx':'MX', ua:'UA', rs:'RS', il:'IL', 'co.il':'IL' };
   const COM_COUNTRY = { 'sephora.com':'US', 'ulta.com':'US', 'saks.com':'US', 'saksfifthavenue.com':'US', 'bloomingdales.com':'US',
     'luckyscent.com':'US', 'aedes.com':'US', 'harrods.com':'GB', 'theperfumeshop.com':'GB', 'mecca.com':'AU',
-    'galerieslafayette.com':'FR', 'lebonmarche.com':'FR', 'jovoyparis.com':'FR', 'noseparis.com':'FR' };
+    'galerieslafayette.com':'FR', 'lebonmarche.com':'FR', 'jovoyparis.com':'FR', 'noseparis.com':'FR',
+    'perfume.com':'US', 'fragranceoutlet.com':'US', 'bluemercury.com':'US', 'nordstromrack.com':'US', 'flannels.com':'GB',
+    'beautybase.com':'GB', 'hondoscenter.com':'GR', 'stockmann.com':'FI', 'beymen.com':'TR', 'gratis.com':'TR', 'myntra.com':'IN', 'purplle.com':'IN' };
   const shopCountry = host => {
     const h = String(host || '').toLowerCase().replace(/^www\./, '');
     for (const [d, c] of Object.entries(COM_COUNTRY)) if (h === d || h.endsWith('.' + d)) return c;
@@ -275,7 +277,8 @@
     'ortoparisi.com', 'penhaligons.com', 'sergelutens.com', 'smnovella.com', 'tizianaterenzi.com',
     'viktor-rolf.com', 'xerjoff.com', 'bdkparfums.com', 'bonparfumeur.com', 'essentialparfums.com',
     'initioparfums.com', 'lelabofragrances.com', 'maisonmargiela-fragrances.com', 'mancera-parfums.com',
-    'montaleparfums.com', 'parfums-de-marly.com', 'rojaparfums.com'
+    'montaleparfums.com', 'parfums-de-marly.com', 'rojaparfums.com',
+    'azzaro.com', 'isseymiyakeparfums.com', 'montblanc.com', 'chloe.com', 'esteelauder.com', 'elizabetharden.com', 'cartier.com', 'boucheron.com', 'vancleefarpels.com', 'nasomatto.com', 'lartisanparfumeur.com', 'goutalparis.com', 'aesop.com', 'dsdurga.com', 'imaginaryauthors.com', 'zoologistperfumes.com', 'histoiresdeparfums.com', 'thedifferentcompany.com', 'ormondejayne.com', 'pnicolai.com', 'carnerbarcelona.com', 'fueguia.com', 'rasasi.com', 'arabianoud.com', 'swissarabian.com', 'rituals.com', 'bathandbodyworks.com', 'victoriassecret.com', 'phlur.com', 'ellisbrooklyn.com', 'vilhelmparfumerie.com', 'lancome.it', 'lancome.es', 'lancome.be', 'lancome-usa.com', 'yslbeauty.co.uk', 'yslbeauty.fr', 'yslbeautyus.com', 'giorgioarmanibeauty-usa.com'
   ]);
   const officialSite = host => OFFICIAL_SITES.has(builtInShop(host));
 

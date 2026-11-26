@@ -1,6 +1,6 @@
 # Fragrance Notes – Privacy policy
 
-Last updated: 25 November 2026 (version 1.4)
+Last updated: 26 November 2026 (version 1.4)
 
 Fragrance Notes is a browser extension that shows information from Fragrantica about the perfume you are looking at in a web shop. This policy explains what the extension reads, where it sends it and what it stores.
 
@@ -12,7 +12,7 @@ On perfume product pages of supported shops (and shops you add yourself), the ex
 
 - **Bing** (bing.com): the perfume name is searched to find the matching Fragrantica page.
 - **Fragrantica** (fragrantica.com and its language sites, and fimgs.net for pictures): the perfume's page, note pages and search are opened to read the perfume's details.
-- **The Fragrance Notes database** (api.fragrancenotes.app): on a product page, the extension asks whether the open perfume database knows this perfume, so it can show notes that several shops confirmed. The question contains only the brand, name, concentration, men/women and barcode shown on the page; no install ID, page address or anything about you. The server answers and does not store or log the question (it passes through Cloudflare, see below).
+- **The Fragrance Notes database** (api.fragrancenotes.app): on a product page, the extension asks whether the open perfume database knows this perfume, so it can show notes that several shops confirmed. The question contains only the brand, name, concentration, men/women and barcode shown on the page; no install ID, page address or anything about you. The server answers and does not store or log the question (it passes through Cloudflare, see below). When you click a note, the extension asks the same server for that note's description in the same way: the question contains only the note's name and the panel's language.
 
 The requests to Bing and Fragrantica go directly from your browser to those websites, just as when you visit them yourself, and are covered by their own privacy policies.
 

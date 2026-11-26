@@ -1312,6 +1312,22 @@ def note_page(con, slug_, lang="en"):
     return path, frame(lang, t["noteTitle"].format(name=name), desc, path, body)
 
 
+def note_info(con, key, lang="en"):
+    """A note for the extension's note pop-up: how it smells, where it comes from, its photo and page on the site.
+    None when the site has no page for it (the extension then shows Fragrantica's note facts, as before)."""
+    lang = lang if lang in LANGS else "en"
+    key = catalog.note_key(key) or " ".join(catalog.plain(key).split())   # "Ceder", "cedarwood" → "cedar"
+    if key not in index(con)["notes"]:
+        return None
+    text = TEXTS.get(key) or auto_texts().get(key) or {}
+    ph = notephotos.get(con, key)
+    return {"key": key, "name": note_name(key, lang),
+            "smell": text.get(f"smell_{lang}") or text.get("smell", ""),
+            "origin": text.get(f"origin_{lang}") or text.get("origin", ""),
+            "photo": ph["url"] if ph and ph["url"].startswith("https://") else "",
+            "url": "https://fragrancenotes.app" + P(lang, note_path(key))}
+
+
 def notes_page(con, lang="en"):
     t = T[lang]
     idx = index(con)

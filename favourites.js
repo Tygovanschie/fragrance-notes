@@ -209,13 +209,21 @@
     const { note: url, name, img } = chip.dataset;
     const pop = document.createElement('div');
     pop.className = 'notepop';
+    // First the note's page on fragrancenotes.app, else Fragrantica's note facts (as in the panel).
+    const ck = S.lang + '|' + (url || name);
     const fill = info => {
+      const own = info?.own;
+      const link = own ? `<a href="${esc(own.url)}" target="_blank" rel="noopener">fragrancenotes.app ↗</a>`
+        : url ? `<a href="${esc(url)}" target="_blank" rel="noopener">Fragrantica ↗</a>` : '';
+      const facts = own
+        ? [own.smell && { label: FN.t(S.lang, 'smellsLike'), text: own.smell }, own.origin && { label: FN.t(S.lang, 'comesFrom'), text: own.origin }].filter(Boolean)
+        : info?.facts || [];
       pop.innerHTML = `${img ? `<img src="${esc(img)}" alt="">` : '<span></span>'}<div><div class="nn"><span>${esc(name)}${
-        info?.latin ? ` <i class="lat">${esc(info.latin)}</i>` : ''}</span><a href="${esc(url)}" target="_blank" rel="noopener">Fragrantica ↗</a></div>${
+        !own && info?.latin ? ` <i class="lat">${esc(info.latin)}</i>` : ''}</span>${link}</div>${
         !info ? `<span class="muted">${esc(st('fav_loading'))}</span>`
-        : (info.facts || []).map(f => `<div class="nl">${esc(f.label)}</div><div>${esc(f.text)}</div>`).join('')}</div>`;
+        : facts.map(f => `<div class="nl">${esc(f.label)}</div><div>${esc(f.text)}</div>`).join('')}</div>`;
     };
-    fill(noteCache.get(url));
+    fill(noteCache.get(ck));
     if (asRow) {
       const tr = document.createElement('tr');
       tr.className = 'noterow';
@@ -223,11 +231,14 @@
       tr.lastElementChild.appendChild(pop);
       after.after(tr);
     } else after.appendChild(pop);
-    if (!noteCache.has(url)) {
-      chrome.runtime.sendMessage({ type: 'note', url }).then(info => {
-        noteCache.set(url, info || {});
-        if (pop.isConnected) fill(noteCache.get(url));
-      }).catch(() => { noteCache.set(url, {}); if (pop.isConnected) fill({}); });
+    if (!noteCache.has(ck)) {
+      const ask = m => chrome.runtime.sendMessage(m).catch(() => null);
+      (async () => {
+        const own = await ask({ type: 'ownNote', key: name, lang: S.lang });
+        const info = own?.smell ? { own } : url ? (await ask({ type: 'note', url })) || {} : {};
+        noteCache.set(ck, info);
+        if (pop.isConnected) fill(info);
+      })();
     }
   }
 

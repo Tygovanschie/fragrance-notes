@@ -692,6 +692,27 @@ async function ownLookup(f) {
   } catch { return null; }
 }
 
+
+// The note pop-up: the Fragrance Notes description of a note (how it smells, where it comes from) and its page on
+// fragrancenotes.app. Anonymous like the lookup above: only the note's name and the language, no install id.
+// Kept 3 days in this browser (texts are rewritten at night); null when the site has no page for the note.
+async function ownNote(key, lang) {
+  key = String(key || '').slice(0, 60);
+  lang = /^[a-z]{2}$/.test(lang || '') ? lang : 'en';
+  if (!key) return null;
+  const ck = `n3:${lang}:${key}`;
+  const c = (await chrome.storage.local.get(ck))[ck];
+  if (c && Date.now() - c.t < 3 * 864e5) return c.data;
+  try {
+    const r = await fetch(`${FN.API_BASE}/catalog/note?key=${encodeURIComponent(key)}&lang=${lang}`, { credentials: 'omit', signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return null;
+    const data = (await r.json())?.note || null;
+    if (data && !/^https:\/\/fragrancenotes\.app\//.test(data.url || '')) return null;
+    await chrome.storage.local.set({ [ck]: { t: Date.now(), data } });
+    return data;
+  } catch { return null; }
+}
+
 // "You helped confirm …" in the toolbar menu: what this install's shared facts did for the database. Only for
 // installs that share (they have an install id; none is made here), read-only on the server. Kept 10 minutes.
 async function myContribution() {
@@ -721,6 +742,7 @@ chrome.runtime.onMessage.addListener((msg, sender, send) => {
     if (msg.type === 'own') return send(await ownLookup(msg.facts));
     if (msg.type === 'mine') return send(await myContribution());
     if (msg.type === 'note') return send(await noteInfo(msg.url));
+    if (msg.type === 'ownNote') return send(await ownNote(msg.key, msg.lang));
     if (msg.type === 'opinions') return send(await englishOpinions(msg.url));
     if (msg.type !== 'lookup') return;
     const query = msg.query.trim();

@@ -412,11 +412,12 @@
       const name = typeof n === 'string' ? n : n.name;
       const img = typeof n === 'string' ? '' : n.img;
       const url = typeof n === 'string' ? '' : n.url || '';
-      const attrs = url ? ` data-note="${esc(url)}" data-name="${esc(name)}" data-img="${esc(okImg(img) ? img : '')}" role="button" tabindex="0"` : '';
+      // Every note opens its pop-up: the description comes from fragrancenotes.app, or from Fragrantica when there is a link.
+      const attrs = ` data-note="${esc(url)}" data-name="${esc(name)}" data-img="${esc(okImg(img) ? img : '')}" role="button" tabindex="0"`;
       const ok = opts.own?.has(name) ? '<i class="ok" aria-hidden="true">✓</i>' : '';
       return okImg(img)
-        ? `<span class="chip${url ? ' nb' : ''}"${attrs}><img src="${esc(img)}" alt="">${esc(name)}${ok}</span>`
-        : `<span class="chip noimg${url ? ' nb' : ''}"${attrs}>${esc(name)}${ok}</span>`;
+        ? `<span class="chip nb"${attrs}><img src="${esc(img)}" alt="">${esc(name)}${ok}</span>`
+        : `<span class="chip noimg nb"${attrs}>${esc(name)}${ok}</span>`;
     };
     const votes = [
       on.longevity && voteBlock(esc(T('longevity')), d.longevity),

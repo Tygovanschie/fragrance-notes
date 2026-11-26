@@ -830,21 +830,32 @@
     const { note: url, name, img } = chip.dataset;
     const pop = document.createElement('div');
     pop.className = 'notepop';
+    // First the note's own page on fragrancenotes.app (description in the panel's language when the site has it);
+    // only when the site has no description, Fragrantica's note facts as before.
+    const ck = S.lang + '|' + (url || name);
     const fill = info => {
-      const link = `<a href="${FN_UI.esc(url)}" target="_blank">Fragrantica ↗</a>`;
       const E = FN_UI.esc;
+      const own = info?.own;
+      const link = own ? `<a href="${E(own.url)}" target="_blank" rel="noopener" title="${E(FN.t(S.lang, 'moreOnSite'))}">fragrancenotes.app ↗</a>`
+        : url ? `<a href="${E(url)}" target="_blank">Fragrantica ↗</a>` : '';
+      const facts = own
+        ? [own.smell && { label: FN.t(S.lang, 'smellsLike'), text: own.smell }, own.origin && { label: FN.t(S.lang, 'comesFrom'), text: own.origin }].filter(Boolean)
+        : info?.facts || [];
       pop.innerHTML = `${img ? `<img src="${E(img)}" alt="">` : '<span></span>'}<div><div class="nn"><span>${E(name)}${
-        info?.latin ? ` <i class="lat">${E(info.latin)}</i>` : ''}</span>${link}</div>${
+        !own && info?.latin ? ` <i class="lat">${E(info.latin)}</i>` : ''}</span>${link}</div>${
         !info ? '<span class="spin sm"></span>'
-        : (info.facts || []).map(f => `<div class="nl">${E(f.label)}</div><div>${E(f.text)}</div>`).join('')}</div>`;
+        : facts.map(f => `<div class="nl">${E(f.label)}</div><div>${E(f.text)}</div>`).join('')}</div>`;
     };
-    fill(noteCache.get(url));
+    fill(noteCache.get(ck));
     tier.appendChild(pop);
-    if (!noteCache.has(url)) {
-      chrome.runtime.sendMessage({ type: 'note', url }).then(info => {
-        noteCache.set(url, info || {});
-        if (pop.isConnected) fill(noteCache.get(url));
-      }).catch(() => { if (pop.isConnected) fill({}); });
+    if (!noteCache.has(ck)) {
+      const ask = m => chrome.runtime.sendMessage(m).catch(() => null);
+      (async () => {
+        const own = await ask({ type: 'ownNote', key: noteKeyOf(name), lang: S.lang });
+        const info = own?.smell ? { own } : url ? (await ask({ type: 'note', url })) || {} : {};
+        noteCache.set(ck, info);
+        if (pop.isConnected) fill(info);
+      })();
     }
   }
   body.addEventListener('click', e => {
