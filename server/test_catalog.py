@@ -84,6 +84,10 @@ class Keys(unittest.TestCase):
     def test_display_name(self):
         self.assertEqual(catalog.display_name("STRONGER WITH YOU MANNEN"), "STRONGER WITH YOU")
         self.assertEqual(catalog.display_name("Power of You voor Vrouwen"), "Power of You")
+        self.assertEqual(catalog.display_name("Olfactories - Compulsion - Neutral", "prada"), "Olfactories Compulsion")   # prada.com colour option
+        self.assertEqual(catalog.display_name("Luna Rossa Carbon - ( )", "prada"), "Luna Rossa Carbon")
+        self.assertEqual(catalog.display_name("Paradigme - Le Parfum ( )", "prada"), "Paradigme Le Parfum")
+        self.assertEqual(catalog.display_name("Neutral Ground"), "Neutral Ground")                                # only a tail after a dash
         self.assertEqual(catalog.display_name("Guilty Pour Homme"), "Guilty Pour Homme")   # part of the name
         self.assertEqual(catalog.display_name("Mannen"), "Mannen")
         self.assertTrue(catalog.shouting("STRONGER WITH YOU"))
@@ -347,6 +351,16 @@ class Build(unittest.TestCase):
             add(con, shop, brand, name, "edt", install=str(i))
         catalog.build(con)
         self.assertEqual(catalog.search(con, "bottled")[0]["name"], "Boss Bottled")
+
+    def test_one_word_name_with_the_house_after_it(self):
+        con = db()
+        add(con, "dior.com", "DIOR", "Miss", "edp", "f")                       # the brand site leaves "Dior" out
+        add(con, "douglas.nl", "DIOR", "Miss Dior", "edp", "f", install="b")
+        add(con, "dior.com", "DIOR", "Sauvage", "edt", "m", install="c")
+        add(con, "notino.nl", "Dior", "Dior Sauvage", "edt", "m", install="d")
+        catalog.build(con)
+        self.assertEqual(catalog.search(con, "miss")[0]["name"], "Miss Dior")
+        self.assertEqual(catalog.search(con, "sauvage")[0]["name"], "Sauvage")   # the house in front is no name
 
     def test_deodorant_is_not_the_perfume(self):
         con = db()

@@ -659,10 +659,26 @@ def merge_notes(rows):
 SHOP_GENDER_TAIL = re.compile(r"(?:\s+(?:voor|fur|für))?\s+(?:mannen|vrouwen|heren|dames|herren|damen)\s*$", re.I)
 
 
+# Leftovers of a shop's product title that aren't part of the perfume's name: a colour option at the end
+# (prada.com: "Olfactories - Compulsion - Neutral"), empty brackets where a size or colour was left out
+# ("Luna Rossa Carbon - ( )"), and loose dashes between or around the words.
+VARIANT_TAIL = re.compile(r"\s*[-–—|]\s*(neutral|transparent|colou?rless|no colou?r|default)\s*$", re.I)
+EMPTY_BRACKETS = re.compile(r"\(\s*\)|\[\s*\]")
+
+
+def tidy_name(s):
+    s = EMPTY_BRACKETS.sub(" ", s)
+    s = VARIANT_TAIL.sub("", s)
+    s = re.sub(r"(?<=\w)\s+[-–—]\s+(?=\w)", " ", s)     # "Olfactories - Compulsion" -> "Olfactories Compulsion"
+    s = " ".join(s.split()).strip(" -–—:,|/·")
+    return s
+
+
 def display_name(name, bkey=""):
     """The name as shown: without shop gender tails ("… Mannen"), promotion words ("- Summer Deal") and the
     house's words in front ("Emporio", "Giorgio", "EA" for Armani), as long as a real name is left."""
     rest = strip_promo(strip_line(SHOP_GENDER_TAIL.sub("", name).strip(), bkey))
+    rest = tidy_name(rest)
     orphans = ORPHAN_PREFIX.get(bkey)
     if orphans:
         tokens = list(re.finditer(r"[^\W_]+", rest))
@@ -788,7 +804,17 @@ def combine(rows, ids=None, brands=None):
     top = names.most_common(1)[0][1]
     # The spelling most shops use (each shop counts once); on a tie the one not in capitals, then the shortest ("Boss Bottled" from two
     # shops beats "Bottled" and "BOTTLED" from one each).
-    name = min((n for n, c in names.items() if c == top), key=lambda n: (shouting(n), len(n)))
+    tied = [n for n, c in names.items() if c == top]
+    name = min(tied, key=lambda n: (shouting(n), len(n)))
+    # One word that another shop writes with the house's name after it is that full name: "Miss" (dior.com) is
+    # "Miss Dior" (Douglas). Only after it: "Dior Sauvage" still loses to "Sauvage".
+    if len(plain(name).split()) == 1:
+        bw = brand_words(rows[0].get("_bk", ""))
+        for n in tied:
+            w = plain(n).split()
+            if len(w) > 1 and w[0] == plain(name) and bw and all(x in bw for x in w[1:]):
+                name = n
+                break
     conc = Counter(r.get("_conc", r["conc"]) for r in rows).most_common(1)[0][0]
 
     gender = counted((r["shop"], r["gender"], r["gender"]) for r in rows if r["gender"])
