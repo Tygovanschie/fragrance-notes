@@ -58,6 +58,11 @@ VOTE_ORIGINS = {o.strip() for o in os.environ.get("VOTE_ORIGINS", pages.BASE).sp
 VOTE_PATH = re.compile(r"(/[a-z]{2})?/perfume/([0-9a-f]{12})/vote")
 
 
+def full_hex(c):
+    """#fff -> #ffffff: extension 1.4.0 only accepts six-digit colours in the accords of /catalog/lookup."""
+    return "#" + "".join(ch * 2 for ch in c[1:]) if re.fullmatch(r"#[0-9a-fA-F]{3}", c) else c
+
+
 def origin_ok(origin):
     return origin in ALLOWED_ORIGINS or bool(origin and MOZ_ORIGIN_RE.fullmatch(origin))
 
@@ -744,8 +749,8 @@ class Handler(BaseHTTPRequestHandler):
                 p = catalog.lookup(con, gtins, one("brand", 80), one("name", 120), one("conc", 10), one("gender", 1))
             if p:   # our own main accords for the panel's colour strip, named in the panel's language when we can
                 lang = one("lang", 2) if one("lang", 2) in pages.LANGS else "en"
-                p["accords"] = [{"key": a, "name": accords.name(a, lang), "width": v, "bg": accords.COLOURS[a][0],
-                                 "fg": accords.COLOURS[a][1]} for a, v in pages.shares(accords.main_accords(p))]
+                p["accords"] = [{"key": a, "name": accords.name(a, lang), "width": v, "bg": full_hex(accords.COLOURS[a][0]),
+                                 "fg": full_hex(accords.COLOURS[a][1])} for a, v in pages.shares(accords.main_accords(p))]
             return self.reply(200, {"perfume": p}, cache)
         if u.path == "/catalog/note":
             # The extension's note pop-up. Anonymous like /catalog/lookup: the note is in the query, never logged.

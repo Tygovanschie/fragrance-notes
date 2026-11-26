@@ -930,7 +930,7 @@
   const SITE_LANGS = ['nl', 'de', 'fr', 'es', 'it', 'pt', 'pl'];
   // The accord strip from the Fragrance Notes database (worked out from the notes shops and the brand confirmed),
   // once it knows at least FN.OWN_MIN_CONFIRMED confirmed notes of this perfume; else null and Fragrantica's.
-  const okColour = c => /^#[0-9a-f]{6}$/i.test(c || '');
+  const okColour = c => /^#([0-9a-f]{3}){1,2}$/i.test(c || '');   // #fff and #ffffff
   function ownAccords(d) {
     const p = ownByPage.get(d);
     if (!p || (p.confirmedNotes || 0) < FN.OWN_MIN_CONFIRMED) return null;

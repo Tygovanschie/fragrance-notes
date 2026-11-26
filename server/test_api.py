@@ -400,6 +400,8 @@ class ApiTest(unittest.TestCase):
         self.assertTrue(next(n for n in by_name[1]["perfume"]["notes"]["top"] if n["name"] == "Rum")["confirmed"])
         self.assertIsNone(unknown[1]["perfume"])
         self.assertIsInstance(by_name[1]["perfume"]["accords"], list)   # the panel's colour strip (empty: too few notes)
+        self.assertEqual(app.full_hex("#fff"), "#ffffff")                     # the panel only takes six-digit colours
+        self.assertEqual(app.full_hex("#3b2a12"), "#3b2a12")
         # The log line has the path only: nothing about which perfume was looked up.
         self.assertIn("GET /catalog/lookup 200", out.getvalue())
         for secret in ("3614273642454", "Stronger", "Creed", "Aventus", "?"):
