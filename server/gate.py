@@ -89,7 +89,17 @@ def new_problems(p):
 
 
 def confirmed_notes(p):
-    return {x.get("en") or catalog.plain(x["name"]) for t in p["notes"].values() for x in t if x.get("confirmed")}
+    """The confirmed notes as today's dictionary reads them: a note the dictionary has since learned ("Nylon Accord"
+    -> nylon, "Oak Wood" -> oak) is the same note, not a lost one."""
+    return {catalog.note_key(x["name"]) or x.get("en") or catalog.plain(x["name"])
+            for t in p["notes"].values() for x in t if x.get("confirmed")}
+
+
+def lost_notes(old, new):
+    """Confirmed notes of `old` that `new` doesn't have, leaving out a general note that merged into its more precise
+    form (blackcurrant -> blackcurrant bud: see catalog.merge_notes)."""
+    now = confirmed_notes(new)
+    return sorted(n for n in confirmed_notes(old) - now if not any(catalog.parent_of(c, {n}) == n for c in now))
 
 
 def changes(old, new):
@@ -104,7 +114,7 @@ def changes(old, new):
     if {old.get("gender"), new.get("gender")} == {"m", "f"}:
         out.append(("gender", new["gender"], f'{who}: for {"men" if old["gender"] == "m" else "women"} would become '
                                              f'for {"men" if new["gender"] == "m" else "women"}'))
-    lost = sorted(confirmed_notes(old) - confirmed_notes(new))
+    lost = lost_notes(old, new)
     if lost:
         out.append(("notes", ", ".join(lost), f'{who}: would lose the confirmed note(s) {", ".join(lost)}'))
     return out
@@ -201,6 +211,12 @@ def run(con, now=None, fixes=None):
         held += [(i, k, v, t) for k, v, t in open_ if dec.get((i, k, v)) != "reject"]
     for i, old in pub.items():
         if i in cur:
+            continue
+        # Merged into a perfume of the same house and concentration that has a page: the old address redirects
+        # there (catalog.moved_to), so nothing is lost and nothing needs a person.
+        new = catalog.moved_to(con, i)
+        if new and new in cur and catalog.brand_key(cur[new]["brand"]) == catalog.brand_key(old["brand"]) \
+                and (cur[new].get("conc") or "") == (old.get("conc") or ""):
             continue
         d = dec.get((i, "gone", ""))
         if d != "approve":

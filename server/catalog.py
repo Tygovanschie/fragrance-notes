@@ -21,6 +21,7 @@ translating them to one name is a later step.
 The result is the table `catalog`, published under the Open Database License (ODbL) when exported.
 """
 import hashlib
+import os
 import json
 import re
 import sqlite3
@@ -31,6 +32,7 @@ from collections import Counter, defaultdict
 import obf
 
 CONFIRM_SHOPS = 2
+PAGE_CONFIRMED = int(os.environ.get("PAGE_MIN_CONFIRMED", "3"))   # confirmed notes for a page (as pages.py, gate.py)
 
 # Brand spellings that mean the same house. Keys and values are normalised brand keys (see brand_key).
 BRAND_ALIASES = {
@@ -151,7 +153,7 @@ black pepper: zwarte peper | black pepper | schwarzer pfeffer | poivre noir | pi
 cardamom: kardemom | kardemon | cardamom | kardamom | cardamome | cardamomo
 juniper: jeneverbes | jeneverbessen | jenever | jeneverstruik | juniper | juniper berry | juniper berries | wacholder | wacholderbeere | genievre | baies de genievre | enebro | ginepro
 ginger: gember | ginger | ingwer | gingembre | jengibre | zenzero
-bergamot: bergamot | bergamotte | bergamota | bergamotto
+bergamot: bergamot | bergamotte | bergamota | bergamotto | calabrian bergamot | calabrian bergamot heart | bergamot heart | bergamotto di calabria
 lemon: citroen | lemon | zitrone | citron | limon | limone
 mandarin: mandarijn | mandarin | mandarine | mandarina | mandarino
 orange: sinaasappel | oranje | orange | naranja | arancia
@@ -161,7 +163,7 @@ pear: peer | pear | birne | poire | pera
 peach: perzik | peach | pfirsich | peche | melocoton | pesca
 cherry: kers | kersen | cherry | cherries | kirsche | kirschen | cerise | cereza | ciliegia
 sour cherry: zure kers | zure kersen | sour cherry | sour cherries | sauerkirsche | griotte | guinda | amarena
-blackcurrant: zwarte bes | zwarte bessen | blackcurrant | black currant | cassis | schwarze johannisbeere | grosella negra | ribes nero
+blackcurrant: zwarte bes | zwarte bessen | blackcurrant | black currant | cassis | schwarze johannisbeere | grosella negra | ribes nero | blackcurrant syrup | cassis syrup | sirop de cassis
 raspberry: framboos | frambozen | raspberry | himbeere | framboise | frambuesa | lampone
 pineapple: ananas | pineapple | pina
 coconut: kokos | kokosnoot | kokoshout | coconut | kokosnuss | noix de coco | coco | cocco
@@ -179,7 +181,7 @@ cedar: ceder | cederhout | cedar | cedarwood | zeder | zedernholz | cedre | bois
 oud: oud | oudh | agarwood | oudhout | adlerholz | bois d oud
 amber: amber | barnsteen | ambra | ambre | ambar | amberachtig | amberachtige | ambery | ambrato
 musk: muskus | musk | moschus | musc | almizcle | muschio
-leather: leer | leren | leather | leder | cuir | cuero | cuoio | leerachtig | leerachtige | leathery | ledrig
+leather: leer | leren | leather | leder | cuir | cuero | cuoio | leerachtig | leerachtige | leathery | ledrig | saffiano leather | vegetal leather | vegetable leather
 tobacco: tabak | tabaksbladeren | tabaksblad | tobacco | tabac | tabaco | tabacco
 honey: honing | honey | honig | miel | miele
 caramel: karamel | caramel | karamell | caramelo | caramello
@@ -197,17 +199,17 @@ toffee: toffee | karamelsnoep
 suede: suede | daim | wildleder | gamuza | camoscio
 melon: meloen | melon | melone
 guaiac wood: guaiac hout | guaiachout | guaiac wood | guajakholz | bois de gaiac | gaiac | guayaco | guaiaco
-amberwood: amberhout | amberwood | amber wood | bois ambre | bois ambres
+amberwood: amberhout | amberwood | amber wood | bois ambre | bois ambres | ambery woods | ambery wood | amber woods | woody amber
 basil: basilicum | basil | basilikum | basilic | albahaca | basilico
 rosemary: rozemarijn | rosemary | rosmarin | romarin | romero | rosmarino
-geranium: geranium | geranie | geranio
+geranium: geranium | geranie | geranio | gourmand geranium
 tea: thee | tea | tee | the | te
 saffron: saffraan | saffron | safran | azafran | zafferano
 clove: kruidnagel | kruidnagels | clove | cloves | nelke | gewurznelke | clou de girofle | clavo | chiodi di garofano
 nutmeg: nootmuskaat | nutmeg | muskatnuss | noix de muscade | nuez moscada | noce moscata
 maple syrup: ahornsiroop | maple syrup | ahornsirup | sirop d erable | jarabe de arce | sciroppo d acero
 iris: iris | irissen | irisbloem | iriswortel | orris | orriswortel | orris root | iris pallida | racine d iris | iriswurzel | giaggiolo
-neroli: neroli | neroliolie | neroli oil | neroli bigarade
+neroli: neroli | neroliolie | neroli oil | neroli bigarade | neroli milk
 petitgrain: petitgrain | petit grain
 ylang ylang: ylang ylang | ylang | ilang ilang | ylangylang
 magnolia: magnolia | magnolie
@@ -293,7 +295,7 @@ birch: berk | berkenhout | berkenteer | birch | birch tar | birke | bouleau | ab
 cypress: cipres | cypress | zypresse | cypres | cipresso
 pine: den | dennen | dennennaald | dennennaalden | pine | pine needles | kiefer | pin | pino
 fir: spar | sparrenhout | vurenhout | zilverspar | fir | balsam fir | tanne | sapin | abeto | abete
-oak: eik | eikenhout | oak | oakwood | eiche | chene | roble | quercia
+oak: eik | eikenhout | oak | oakwood | eiche | chene | roble | quercia | oak wood
 mahogany: mahonie | mahoniehout | mahogany | mahagoni | acajou | caoba | mogano
 rosewood: palissander | rozenhout | rosewood | rosenholz | bois de rose | palisandro
 ebony: ebbenhout | ebbehout | ebony | ebenholz | ebene | ebano
@@ -353,6 +355,13 @@ amberever: amberever | ambrever | amberever neo
 berries: bessen | bes | berries | berry | beeren | baies
 allspice: pimentbes | pimentbessen | piment bes | pimento bes | permento bes | pimento | allspice | piment de la jamaique | jamaica pepper | nelkenpfeffer
 cinnamon liqueur: kaneellikeur | kaneel likeur | cinnamon liqueur | zimtlikor | liqueur de cannelle
+akigalawood: akigalawood
+blackcurrant bud: zwarte bessenknop | zwarte bessenknoppen | blackcurrant bud | blackcurrant buds | cassis bud | cassis buds | bourgeon de cassis | bourgeons de cassis
+bourbon geranium: bourbon geranium | geranium bourbon | geranie bourbon | geranio bourbon
+nylon: nylon
+rose oud: roos oud | rozen oud | rose oud | oud rose | rose et oud | rosa oud
+leather vanilla: leer vanille | leather vanilla | vanilla leather | cuir vanille
+liqueur: likeur | liqueur | liquorous | liquoreux | liquor | likor | licor | liquore
 """
 NOTE_CANON = {v.strip(): canon.strip() for line in NOTE_WORDS.strip().splitlines()
               for canon, variants in [line.split(":", 1)] for v in variants.split("|") if v.strip()}
@@ -389,7 +398,9 @@ def name_key(name, bkey, promo=True):
     names had before PROMO_TAIL, see build)."""
     drop = brand_words(bkey)
     out = []
-    for w in plain(strip_promo(strip_line(name, bkey)) if promo else name).split():
+    # The colour option at the end ("Paradigme - Neutral" on prada.com) too: otherwise the brand site's page and a
+    # shop's page of one perfume never meet (2026-11-27). promo=False keeps it, so the old key still finds the id.
+    for w in plain(strip_promo(strip_line(VARIANT_TAIL.sub("", str(name or "")), bkey)) if promo else name).split():
         if w in drop or w in NAME_FILLER:
             continue
         w = "homme" if w in MALE_WORDS else "femme" if w in FEMALE_WORDS else w
@@ -510,6 +521,7 @@ NOTE_PARENTS = {
     "blood mandarin": "mandarin", "blood orange": "orange", "bitter orange": "orange", "white musk": "musk",
     "clary sage": "sage", "star anise": "anise", "frankincense": "incense", "ambergris": "amber",
     "blackcurrant": "berries", "cinnamon liqueur": "cinnamon", "sichuan pepper": "pepper", "peppermint": "mint",
+    "blackcurrant bud": "blackcurrant", "bourbon geranium": "geranium",
 }
 
 
@@ -729,6 +741,9 @@ def init(con):
     con.execute("CREATE TABLE IF NOT EXISTS catalog_keys (key TEXT PRIMARY KEY, id TEXT NOT NULL)")
     # Barcode -> perfume, for /catalog/lookup (rebuilt with the catalog).
     con.execute("CREATE TABLE IF NOT EXISTS catalog_gtins (gtin TEXT PRIMARY KEY, id TEXT NOT NULL)")
+    # Ids that merged into another perfume (old -> new): links, favourites and search engines that still use the
+    # old id are sent on (see moved_to).
+    con.execute("CREATE TABLE IF NOT EXISTS catalog_moved (old TEXT PRIMARY KEY, new TEXT NOT NULL, day TEXT NOT NULL)")
 
 
 def gender_tail(nk):
@@ -933,18 +948,40 @@ def build(con, learned=None):
     # with most reports keeps the id and the others get a new one; when two merge, the id most of its rows had wins.
     brands = brand_spellings(rows)
     known = dict(con.execute("SELECT key, id FROM catalog_keys").fetchall())
-    taken, out = set(), []
-    for c in sorted(clusters.values(), key=len, reverse=True):
-        old = Counter(next(known[k] for k in r["_oldkeys"] if k in known) for r in c
-                      if any(k in known for k in r["_oldkeys"]))
-        ids = [i for i, _ in old.most_common() if i not in taken]
+    # On a tie the id with the most confirmed notes wins: that one may have a published page (Prada Paradigme from
+    # douglas.nl and prada.com, 2026-11-27, kept the shop's unpublished id at first).
+    before = dict(con.execute("SELECT id, confirmed FROM catalog").fetchall())
+    taken, out, merged = set(), [], []
+    order = sorted(clusters.values(), key=len, reverse=True)
+    firsts = [Counter(next(known[k] for k in r["_oldkeys"] if k in known) for r in c
+                      if any(k in known for k in r["_oldkeys"])) for c in order]
+    claimed = Counter(i for f in firsts for i in f)
+    page = lambda i: before.get(i, 0) >= PAGE_CONFIRMED
+    for c, old in zip(order, firsts):
+        # Also every other id a row's older keys point to (prada.com's "Paradigme - Neutral" had its own), so a
+        # published one can win even when most rows' first key already points to the shop's id. Never an id another
+        # perfume still has as its own (a key without gender can point to the men's version of a name).
+        also = {known[k] for r in c for k in r["_oldkeys"] if k in known} - set(old)
+        also = {i for i in also if not claimed[i]}
+        ids = [i for i in sorted(list(old) + sorted(also), key=lambda i: (not page(i), -old.get(i, 0), -before.get(i, 0), i))
+               if i not in taken]
+        old = old + Counter()   # a copy; the merged ids below include the extra ones
+        old.update({i: 0 for i in also})
         p = combine(c, ids[:1], brands)
         while p["id"] in taken:   # a new id that happens to be in use already
             p["id"] = perfume_id(p["id"] + "+")
         taken.add(p["id"])
         out.append(p)
+        merged += [(i, p["id"]) for i in old if i != p["id"] and i in before]
     now = int(time.time())
+    day = time.strftime("%Y-%m-%d", time.gmtime(now))
     with con:
+        con.executemany("INSERT OR REPLACE INTO catalog_moved (old, new, day) VALUES (?, ?, ?)",
+                        [(o, n, day) for o, n in merged if o not in taken])
+        # An id that exists again (split back) is no longer moved; a chain old -> mid -> new points straight on.
+        con.executemany("DELETE FROM catalog_moved WHERE old=?", [(i,) for i in taken])
+        con.execute("UPDATE catalog_moved SET new = (SELECT m.new FROM catalog_moved m WHERE m.old = catalog_moved.new) "
+                    "WHERE new IN (SELECT old FROM catalog_moved)")
         con.executemany("INSERT OR REPLACE INTO catalog_keys (key, id) VALUES (?, ?)",
                         [(k, p["id"]) for p in out for k in p["keys"]])
         con.execute("DELETE FROM catalog")
@@ -982,9 +1019,22 @@ def search(con, q):
     return [row_out(r) for r in rows]
 
 
+def moved_to(con, pid):
+    """The id a perfume merged into, or None."""
+    try:
+        r = con.execute("SELECT new FROM catalog_moved WHERE old=?", (pid,)).fetchone()
+    except sqlite3.OperationalError:   # a database from before catalog_moved
+        return None
+    return r[0] if r else None
+
+
 def perfume(con, pid):
+    """The full perfume, also for an old id that merged into another one (then with "movedFrom")."""
     con.row_factory = sqlite3.Row
     r = con.execute("SELECT * FROM catalog WHERE id=?", (pid,)).fetchone()
+    if not r and (new := moved_to(con, pid)):
+        r = con.execute("SELECT * FROM catalog WHERE id=?", (new,)).fetchone()
+        return {**row_out(r, full=True), "movedFrom": pid} if r else None
     return row_out(r, full=True) if r else None
 
 

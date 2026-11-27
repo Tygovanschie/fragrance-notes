@@ -2,6 +2,7 @@
 import json
 import sqlite3
 import unittest
+import unittest.mock
 
 import catalog
 
@@ -543,6 +544,41 @@ class Gate(unittest.TestCase):
         self.assertIn("capitals", item["detail"])
         self.gate.decide(self.con, item["id"], "new", item["value"], "approve")
         self.assertIn("BOTTLED NIGHT", [p["name"] for p in self.shown().values()])
+
+    def test_brand_site_colour_option_merges_and_keeps_the_published_id(self):
+        # 2026-11-27: prada.com's "Paradigme - Neutral" (a page, official notes) and Douglas's "Paradigme" were two
+        # perfumes. Now they are one, under the published id; the other id redirects and nothing waits for a person.
+        add(self.con, "prada.com", "PRADA", "Paradigme - Neutral", "edp", "m", top=["Calabrian Bergamot Heart"],
+            heart=["Bourbon Geranium"], base=["Ambery Woods"], install="p")
+        add(self.con, "douglas.nl", "Prada", "Paradigme", "edp", "m", top=["Bergamot"], install="q")
+        import pages
+        orig = catalog.name_key   # the old name_key kept the colour option (here the same as promo=False)
+        with unittest.mock.patch.object(catalog, "name_key", lambda n, b, promo=True: orig(n, b, promo=False)):
+            catalog.build(self.con)          # the old rule: two perfumes, the brand site's one gets a page
+        self.run_gate()
+        ids = {r[0]: r[1] for r in self.con.execute("SELECT id, shops FROM catalog WHERE name LIKE 'Paradigme%'")}
+        self.assertEqual(len(ids), 2)
+        page = next(i for i in ids if i in self.shown())
+        other = next(i for i in ids if i != page)
+        catalog.build(self.con)
+        self.assertEqual([r[0] for r in self.con.execute("SELECT id FROM catalog WHERE name='Paradigme'")], [page])
+        self.assertEqual(catalog.moved_to(self.con, other), page)
+        self.assertEqual(catalog.perfume(self.con, other)["id"], page)
+        self.run_gate()
+        self.assertEqual(self.gate.open_items(self.con), [])
+        status, _, where = pages.route(self.con, f"/perfume/{other}", "", None)
+        self.assertEqual((status, where.split("-")[0]), (301, f"/perfume/{page}"))
+        notes = {n["en"] for t in self.shown()[page]["notes"].values() for n in t}
+        self.assertEqual(notes, {"bergamot", "bourbon geranium", "amberwood"})
+
+    def test_a_note_the_dictionary_learned_is_not_lost(self):
+        old = {"notes": {"top": [{"name": "Nylon Accord", "confirmed": True}, {"name": "Blackcurrant", "en": "blackcurrant",
+                                  "confirmed": True}], "heart": [], "base": []}}
+        new = {"notes": {"top": [{"name": "Nylon Accord", "en": "nylon", "confirmed": True},
+                                 {"name": "Blackcurrant Buds", "en": "blackcurrant bud", "confirmed": True}],
+                         "heart": [], "base": []}}
+        self.assertEqual(self.gate.lost_notes(old, new), [])
+        self.assertEqual(self.gate.lost_notes(new, {"notes": {"top": [], "heart": [], "base": []}}), ["blackcurrant bud", "nylon"])
 
     def test_page_that_would_disappear_stays(self):
         pid = self.pid("Sauvage")

@@ -1761,6 +1761,8 @@ def route(con, path, query, prices, voter=None):
     m = re.fullmatch(r"/perfume/([0-9a-f]{12})/rate", path)
     if m:
         r = rate_page(con, m.group(1), lang, state, voter)
+        if not r and (new := catalog.moved_to(con, m.group(1))):
+            return 301, None, P(lang, f"/perfume/{new}/rate")
         if not r:
             return 404, not_found(lang), None
         return (301, None, P(lang, r[0])) if r[0] else (200, r[1], None)
@@ -1786,6 +1788,10 @@ def route(con, path, query, prices, voter=None):
     m = re.fullmatch(r"/perfume/([0-9a-f]{12})(?:-[a-z0-9-]*)?", path)
     if m and (r := perfume_page(con, m.group(1), prices, lang, state, voter)):
         return (301, None, P(lang, r[0])) if path != r[0] else (200, r[1], None)
+    # An id that merged into another perfume: on to that one's page (or its rate page when it has none).
+    if m and (new := catalog.moved_to(con, m.group(1))):
+        p = index(con)["byId"].get(new)
+        return 301, None, P(lang, perfume_path(p) if p else f"/perfume/{new}/rate")
     m = re.fullmatch(r"/note/([a-z0-9-]{1,60})", path)
     if m and (r := note_page(con, m.group(1), lang)):
         return 200, r[1], None

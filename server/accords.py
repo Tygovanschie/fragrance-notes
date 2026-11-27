@@ -114,6 +114,15 @@ NOTES.update({
     "calypsone": {"aquatic": .8, "fruity": .4, "fresh": .3}, "meringue": {"sweet": 1, "gourmand": .6, "vanilla": .3},
     "kulfi": {"sweet": .7, "gourmand": .6, "nutty": .4, "warm spicy": .2}, "belambre": {"woody": 1, "amber": .5},
 })
+NOTES.update({   # 2026-11-27, from the Prada notes in the maintenance email
+    "akigalawood": {"woody": 1, "fresh spicy": .4, "earthy": .2},
+    "blackcurrant bud": {"fruity": .7, "green": .7},
+    "bourbon geranium": {"floral": .6, "aromatic": .5, "green": .4},
+    "nylon": {"powdery": .5, "musky": .5, "fresh": .3},
+    "rose oud": {"floral": .8, "woody": .7, "smoky": .3},
+    "leather vanilla": {"leather": 1, "vanilla": .7, "sweet": .3},
+    "liqueur": {"sweet": .6, "fruity": .3, "warm spicy": .3},
+})
 FAMILIES = {
     "spicy": {"warm spicy": .6, "fresh spicy": .3}, "oriental": {"amber": .8, "warm spicy": .3, "sweet": .3},
     "woody": {"woody": 1}, "aromatic": {"aromatic": 1}, "floral": {"floral": 1}, "fruity": {"fruity": 1},
