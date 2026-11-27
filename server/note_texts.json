@@ -62,5 +62,197 @@
     "source": "https://en.wikipedia.org/wiki/Sweet_chestnut",
     "sourceName": "Wikipedia",
     "license": "CC BY-SA 4.0"
+  },
+  "aldehydes": {
+    "smell": "Aldehydes smell clean and sparkling, like fresh laundry, a struck match or the fizz of champagne. They're a top note that gives a perfume a bright, soapy lift, best known from classic powdery florals.",
+    "origin": "A group of organic compounds. Perfumers use synthetic ones, named after their number of carbon atoms (such as C-10, C-11 and C-12); some also occur in nature, for example in citrus peel.",
+    "smell_nl": "Aldehyden ruiken schoon en sprankelend, als vers gewassen was, een afgestreken lucifer of de bubbels van champagne. Het is een topnoot die een parfum een helder, zeepachtig begin geeft, vooral bekend uit klassieke poederige bloemengeuren.",
+    "origin_nl": "Een groep organische stoffen. Parfumeurs gebruiken synthetische varianten, genoemd naar hun aantal koolstofatomen (zoals C-10, C-11 en C-12); sommige komen ook in de natuur voor, bijvoorbeeld in citrusschil.",
+    "source": "https://en.wikipedia.org/wiki/Aldehyde",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "allspice": {
+    "smell": "Allspice smells like cloves, cinnamon and nutmeg rolled into one, with a peppery bite. It sits in the heart or base and gives a perfume a spicy warmth.",
+    "origin": "The dried, unripe berries of Pimenta dioica, a tree native to the Greater Antilles, southern Mexico and Central America.",
+    "smell_nl": "Piment ruikt als kruidnagel, kaneel en nootmuskaat in één, met iets peperigs. Het zit in het hart of de basis en geeft een parfum een kruidige warmte.",
+    "origin_nl": "De gedroogde, onrijpe bessen van Pimenta dioica, een boom uit de Grote Antillen, het zuiden van Mexico en Midden-Amerika.",
+    "source": "https://en.wikipedia.org/wiki/Allspice",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "amberever": {
+    "smell": "Amberever smells dry and woody with a smooth amber glow, close to the clean, slightly salty feel of ambergris notes. It's a base note that makes the woods and amber in a perfume feel fuller and last longer.",
+    "origin": "A woody-amber aroma material made in a lab, not taken from a plant or animal.",
+    "smell_nl": "Amberever ruikt droog en houtig met een zachte amberglans, dicht bij het schone, licht zoute gevoel van ambergrijs-noten. Het is een basisnoot die het hout en de amber in een parfum voller maakt en langer laat blijven.",
+    "origin_nl": "Een houtig-amberachtige geurstof uit het lab, niet afkomstig van een plant of dier."
+  },
+  "ambergris": {
+    "smell": "Ambergris smells salty and skin-like, like sun-warmed skin after a swim in the sea, with a soft woodiness. It's a base note that makes a perfume last and gives it a glowing, mineral feel.",
+    "origin": "Real ambergris forms in the gut of sperm whales and washes up on beaches. Perfumes today usually recreate it with lab-made materials such as ambroxan.",
+    "smell_nl": "Ambergrijs ruikt zoutig en huidachtig, als door de zon opgewarmde huid na een duik in zee, met iets zacht houtigs. Het is een basisnoot die een parfum lang laat blijven en het een gloeiend, mineraal gevoel geeft.",
+    "origin_nl": "Echte ambergrijs ontstaat in de darmen van potvissen en spoelt aan op stranden. Parfums bootsen het nu meestal na met stoffen uit het lab, zoals ambroxan.",
+    "source": "https://en.wikipedia.org/wiki/Ambergris",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "bergamot": {
+    "smell": "Bergamot smells like lemon peel crossed with bitter orange, with the floral edge you know from Earl Grey tea. It's a top note that gives a perfume a bright, sparkling opening, and a classic ingredient of colognes.",
+    "origin": "The fruit of Citrus bergamia, a citrus tree that is probably a cross between lemon and bitter orange. The oil is pressed from the peel; the tree is grown in Calabria in southern Italy, among other places.",
+    "smell_nl": "Bergamot ruikt als citroenschil gekruist met bittere sinaasappel, met het bloemige randje dat je kent van Earl Grey-thee. Het is een topnoot die een parfum een helder, sprankelend begin geeft, en een klassiek ingrediënt van eau de cologne.",
+    "origin_nl": "De vrucht van Citrus bergamia, een citrusboom die waarschijnlijk een kruising is van citroen en bittere sinaasappel. De olie wordt uit de schil geperst; de boom groeit onder meer in Calabrië in Zuid-Italië.",
+    "source": "https://en.wikipedia.org/wiki/Bergamot_orange",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "blackcurrant": {
+    "smell": "Blackcurrant smells tart and juicy like the berries, with a green, slightly catty sharpness from the leaves and buds. It's a top note that gives a perfume a fruity, tangy start.",
+    "origin": "The berries and buds of Ribes nigrum, a shrub native to central and northern Europe and northern Asia. Perfumers often use an extract of the buds (cassis bud absolute).",
+    "smell_nl": "Zwarte bes ruikt fris-zuur en sappig als de bessen, met een groene, wat scherpe kant van de blaadjes en knoppen. Het is een topnoot die een parfum een fruitig, pittig begin geeft.",
+    "origin_nl": "De bessen en knoppen van Ribes nigrum, een struik uit Midden- en Noord-Europa en Noord-Azië. Parfumeurs gebruiken vaak een extract van de knoppen (cassis-absolue).",
+    "source": "https://en.wikipedia.org/wiki/Blackcurrant",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "blood orange": {
+    "smell": "Blood orange smells like a regular orange with a darker, berry-like juiciness and some bitterness from the peel. It's a top note that makes the opening of a perfume juicy and bright.",
+    "origin": "A variety of orange (Citrus × sinensis) with crimson flesh, grown in Sicily and elsewhere around the Mediterranean.",
+    "smell_nl": "Bloedsinaasappel ruikt als een gewone sinaasappel, maar donkerder en sappiger, bijna als bessen, met iets bitters van de schil. Het is een topnoot die het begin van een parfum sappig en helder maakt.",
+    "origin_nl": "Een sinaasappelras (Citrus × sinensis) met dieprood vruchtvlees, geteeld op Sicilië en elders rond de Middellandse Zee.",
+    "source": "https://en.wikipedia.org/wiki/Blood_orange",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "cognac": {
+    "smell": "Cognac smells like a glass of brandy: boozy, with dried fruit, oak and a caramel-like richness. It's a base note that gives a perfume a smooth, boozy warmth, often next to tobacco, honey or vanilla.",
+    "origin": "A brandy from the area around the town of Cognac in France (Charente and Charente-Maritime). Perfumers use cognac oil or build the note from other ingredients.",
+    "smell_nl": "Cognac ruikt als een glas brandy: drankachtig, met gedroogd fruit, eikenhout en iets karamelachtigs. Het is een basisnoot die een parfum een zachte, likeurachtige warmte geeft, vaak naast tabak, honing of vanille.",
+    "origin_nl": "Een brandy uit de streek rond de stad Cognac in Frankrijk (Charente en Charente-Maritime). Parfumeurs gebruiken cognacolie of bouwen de noot op uit andere ingrediënten.",
+    "source": "https://en.wikipedia.org/wiki/Cognac",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "cumin": {
+    "smell": "Cumin smells like the spice in a curry: earthy, savoury and a little sweaty. It sits in the heart or base; a little gives a perfume a warm, skin-like edge, too much quickly smells like sweat.",
+    "origin": "The seeds of Cuminum cyminum, a plant of the carrot family (Apiaceae) native to the region from Iran to Central Asia.",
+    "smell_nl": "Komijn ruikt als het kruid in curry: aards, hartig en een beetje zweterig. Het zit in het hart of de basis; een beetje geeft een parfum een warm, huidachtig randje, te veel ruikt al snel naar zweet.",
+    "origin_nl": "De zaden van Cuminum cyminum, een plant uit de schermbloemenfamilie (Apiaceae), afkomstig uit het gebied van Iran tot Centraal-Azië.",
+    "source": "https://en.wikipedia.org/wiki/Cumin",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "date": {
+    "smell": "Dates smell like the dried fruit: sticky, honeyed and caramel-like, with something dark and jammy. It's a base note that makes a perfume rich and gourmand, often with amber, incense or oud.",
+    "origin": "The fruit of the date palm (Phoenix dactylifera). In perfumes the note is usually built from other ingredients.",
+    "smell_nl": "Dadel ruikt als de gedroogde vrucht: kleverig, honingachtig en karamelachtig, met iets donkers, als jam. Het is een basisnoot die een parfum rijk en gourmand maakt, vaak samen met amber, wierook of oud.",
+    "origin_nl": "De vrucht van de dadelpalm (Phoenix dactylifera). In parfums wordt de noot meestal opgebouwd uit andere ingrediënten.",
+    "source": "https://en.wikipedia.org/wiki/Date_palm",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "galbanum": {
+    "smell": "Galbanum smells intensely green, like snapped stems and crushed leaves, with a bitter, resinous bite. It's a top note that gives a perfume a sharp, green opening, typical of green chypres.",
+    "origin": "A gum resin from Ferula plants (such as Ferula gummosa) of the carrot family, native to Iran.",
+    "smell_nl": "Galbanum ruikt intens groen, als geknakte stelen en fijngewreven bladeren, met een bitter, harsig randje. Het is een topnoot die een parfum een scherp, groen begin geeft, typisch voor groene chypres.",
+    "origin_nl": "Een gomhars van Ferula-planten (zoals Ferula gummosa) uit de schermbloemenfamilie, afkomstig uit Iran.",
+    "source": "https://en.wikipedia.org/wiki/Galbanum",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "ginger": {
+    "smell": "Ginger smells like the freshly cut root: zingy and peppery, with a lemony sparkle and a gentle heat. It's a top note that gives a perfume a lively, spicy start, often in fresh and woody scents.",
+    "origin": "The rhizome (underground stem) of Zingiber officinale, a plant native to Maritime Southeast Asia.",
+    "smell_nl": "Gember ruikt als de vers gesneden wortel: pittig en peperig, met iets citroenachtigs en een milde hitte. Het is een topnoot die een parfum een levendig, kruidig begin geeft, vaak in frisse en houtige geuren.",
+    "origin_nl": "De wortelstok van Zingiber officinale, een plant uit maritiem Zuidoost-Azië.",
+    "source": "https://en.wikipedia.org/wiki/Ginger",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "hay": {
+    "smell": "Hay smells like a sunny barn: dry cut grass with a sweet side, close to tobacco and honey. It sits in the base or heart and gives a perfume a soft, golden, countryside feel.",
+    "origin": "Grass and other plants that are cut and dried. In perfumes the note comes from hay absolute or from coumarin, the substance that gives dried grass its sweet smell.",
+    "smell_nl": "Hooi ruikt als een zonnige schuur: droog gemaaid gras met een zoete kant, dicht bij tabak en honing. Het zit in de basis of het hart en geeft een parfum een zacht, gouden plattelandsgevoel.",
+    "origin_nl": "Gras en andere planten die gemaaid en gedroogd zijn. In parfums komt de noot van hooi-absolue of van coumarine, de stof die gedroogd gras zijn zoete geur geeft.",
+    "source": "https://en.wikipedia.org/wiki/Hay",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "musk": {
+    "smell": "Musk smells like clean, warm skin and freshly washed cotton: soft, powdery and very close to the body. It's a base note that makes a perfume last and ties the other notes together.",
+    "origin": "Natural musk once came from the musk deer. Perfumes today use musks made in a lab instead.",
+    "smell_nl": "Musk ruikt als schone, warme huid en vers gewassen katoen: zacht, poederig en dicht op het lichaam. Het is een basisnoot die een parfum lang laat blijven en de andere noten met elkaar verbindt.",
+    "origin_nl": "Natuurlijke musk kwam vroeger van het muskushert. Parfums gebruiken nu musks die in een lab zijn gemaakt.",
+    "source": "https://en.wikipedia.org/wiki/Musk",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "olive tree": {
+    "smell": "Olive tree smells green and woody, like silvery leaves and bark in a Mediterranean grove, with a slightly bitter, fruity edge. It's a base note that gives a perfume a dry, sunny woodiness.",
+    "origin": "The olive tree (Olea europaea), an evergreen tree native to the Mediterranean region and the Near East. In perfumes the note is usually built from other ingredients.",
+    "smell_nl": "Olijfboom ruikt groen en houtig, als zilverige bladeren en schors in een olijfgaard aan de Middellandse Zee, met iets bitters en fruitigs. Het is een basisnoot die een parfum een droge, zonnige houtigheid geeft.",
+    "origin_nl": "De olijfboom (Olea europaea), een groenblijvende boom uit het Middellandse Zeegebied en het Nabije Oosten. In parfums wordt de noot meestal opgebouwd uit andere ingrediënten.",
+    "source": "https://en.wikipedia.org/wiki/Olive",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "peach": {
+    "smell": "Peach smells like biting into a ripe, juicy peach: soft, velvety fruit with a creamy, almost milky feel. It's a top or heart note that gives a perfume a soft, fruity glow.",
+    "origin": "The fruit of Prunus persica, a tree first grown in China. The fruit gives no usable oil, so perfumers build the note from other materials, such as peach-smelling lactones.",
+    "smell_nl": "Perzik ruikt als een hap uit een rijpe, sappige perzik: zacht, fluweelachtig fruit met iets romigs, bijna melkachtigs. Het is een top- of hartnoot die een parfum een zachte, fruitige gloed geeft.",
+    "origin_nl": "De vrucht van Prunus persica, een boom die het eerst in China werd gekweekt. De vrucht levert geen bruikbare olie, dus parfumeurs bouwen de noot op uit andere stoffen, zoals lactonen die naar perzik ruiken.",
+    "source": "https://en.wikipedia.org/wiki/Peach",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "peppermint": {
+    "smell": "Peppermint smells like a fresh mint leaf or a breath mint: cool, sharp and clean. It's a top or heart note that gives a perfume an icy, refreshing lift.",
+    "origin": "A hybrid of watermint and spearmint, native to Europe and the Middle East. The oil comes from the leaves.",
+    "smell_nl": "Pepermunt ruikt als een vers muntblaadje of een pepermuntje: koel, scherp en schoon. Het is een top- of hartnoot die een parfum een ijzig fris begin geeft.",
+    "origin_nl": "Een kruising van watermunt en groene munt, afkomstig uit Europa en het Midden-Oosten. De olie komt uit de bladeren.",
+    "source": "https://en.wikipedia.org/wiki/Peppermint",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "rosewood": {
+    "smell": "Rosewood smells softly woody and rosy with a fresh, slightly spicy lift, like wood shavings next to a rose petal. It's a heart note that smooths the step from a perfume's fresh start to its woods.",
+    "origin": "Rosewood oil comes from the wood of Aniba rosaeodora, a tree from the Amazon (not the Dalbergia rosewoods used for furniture). Because the tree is endangered, the note is often recreated with linalool.",
+    "smell_nl": "Rozenhout ruikt zacht houtig en rozig met een frisse, licht kruidige kant, als houtkrullen naast een rozenblaadje. Het is een hartnoot die de overgang van het frisse begin van een parfum naar het hout soepel maakt.",
+    "origin_nl": "Rozenhoutolie komt uit het hout van Aniba rosaeodora, een boom uit de Amazone (niet de Dalbergia-soorten voor meubels). Omdat de boom bedreigd is, wordt de noot vaak nagemaakt met linalool.",
+    "source": "https://en.wikipedia.org/wiki/Aniba_rosaeodora",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "styrax": {
+    "smell": "Styrax smells balsamic and smoky-sweet, like warm resin with a leathery, cinnamon-like edge. It's usually a base note, though some perfumes list it in the opening, and it gives amber and leather scents a rich, resinous glow.",
+    "origin": "A resin from the bark of Liquidambar trees, such as Liquidambar orientalis from Turkey and Liquidambar styraciflua from North and Central America.",
+    "smell_nl": "Styrax ruikt balsemachtig en rokerig-zoet, als warme hars met een leerachtige kant die aan kaneel doet denken. Het is meestal een basisnoot, al noemen sommige parfums het in het begin, en het geeft amber- en leergeuren een rijke, harsige gloed.",
+    "origin_nl": "Een hars uit de schors van Liquidambar-bomen, zoals Liquidambar orientalis uit Turkije en Liquidambar styraciflua uit Noord- en Midden-Amerika.",
+    "source": "https://en.wikipedia.org/wiki/Storax_balsam",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "suede": {
+    "smell": "Suede smells like a soft leather glove: smooth, powdery and gently animalic, much less smoky than raw leather. It's a base note that gives a perfume a velvety, skin-close feel.",
+    "origin": "Perfumers don't take this note from leather: they build it from other ingredients, such as musks and soft leathery materials.",
+    "smell_nl": "Suède ruikt als een zachte leren handschoen: glad, poederig en licht dierlijk, veel minder rokerig dan ruw leer. Het is een basisnoot die een parfum een fluweelzacht gevoel dicht op de huid geeft.",
+    "origin_nl": "Parfumeurs halen deze noot niet uit leer: ze bouwen hem op uit andere ingrediënten, zoals musks en zachte leerachtige stoffen."
+  },
+  "tea": {
+    "smell": "Tea smells like a freshly brewed cup or a tin of dry leaves: green, slightly smoky and a little bitter. It's a heart note that gives a perfume a calm, airy freshness.",
+    "origin": "The leaves of Camellia sinensis, a shrub native to East Asia, including southwestern China, northeast India and northern Myanmar.",
+    "smell_nl": "Thee ruikt als een vers gezet kopje of een blik droge blaadjes: groen, licht rokerig en een beetje bitter. Het is een hartnoot die een parfum een rustige, luchtige frisheid geeft.",
+    "origin_nl": "De bladeren van Camellia sinensis, een struik uit Oost-Azië, waaronder Zuidwest-China, Noordoost-India en Noord-Myanmar.",
+    "source": "https://en.wikipedia.org/wiki/Tea",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
+  },
+  "violet leaf": {
+    "smell": "Violet leaf smells like crushed green leaves and cucumber peel: watery and sharp, nothing like the powdery violet flower. It's a top note that gives a perfume a cool, green start.",
+    "origin": "The leaves of Viola odorata (sweet violet), a plant native to Eurasia. Perfumers use an absolute extracted from them.",
+    "smell_nl": "Violetblad ruikt als fijngewreven groene bladeren en komkommerschil: waterig en scherp, heel anders dan het poederige viooltje. Het is een topnoot die een parfum een koel, groen begin geeft.",
+    "origin_nl": "De bladeren van Viola odorata (maarts viooltje), een plant uit Eurazië. Parfumeurs gebruiken een absolue die eruit wordt gewonnen.",
+    "source": "https://en.wikipedia.org/wiki/Viola_odorata",
+    "sourceName": "Wikipedia",
+    "license": "CC BY-SA 4.0"
   }
 }

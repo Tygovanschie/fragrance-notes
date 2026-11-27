@@ -356,7 +356,9 @@ the genera Elettaria and Amomum, native to the Indian subcontinent and Indonesia
 # "origin", and filler in "smell" (both seen in the first night's drafts, 2026-11-26).
 CLAIM = re.compile(r"\b(primarily|mainly|mostly|most|largest|main|leading|majority|chiefly|predominantly|commonly "
                    r"produced|best[- ]known)\b", re.I)
-FILLER = re.compile(r"depth and (longevity|complexity)|adds? depth|evok|invigorat|popular choice|complexity", re.I)
+FILLER = re.compile(r"depth and (longevity|complexity)|adds? depth|evok|invigorat|popular choice|complexity|"
+                    r"\bhug\b|embrace|armchair|loved one|calm day|envelop|comforting aroma|reminiscent of|"
+                    r"a touch of|a hint of", re.I)
 # Notes perfumers build from other materials: Wikipedia's article is about the real thing (animal hides for
 # leather), so a text for these always waits for a person.
 ACCORD_NOTES = {"leather", "suede", "amber", "musk", "white musk", "aquatic", "marine", "ozonic", "ambergris", "civet",
@@ -416,8 +418,49 @@ Reply in JSON: {{"smell": ...}}
 # The browser extension shows only the first sentence (a short pop-up while shopping), so that sentence has to say
 # how the note smells by itself.
 FIRST_RULE = ("The first sentence is also shown on its own, so it must say how the note smells by itself: at most 20 "
-              "words, starting with the smell itself (\"Warm and sweet, ...\" or \"Cedar smells ...\"), never with "
-              "\"It\", and nothing in it about tiers or what the note does in a perfume.")
+              "words, starting with the note's name or with something concrete (\"Cedar smells like a freshly "
+              "sharpened pencil\", \"Like biting into a ripe pear\"), never with \"It\" and never with general words "
+              "such as \"Warm and sweet\" or \"Fresh and green\", and nothing in it about tiers or what the note does "
+              "in a perfume. No similes about feelings (hugs, embraces, a calm day).")
+# 2026-11-27: the old rule gave "Warm and sweet, ..." as its example and 13 of 22 texts that night opened with it
+# (ginger, tea and violet leaf included). Now an opening of general words fails, and so does one another note uses.
+GENERIC_START = re.compile(r"^(intensely |very |slightly |somewhat )?(warm|sweet|fresh|sharp|rich|soft|cool|light|"
+                           r"bright|green|spicy|woody|earthy|deep|smooth|clean|dry|bitter|tangy|juicy|creamy|"
+                           r"zesty|fruity|floral|aromatic|refreshing)\b\s*(and|,)", re.I)
+# Accords (accords.NOTES) that make a note smell warm, and ones that make it fresh: a mostly fresh note called warm,
+# or a note with nothing sweet about it called sweet, is a wrong description (tea and violet leaf, 2026-11-27).
+WARM_ACCORDS = {"warm spicy", "amber", "vanilla", "balsamic", "gourmand", "leather", "sweet", "woody", "musky", "smoky"}
+FRESH_ACCORDS = {"citrus", "fresh", "green", "aquatic", "fresh spicy", "aromatic", "ozonic"}
+SWEET_ACCORDS = {"sweet", "vanilla", "gourmand", "fruity", "floral", "white floral", "powdery", "balsamic", "amber"}
+
+
+def opening(smell):
+    """The first three words of a text, lowercase: two notes must not open the same way."""
+    return " ".join(re.findall(r"[a-z']+", (smell or "").lower())[:3])
+
+
+def style_problems(k, smell, others=()):
+    """Why a text reads like every other one or contradicts the note's accords, or []. others = the openings of the
+    texts of all other notes (online and reviewed)."""
+    f, p = first_sentence(smell), []
+    if GENERIC_START.match(f):
+        p.append(f"opens with general words (\"{' '.join(f.split()[:3])}\") instead of something concrete")
+    op, name = opening(smell), " ".join(re.findall(r"[a-z']+", k.lower()))
+    if op and not op.startswith(name) and op in others:
+        p.append(f"opens like another note's text (\"{op}\")")
+    try:
+        import accords
+        acc = accords.NOTES.get(k) or accords.FAMILIES.get(k) or {}
+    except ImportError:
+        acc = {}
+    if acc:
+        warm = sum(w for a, w in acc.items() if a in WARM_ACCORDS)
+        fresh = sum(w for a, w in acc.items() if a in FRESH_ACCORDS)
+        if fresh >= .8 and warm < .3 and re.search(r"\bwarm(th|ing)?\b", f, re.I):
+            p.append("calls a fresh note warm")
+        if not any(a in SWEET_ACCORDS for a in acc) and re.search(r"\bsweet(ness)?\b", f, re.I):
+            p.append("calls it sweet, but nothing in its accords is")
+    return p
 FIRST_MAX_WORDS = 24
 
 
@@ -487,10 +530,10 @@ def tier_words(counts):
     return f"mostly a {t} note in the perfumes on our site", f"usually a {t} note"
 
 
-def text_checks(k, smell, origin, source, a, counts, accord):
+def text_checks(k, smell, origin, source, a, counts, accord, others=()):
     """(problems with smell, problems with origin): a text goes online when smell has none; origin is shown only
     when it has none either (otherwise the page shows the smell alone, and the note is tried again for an origin)."""
-    s, o = [], []
+    s, o = style_problems(k, smell, others), []
     if not smell or len(smell) > 400:
         s.append("empty or too long")
     if (m := FILLER.search(smell)):
@@ -522,9 +565,10 @@ def job_texts(con, seen):
     import accords
     try:
         with open(os.path.join(BASE, "note_texts.json"), encoding="utf-8") as f:
-            done = set(json.load(f))
+            reviewed = {k: v for k, v in json.load(f).items() if isinstance(v, dict)}
     except FileNotFoundError:
-        done = set()
+        reviewed = {}
+    done = set(reviewed)
     AUTO.execute("CREATE TABLE IF NOT EXISTS text_tries (key TEXT PRIMARY KEY, nights INTEGER NOT NULL, last TEXT NOT NULL)")
     want, tiers, pairs = {}, {}, {}
     for (data,) in con.execute("SELECT data FROM catalog WHERE confirmed >= ?", (PAGE_MIN_CONFIRMED,)):
@@ -552,7 +596,17 @@ def job_texts(con, seen):
     AUTO.commit()
     # Texts online whose first sentence can't stand alone (the extension shows only that): written again, and the
     # old text stays online until a new one passes every check.
-    redo = {k for k, smell in AUTO.execute("SELECT key, smell FROM note_text").fetchall() if first_problem(smell)}
+    # Since 2026-11-27 also texts that open with general words, open like another note's text, or contradict the
+    # note's accords (style_problems).
+    opens = {k: opening(v.get("smell")) for k, v in reviewed.items()}
+    opens.update({k: opening(smell) for k, smell in AUTO.execute("SELECT key, smell FROM note_text").fetchall()
+                  if k not in reviewed})
+
+    def others(k):
+        return {o for n, o in opens.items() if n != k and o}
+
+    redo = {k for k, smell in AUTO.execute("SELECT key, smell FROM note_text").fetchall()
+            if k not in reviewed and (first_problem(smell) or style_problems(k, smell, others(k)))}
     accord_keys = ACCORD_NOTES | set(accords.FAMILIES)
     # Without a text, or online with the smell only (no origin yet, and one could exist).
     new = [k for k in want if k not in done and (k not in online or k in redo or (not online[k] and k not in accord_keys))]
@@ -575,6 +629,9 @@ def job_texts(con, seen):
         with_ = ", ".join(sorted(pairs.get(k, {}), key=lambda x: -pairs[k][x])[:6]) or "none yet"
         prompt = (ACCORD_PROMPT if accord else TEXT_PROMPT).format(
             note=k, tier=tier, tier_short=tier_short, pairs=with_, first_rule=FIRST_RULE, source=source or "(none found: leave origin empty)")
+        taken = sorted(others(k))
+        if taken:
+            prompt += "\n\nOther notes' texts already open with these words; don't open the same way: " + "; ".join(taken[:60])
         best, feedback = None, ""
         for attempt in range(TRIES_PER_NIGHT):
             try:
@@ -584,7 +641,7 @@ def job_texts(con, seen):
                 continue
             smell = str(a.get("smell") or "").strip()
             origin = ACCORD_ORIGIN if accord else str(a.get("origin") or "").strip()
-            s, o = text_checks(k, smell, origin, source, a, tiers.get(k), accord)
+            s, o = text_checks(k, smell, origin, source, a, tiers.get(k), accord, others(k))
             if not s:   # only a text that passed the simple checks is worth the extra question
                 fs, fo = fact_check(k, smell, origin if not o else "", accord)
                 s, o = s + fs, o + fo
@@ -612,6 +669,8 @@ def job_texts(con, seen):
                              (k, smell, "" if o else origin, url if not o else "", DAY))
                 changed("note text", k, smell[:100] + (" (without origin: " + "; ".join(o) + ")" if o else ""))
                 wrote += 1
+        if not s and not (o and k in online and k not in redo):
+            opens[k] = opening(smell)   # the next note tonight must not open the same way
         if s or (o and not accord):
             n = AUTO.execute("SELECT nights FROM text_tries WHERE key=?", (k,)).fetchone()
             n = (n[0] if n else 0) + 1
