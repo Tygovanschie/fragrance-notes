@@ -16,6 +16,7 @@ Python standard library only. Runs behind a Cloudflare Tunnel (api.fragrancenote
   GET  /maintenance/week   what the nightly job fixed and left for a person (maintenance.py), for the weekly email
   GET  /review?key=        the private review page: what the gate (gate.py) held, with Approve / Reject (POST /review)
   GET  /review/status      {brake, waiting}: for the Worker's alert when the safety brake is on
+  GET  /review/notes?key=  the private "missing notes" list (missing.py): perfumes without a page and where to read their notes
 
   Web pages (pages.py), for fragrancenotes.app: /database, /database/search?q=, /perfume/{id}-{slug},
   /note/{slug}, /photo/{barcode}.jpg, /assets/pages.css, /sitemap.xml
@@ -39,6 +40,7 @@ import gate
 import hmac
 import html
 import maintenance
+import missing
 import regions
 import pages
 import notephotos
@@ -188,6 +190,7 @@ li p{{margin:0;flex:1 1 380px}}.b{{display:flex;gap:8px}}form{{margin:0}}button{
 .muted{{color:#5e4a59;font-size:.9rem}}</style></head><body><main>
 <h1>Waiting for your OK</h1><p class="muted">Approve: the change goes online at once and this exact change is never asked again.
 Reject: the page keeps its current version (a new perfume stays without a page) until the data changes.</p>
+<p><a href="/review/notes?key={E(key)}">Missing notes: perfumes that need a visit with the extension →</a></p>
 {note}{head}{body}</main></body></html>"""
 
 
@@ -723,6 +726,14 @@ class Handler(BaseHTTPRequestHandler):
         if u.path == "/review/status":
             with db() as con:
                 return self.reply(200, gate.status(con), [("Cache-Control", "no-store")])
+        if u.path == "/review/notes":   # perfumes without a page yet, with links to read their notes (missing.py)
+            q = parse_qs(u.query)
+            k = (q.get("key") or [""])[0]
+            if not review_key_ok(k):
+                return self.send(404, "not found", "text/plain; charset=utf-8", "no-store")
+            with db() as con:
+                page = missing.html_page(con, REVIEW_KEY)
+            return self.send(200, page, "text/html; charset=utf-8", "no-store", [("Referrer-Policy", "no-referrer")])
         if u.path == "/review":
             q = parse_qs(u.query)
             if not review_key_ok((q.get("key") or [""])[0]):
@@ -773,7 +784,8 @@ class Handler(BaseHTTPRequestHandler):
                              "style-src 'self' 'unsafe-inline' https://fonts.bunny.net; "
                              "font-src https://fonts.bunny.net; img-src 'self' https://fragrancenotes.app; form-action 'self'; "
                              "base-uri 'none'; frame-ancestors 'none'")
-            self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+            if not any(k == "Referrer-Policy" for k, _ in headers):   # the review pages send no-referrer instead
+                self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         for k, v in headers:
             self.send_header(k, v)
         self.end_headers()

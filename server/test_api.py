@@ -87,6 +87,13 @@ class ApiTest(unittest.TestCase):
             body = r.read().decode()
             self.assertEqual(r.headers["Cache-Control"], "no-store")
         self.assertIn("Waiting for your OK", body)
+        self.assertIn("/review/notes?key=", body)
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            page("/review/notes?key=wrong")
+        self.assertEqual(e.exception.code, 404)
+        with page(f"/review/notes?key={key}") as r:
+            self.assertIn("Missing notes", r.read().decode())
+            self.assertEqual(r.headers["Referrer-Policy"], "no-referrer")
         # A held item, decided through the form.
         with app.db() as con:
             gate.init(con)
