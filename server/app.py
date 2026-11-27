@@ -722,6 +722,7 @@ class Handler(BaseHTTPRequestHandler):
             with db() as con:
                 out["review"] = [{k: it[k] for k in ("kind", "detail")} for it in gate.open_items(con)[:60]]
                 out["brake"] = gate.status(con)["brake"]
+                out["missing"] = missing.top(con, 10)   # perfumes without a page where one visit helps most
             return self.reply(200, out)
         if u.path == "/review/status":
             with db() as con:

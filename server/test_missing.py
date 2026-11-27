@@ -48,6 +48,14 @@ class Todo(unittest.TestCase):
         self.assertIn("notino.nl/search", strictly)
         self.assertNotIn("douglas.nl/nl/search", strictly)
 
+    def test_top_for_the_email(self):
+        con = db(ROWS + [("Tom Ford", "Azure Lime", 2, ["tomfordbeauty.com"], ["lime"])])
+        t = missing.top(con, 3, page_min=3)
+        self.assertEqual([x["item"] for x in t], ["Viktor&Rolf Spicebomb Extreme (edp)", "Tom Ford Azure Lime (edp)",
+                                                  "Dior Addict (edp)"])                    # 2/3 first, brand before shop
+        self.assertEqual(t[0]["links"][0][0], "Brand site")
+        self.assertEqual([l[0] for l in t[1]["links"]], ["Douglas", "Notino"])
+
     def test_page_escapes_and_links(self):
         con = db(ROWS + [("<b>Evil</b>", "<script>x</script>", 0, ["douglas.nl"], [])])
         page = missing.html_page(con, "k" * 30, page_min=3)

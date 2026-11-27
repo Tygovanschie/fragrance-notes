@@ -195,7 +195,7 @@ async function digest(env) {
     return kinds.map((k) => `${k} (${groups[k].length}):\n` +
       groups[k].slice(0, 40).map((x) => `  - ${x.item}: ${x.detail}`).join("\n")).join("\n\n") + "\n";
   };
-  const text = [
+  let text = [
     `Fragrance Notes maintenance, night of ${d.since}`,
     "",
     "FIXED BY ITSELF (take a night back on the server with: python3 llm_review.py --undo YYYY-MM-DD)",
@@ -204,7 +204,20 @@ async function digest(env) {
     block(review, "Nothing: everything on the website passed the checks."),
     "FOR YOU TO DECIDE (tell Claude which ones are right)",
     block(todo, "Nothing."),
-  ].join("\n");
+  ];
+  // Perfumes without a page where one visit with the extension helps most (server/missing.py). Only in an email that
+  // is sent anyway: on their own they don't make one, or there would be an email every day.
+  const missing = d.missing || [];
+  if (missing.length) {
+    text.push("MISSING NOTES, TOP " + missing.length + " (open with the extension and \"Help build the open perfume " +
+      "database\" on; the full list: Missing notes on the review page)");
+    for (const m of missing) {
+      text.push(`  - ${m.item}: ${m.detail}`);
+      for (const [label, url] of m.links || []) text.push(`      ${label}: ${url}`);
+    }
+    text.push("");
+  }
+  text = text.join("\n");
   await mail(env, `Fragrance Notes: ${review.length} waiting for your OK, ${changes.length} fixed, ${todo.length} to check`, text);
   await env.STATE.put("digestSent", today);
 }

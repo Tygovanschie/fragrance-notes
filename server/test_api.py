@@ -103,6 +103,7 @@ class ApiTest(unittest.TestCase):
             self.assertIn("Brand X: y", r.read().decode())
         self.assertEqual(call("GET", "/review/status")[1]["waiting"], 1)
         self.assertIn({"kind": "new", "detail": "Brand X: y"}, call("GET", "/maintenance/week?days=1")[1]["review"])
+        self.assertIsInstance(call("GET", "/maintenance/week?days=1")[1]["missing"], list)
         form = lambda k: urllib.parse.urlencode({"key": k, "id": "abc123abc123", "kind": "new", "value": "X | y",
                                                   "decision": "reject"}).encode()
         req = urllib.request.Request(BASE + "/review", data=form("wrong"), method="POST",

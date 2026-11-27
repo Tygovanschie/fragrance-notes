@@ -70,13 +70,10 @@ def html_page(con, key, page_min=catalog.PAGE_CONFIRMED):
                 f'<span class="muted">{E(state)}{seen}</span></p><div class="b">{links}</div></li>')
 
     def brand_links(it):
-        q = " OR ".join(f"site:{d}" for d in it["sites"][:4]) + f' {it["name"]}'
-        return f'<a class="go" href="https://www.google.com/search?q={quote_plus(q)}" target="_blank" rel="noreferrer">Brand site</a>'
+        return f'<a class="go" href="{E(brand_link(it))}" target="_blank" rel="noreferrer">Brand site</a>'
 
-    def shop_links(it):
-        q = quote_plus(_query(it))
-        new = [s for s in SHOPS if s[1] not in it["seen"]] or SHOPS   # a shop that already sent facts adds nothing
-        return "".join(f'<a class="go" href="{u}{q}" target="_blank" rel="noreferrer">{n}</a>' for n, _, u in new)
+    def shops_html(it):
+        return "".join(f'<a class="go" href="{E(u)}" target="_blank" rel="noreferrer">{n}</a>' for n, u in shop_links(it))
 
     def block(title, sub, items, links):
         if not items:
@@ -90,7 +87,7 @@ def html_page(con, key, page_min=catalog.PAGE_CONFIRMED):
                   "(the link searches the brand's site), wait for the panel, done.", brand, brand_links)
             + block("Needs a second shop",
                     "No brand site in the list, so a note needs two different shops. Pick a shop that isn't under "
-                    "\"seen at\".", shops, shop_links)) or "<p>Every perfume in the catalog has a page.</p>"
+                    "\"seen at\".", shops, shops_html)) or "<p>Every perfume in the catalog has a page.</p>"
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex"><title>Missing notes | Fragrance Notes</title><style>
 body{{margin:0;background:#f4eef3;color:#2b1426;font:16px/1.5 system-ui,sans-serif}}main{{max-width:860px;margin:0 auto;padding:24px 16px 60px}}
@@ -104,3 +101,29 @@ li p{{margin:0;flex:1 1 380px;overflow-wrap:anywhere}}.b{{display:flex;gap:8px;f
 The extension reads the notes in your browser when "Help build the open perfume database" is on (Settings → Data).
 The catalog rebuilds every hour, so a perfume leaves this list within the hour after it has enough.</p>
 {body}</main></body></html>"""
+
+
+def brand_link(it):
+    q = " OR ".join(f"site:{d}" for d in it["sites"][:4]) + f' {it["name"]}'
+    return "https://www.google.com/search?q=" + quote_plus(q)
+
+
+def shop_links(it):
+    q = quote_plus(_query(it))
+    new = [s for s in SHOPS if s[1] not in it["seen"]] or SHOPS   # a shop that already sent facts adds nothing
+    return [(n, u + q) for n, _, u in new]
+
+
+def top(con, n=10, page_min=catalog.PAGE_CONFIRMED):
+    """The n perfumes where one visit helps most, for the daily email: closest to a page first, a brand-site visit
+    (which confirms at once) before a shop visit. [{item, detail, links: [[label, url]]}]"""
+    brand, shops = todo(con, page_min)
+    pick = sorted([(0, i, it) for i, it in enumerate(brand)] + [(1, i, it) for i, it in enumerate(shops)],
+                  key=lambda x: (-x[2]["confirmed"], x[0], x[1]))[:n]
+    out = []
+    for kind, _, it in pick:
+        detail = f'{it["confirmed"]}/{page_min} confirmed' + (f', seen at {", ".join(it["seen"])}' if it["seen"] else "")
+        links = [["Brand site", brand_link(it)]] if kind == 0 else [list(x) for x in shop_links(it)]
+        out.append({"item": f'{it["brand"]} {it["name"]}' + (f' ({it["conc"]})' if it["conc"] else ""),
+                    "detail": detail, "links": links})
+    return out

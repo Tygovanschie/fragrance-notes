@@ -149,18 +149,25 @@ async function noteInfo(url) {
 }
 
 // ---------- pages read out of sight ----------
-// Pages that have to run in a real browser tab (Fragrantica) are opened in one small
-// minimized window instead of next to the user's own tabs, and closed as soon as they've been read.
-// The window itself closes again when it has been idle for a little while.
-// No placeholder page: the window opens with the first page and closes by itself when its last page
-// is closed, so nothing is left behind (even if Chrome stops this background script in between).
+// Pages that have to run in a real browser tab (Fragrantica) are opened in one minimized window instead of next to
+// the user's own tabs, and closed as soon as they've been read. Making that window is the only moment anything can be
+// seen (Chrome on Windows shows a new minimized window for a moment, in black), so the window is kept: when its last
+// page has been read it keeps one empty tab, and it closes after HIDDEN_IDLE_MIN minutes without a lookup. That is an
+// alarm, so it also happens when Chrome stopped this background script in between.
+const HIDDEN_IDLE_MIN = 15;
 let hiddenWin = null;          // Promise<windowId | null>
+function hiddenWinId() {
+  // After this background script restarted: the window from before, if it is still there.
+  hiddenWin ||= (chrome.storage.session ? chrome.storage.session.get('fn:hiddenWin') : Promise.resolve({}))
+    .then(({ 'fn:hiddenWin': old } = {}) => (old ? chrome.windows.get(old).then(w => w.id, () => null) : null))
+    .catch(() => null);
+  return hiddenWin;
+}
 async function openHidden(url) {
-  if (hiddenWin) {
-    const id = await hiddenWin;
-    if (id) {
-      try { return await chrome.tabs.create({ windowId: id, url, active: false }); } catch {}   // window may have just closed
-    }
+  chrome.alarms?.create('fnHiddenIdle', { delayInMinutes: HIDDEN_IDLE_MIN });   // replaces the earlier one
+  const id = await hiddenWinId();
+  if (id) {
+    try { return await chrome.tabs.create({ windowId: id, url, active: false }); } catch {}   // window may have just closed
   }
   // Firefox doesn't accept focused:false; a minimized window doesn't take focus there anyway.
   const opts = FN.IS_FIREFOX ? { url, state: 'minimized', type: 'normal' } : { url, state: 'minimized', focused: false, type: 'normal' };
@@ -174,15 +181,22 @@ async function openHidden(url) {
   return chrome.tabs.create({ url, active: false });   // fallback: a background tab in the current window
 }
 async function closeHidden(tabId) {
+  const id = await hiddenWinId();
+  const tabs = id ? await chrome.tabs.query({ windowId: id }).catch(() => []) : [];
+  if (tabs.length === 1 && tabs[0].id === tabId) {
+    // Its last page: keep the window with an empty tab, so the next lookup doesn't make a new one.
+    return chrome.tabs.update(tabId, { url: 'about:blank' }).catch(() => {});
+  }
   await chrome.tabs.remove(tabId).catch(() => {});
 }
 chrome.windows.onRemoved.addListener(async id => { if (hiddenWin && id === await hiddenWin) hiddenWin = null; });
-// When this background script starts fresh, no lookup is running, so a hidden window left over from
-// before (e.g. Chrome stopped the script mid-lookup) can go.
-chrome.storage.session?.get('fn:hiddenWin').then(({ 'fn:hiddenWin': old } = {}) => {
-  if (old && !hiddenWin) chrome.windows.remove(old).catch(() => {});
-}).catch(() => {});
-
+chrome.alarms?.onAlarm.addListener(async a => {
+  if (a.name !== 'fnHiddenIdle') return;
+  const id = await hiddenWinId();
+  hiddenWin = null;
+  chrome.storage.session?.remove('fn:hiddenWin').catch(() => {});
+  if (id) chrome.windows.remove(id).catch(() => {});
+});
 // Fragrantica's own search page, read in a background tab (used when Bing finds nothing or is blocked).
 async function fragranticaSearch(query) {
   const tab = await openHidden('https://www.fragrantica.com/search/?query=' + encodeURIComponent(query));
