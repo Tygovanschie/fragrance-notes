@@ -129,6 +129,27 @@ Reply in JSON: {{"same": true or false}}
 A: "{a}"
 B: "{b}\""""
 
+def _words(s):
+    return re.sub(r"[^a-z0-9]+", " ", str(s).lower()).split()
+
+
+def note_hint(name, english, existing):
+    """The email line for an unknown note: the model's translation only when it differs from the name (a name that
+    is already English otherwise comes back as itself), plus the known notes it is built on, so the choice is
+    'new note' or 'same as a known one'."""
+    eng = str(english).strip().lower()[:40]
+    words = _words(eng)
+    parts = ["new note? name is already English" if words == _words(name) else f"maybe {eng}"]
+    known, text = [], f" {' '.join(words)} "
+    for k in sorted(existing, key=len, reverse=True):
+        kk = " ".join(_words(k))
+        if kk and f" {kk} " in text and not any(f" {kk} " in f" {o} " for o in known):
+            known.append(kk)
+    if known:
+        parts.append("contains known " + ", ".join(known[:3]))
+    return "; ".join(parts)
+
+
 def job_notes(con, seen):
     notes = {}
     for brand, name, data in con.execute("SELECT brand, name, data FROM catalog"):
@@ -160,7 +181,7 @@ def job_notes(con, seen):
             fixed += 1
             remark = "fixed: mapped automatically"
         elif a.get("english"):
-            todo("unknown note", n["name"], f"maybe {str(a.get('english')).strip().lower()[:40]}; seen on {'; '.join(n['perfumes'])}")
+            todo("unknown note", n["name"], f"{note_hint(n['name'], a.get('english'), existing)}; seen on {'; '.join(n['perfumes'])}")
         rows.append([n["name"], str(a.get("english") or "").strip().lower()[:60], same or "—",
                      "yes" if a.get("sure") is True else "no", n["shops"], "; ".join(n["perfumes"]), remark])
     path = write_list("notes", "Note names to review",
