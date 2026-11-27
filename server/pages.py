@@ -37,6 +37,7 @@ import maintenance
 import regions
 import notephotos
 import votes
+import related
 
 PAGE_MIN_CONFIRMED = int(os.environ.get("PAGE_MIN_CONFIRMED", "3"))
 BASE = os.environ.get("PAGES_BASE", "https://fragrancenotes.app").rstrip("/")
@@ -63,6 +64,7 @@ T = {
         "langName": "English", "getExt": "Get the extension", "back": "← All perfumes",
         "notePhotos": "Note photos: Wikimedia Commons",
         "accordsH": "Main accords", "accordsSub": "Worked out from the notes and fragrance families the shops give, not voted.",
+        "versionsH": "Other versions", "similarH": "Smells similar", "similarSub": "Other perfumes with the same confirmed notes and accords.", "sharesNotes": "shared",
         "theDb": "All perfumes", "allNotes": "All notes", "privacy": "Privacy", "source": "Source",
         "footData": 'From the open Fragrance Notes perfume database: what perfume shops show on their own pages, shared '
                     'anonymously by users, and <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Available under the '
@@ -147,6 +149,7 @@ T = {
         "langName": "Nederlands", "getExt": "Installeer de extensie", "back": "← Alle parfums",
         "notePhotos": "Foto’s van noten: Wikimedia Commons",
         "accordsH": "Hoofdaccoorden", "accordsSub": "Afgeleid uit de geurnoten en geurfamilies die de winkels noemen, niet gestemd.",
+        "versionsH": "Andere versies", "similarH": "Ruikt vergelijkbaar", "similarSub": "Andere parfums met dezelfde bevestigde geurnoten en accoorden.", "sharesNotes": "gedeeld",
         "theDb": "Alle parfums", "allNotes": "Alle geurnoten", "privacy": "Privacy", "source": "Broncode",
         "footData": 'Uit de open parfumdatabase van Fragrance Notes: wat parfumwinkels op hun eigen pagina\'s laten zien, anoniem '
                     'gedeeld door gebruikers, en <a href="https://world.openbeautyfacts.org/">Open Beauty Facts</a>. Beschikbaar onder de '
@@ -385,7 +388,9 @@ def index(con):
     for p in perfumes:
         b = brands.setdefault(slug(p["brand"]), {"name": p["brand"], "perfumes": []})
         b["perfumes"].append(p)
-    idx = {"perfumes": perfumes, "byId": {p["id"]: p for p in perfumes}, "notes": notes, "brands": brands}
+    versions = related.lines(perfumes)
+    idx = {"perfumes": perfumes, "byId": {p["id"]: p for p in perfumes}, "notes": notes, "brands": brands,
+           "versions": versions, "similar": related.similar(perfumes, versions)}
     _cache.update(stamp=stamp, index=idx)
     return idx
 
@@ -1245,6 +1250,18 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
                 + '<ul class="achips">' + "".join(f'<li><i style="--c:{accords.COLOURS[a][0]}"></i>{e(accords.name(a, lang))}<small>{v}%</small></li>' for a, v in acc) + "</ul>"
                 + "</section>") if acc else ""
 
+    def plist_item(q, extra):
+        im = img_tag(con, q, size=56) or "<i></i>"
+        return (f'<li><a href="{P(lang, perfume_path(q))}">{im}<span><b>{e(q["name"])}</b>'
+                f'<small>{e(q["brand"])}{" · " + e(extra) if extra else ""}</small></span></a></li>')
+    vers = [idx["byId"][i] for i in idx.get("versions", {}).get(p["id"], []) if i in idx["byId"]]
+    versions_html = (f'<section class="card" aria-labelledby="ver-h"><h2 id="ver-h">{t["versionsH"]}</h2><ul class="plist">'
+                     + "".join(plist_item(q, conc_name(q) or t["perfume"]) for q in vers) + "</ul></section>") if vers else ""
+    sims = [(idx["byId"][i], shared) for i, _, shared in idx.get("similar", {}).get(p["id"], []) if i in idx["byId"]]
+    similar_html = (f'<section class="card" aria-labelledby="sim-h"><h2 id="sim-h">{t["similarH"]}</h2><p class="sub">{t["similarSub"]}</p><ul class="plist">'
+                    + "".join(plist_item(q, (f'{t["sharesNotes"]}: ' + ", ".join(note_name(k, lang) for k in shared[:4])) if shared else "") for q, shared in sims)
+                    + "</ul></section>") if sims else ""
+
     body = f"""{back(lang)}
 <section class="head{'' if ph else ' nophoto'}">{photo_html}<div>
 <p class="house"><a href="{P(lang, brand_path(p['brand']))}" style="color:inherit;text-decoration:none">{e(p["brand"])}</a></p>
@@ -1259,8 +1276,10 @@ def perfume_page(con, pid, prices=None, lang="en", vote=None, voter=None):
 {"".join(tiers)}
 {single_html}
 </section>
+{similar_html}
 {vote_html}
 {price_html}
+{versions_html}
 </div><aside>
 <section class="card" aria-label="{t["details"]}"><dl class="facts">{facts_html}</dl></section>
 <section class="card help"><h2>{t["helpT"]}</h2>
